@@ -904,7 +904,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
     if (!translationPopover) return;
     setInlineTranslation({ loading: true, text: '' });
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1011,7 +1011,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
     }
 
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1037,12 +1037,16 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
       try {
         const res = await fetch(url, options);
         if (res.ok) return res;
+        
+        const errText = await res.text();
+        console.error("Gemini API Error details:", errText);
+        
         if (res.status === 429 || res.status >= 500) {
           const delay = Math.pow(2, retries) * 1000;
           await new Promise(resolve => setTimeout(resolve, delay));
           retries++;
         } else {
-          throw new Error(`API Error: ${res.status}`);
+          throw new Error(`API Error ${res.status}: ${errText}`);
         }
       } catch (err) {
         if (retries === maxRetries - 1) throw err;
@@ -1082,7 +1086,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
     setIsLoading(true);
 
     try {
-      const contents = updatedMessages.filter(msg => !msg.isHidden).map(msg => ({
+      const contents = updatedMessages.filter(msg => !msg.isHidden && msg.role !== 'system').map(msg => ({
         role: msg.role === 'user' ? 'user' : 'model',
         parts: [{ text: msg.content }]
       }));
@@ -1097,7 +1101,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
         generationConfig: { temperature: 0.7 }
       };
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
       
       const res = await fetchWithRetry(url, {
         method: 'POST',
