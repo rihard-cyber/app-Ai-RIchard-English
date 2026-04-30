@@ -33,6 +33,7 @@ import ProgressDashboard from './ProgressDashboard';
 import WritingAnalyzer from './WritingAnalyzer';
 import PronunciationCoach from './PronunciationCoach';
 import AchievementSystem from './AchievementSystem';
+import PaymentModal from './PaymentModal';
 import { supabase } from './supabaseClient';
 
 // --- KONFIGURASI API GEMINI ---
@@ -45,11 +46,13 @@ const DEFAULT_PROFILE = {
   level: "Pemula (A1-A2)",
   xp: 0,
   streak: 0,
-  has_completed_initial_test: false
+  has_completed_initial_test: false,
+  is_pro: false,
+  subscription_plan: 'Free'
 };
 
 // --- DATA PROMPT DARI SPREADSHEET ---
-const PROMPTS = {
+const getPrompts = (userProfile) => ({
   assessment: `Perkenalkan nama ku: ${userProfile.name}.
 Saya ingin dites Bahasa Inggris saya sesuai standar CEFR (A1–C2). 🌍
 🧑🏫 Kamu adalah Kaka Richard dari Kampung Inggris. Tugas kamu adalah membimbing saya memahami kemampuan Bahasa Inggris saya 📚
@@ -68,7 +71,7 @@ Saya ingin dites Bahasa Inggris saya sesuai standar CEFR (A1–C2). 🌍
 🆘 Jangan kasih contoh jawaban, biar aku jawab sendiri.
 🗣️ Semua respon, pertanyaan lanjutan, dan koreksi dari kamu tetap dalam Bahasa Indonesia supaya saya makin paham.`,
 
-  vocabulary: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${USER_PROFILE.gender}.
+  vocabulary: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${userProfile.gender}.
 👉 Kalau aku cowok, panggil aku Bro ${userProfile.name}.
 🎯 Aku mau lancar dan jago bahasa Inggris. Level saat ini: ${userProfile.level}.
 🎓 Kamu adalah Kaka Richard dari Kampung Inggris. Tugas kamu membimbing aku belajar vocab melalui writing dan speaking di Level ${userProfile.level}.
@@ -79,14 +82,14 @@ Saya ingin dites Bahasa Inggris saya sesuai standar CEFR (A1–C2). 🌍
 Selalu berikan 2 opsi Writing Challenge. 
 Langkah koreksi setelah aku jawab: 1. Koreksi Writing (Tabel: Kalimat Asli | Penjelasan Grammar | Kalimat Benar), 2. Analisa Penggunaan Box of Words, 3. Analisa Kosakata & CEFR, 4. Analisa CEFR Tulisan, 5. Analisa 5W+1H, 6. Analisa Transition Words, 7. Speaking Challenge (Berikan aku 1–3 pertanyaan speaking).`,
 
-  speaking: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${USER_PROFILE.gender}. Panggil aku Bro ${userProfile.name}.
+  speaking: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${userProfile.gender}. Panggil aku Bro ${userProfile.name}.
 🎯 Tujuan: Aku mau lancar dan jago bahasa Inggris, khususnya speaking. Level saat ini: ${userProfile.level}.
 🎓 Kamu adalah Kaka Richard dari Kampung Inggris. Tugas kamu membimbing aku belajar SPEAKING.
 🔔 Bahasa koreksi: Semua penjelasan dan koreksi harus disampaikan dalam Bahasa Indonesia.
 📚 Bagian A — Penjelasan Materi: Berikan penjelasan materi speaking sesuai level ${userProfile.level} (tujuan komunikasi, ekspresi penting, struktur kalimat). Sertakan 3–5 frasa contoh.
 🎤 Bagian B — Speaking Challenge: Setelah aku bilang "I'm ready to practice", beri aku pertanyaan tentang topik yang dipelajari satu-satu. Terjemahkan ke bahasa indonesia. Saat aku minta koreksi, Beri tabel perbandingan kalimatku dengan native speaker.`,
 
-  grammar: `Namaku ${userProfile.name}🙋 Genderku: ${USER_PROFILE.gender}. Level: ${userProfile.level}.
+  grammar: `Namaku ${userProfile.name}🙋 Genderku: ${userProfile.gender}. Level: ${userProfile.level}.
 Kamu adalah Kaka Richard dari Kampung Inggris. Menyapa dengan gaya tutor santai dan seru.
 🎯 Fokus ke: pola kalimat, cara pakai dalam speaking sehari-hari, dan contoh alami. Penjelasan detail dengan pendekatan untuk gen Z/millenial. Kasih banyak bab dan sub bab.
 📄 Setelah penjelasan, beri 5 contoh kalimat natural + terjemahan Bahasa Indonesia (italic).
@@ -94,27 +97,75 @@ Kamu adalah Kaka Richard dari Kampung Inggris. Menyapa dengan gaya tutor santai 
 🔧 Setelah aku praktek, kasih feedback perbandingan kalimatku dan kalimat dengan grammar yang lebih baik.
 💬 Kalau aku bilang 'How to say + (kata Indonesia)', langsung jawab dengan penjelasan.`,
 
-  listening: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${USER_PROFILE.gender}. Level: ${userProfile.level}.
+  listening: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${userProfile.gender}. Level: ${userProfile.level}.
 🎓 Kamu adalah Kaka Richard dari Kampung Inggris. Tugas kamu membimbing belajar LISTENING & SPEAKING.
 🎧 Bagian A — Listening Practice (cerita/monolog): Di awal sesi, kamu *wajib memberikan 1 cerita atau monolog pendek dalam Bahasa Inggris* sesuai level ${userProfile.level}. Tidak boleh ada sapaan pembuka. Respon pertamamu adalah langsung cerita atau monolog sesuai tema yang aku mau. Cerita 8-15 kalimat. Sertakan vocabulary penting di bawah cerita dalam tabel.
 🎤 Bagian B — Speaking Challenge: Setelah aku bilang "I'm ready to practice", beri aku pertanyaan tentang isi cerita (listening comprehension) satu per satu. Pertanyaan dalam Bahasa Inggris + terjemahan Bahasa Indonesia. Kalau salah koreksi sesuai teks monolog.`,
 
-  conversation: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${USER_PROFILE.gender}. Level: ${userProfile.level}.
+  conversation: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${userProfile.gender}. Level: ${userProfile.level}.
 Instruksi untuk AI: Kamu adalah Kaka Richard. Kasih saya contoh conversation sesuai topik dan tokoh pilihan saya. Formatkan contoh conversation dalam bentuk tabel dengan 3 kolom: Speaker, English Dialogue, dan Terjemahan Bahasa Indonesia. Dialog hanya terdiri dari 2 tokoh: Tokoh pilihan dan saya (${userProfile.name}).
 Gaya bicara tokoh harus konsisten. Di bawah contoh conversation, kasih tabel highlight kosakata, idiom, phrasal verb.
 Lalu suruh saya bilang "I'm ready to practice".
 Di sesi latihan: Abaikan teks dialog, langsung improvisasi memerankan karakter tokoh tersebut dan beri pertanyaan-pertanyaan tanpa narasi, FULL BAHASA INGGRIS.`
-};
+});
 
 export default function App() {
   const [authState, setAuthState] = useState('login'); // 'login', 'subscription', 'assessment', 'app'
   const [userProfile, setUserProfile] = useState(DEFAULT_PROFILE);
   const [activeTab, setActiveTab] = useState('home');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState({ name: '', price: 0 });
+  const [userStats, setUserStats] = useState({ speaking: 0, writing: 0, grammar: 0, vocabulary: 0 });
+  const [recommendation, setRecommendation] = useState('vocabulary');
 
   useEffect(() => {
     checkUser();
   }, []);
+
+  useEffect(() => {
+    if (authState === 'app') {
+      fetchStats();
+    }
+  }, [authState]);
+
+  const fetchStats = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('user_progress')
+      .select('skill_type, score')
+      .eq('user_id', user.id);
+
+    if (data && data.length > 0) {
+      const stats = { speaking: 0, writing: 0, grammar: 0, vocabulary: 0 };
+      const counts = { speaking: 0, writing: 0, grammar: 0, vocabulary: 0 };
+
+      data.forEach(p => {
+        if (stats[p.skill_type] !== undefined) {
+          stats[p.skill_type] += p.score;
+          counts[p.skill_type]++;
+        }
+      });
+
+      const averages = {};
+      let lowestSkill = 'vocabulary';
+      let lowestScore = 101;
+
+      Object.keys(stats).forEach(skill => {
+        const avg = counts[skill] > 0 ? Math.round(stats[skill] / counts[skill]) : 0;
+        averages[skill] = avg;
+        if (avg < lowestScore) {
+          lowestScore = avg;
+          lowestSkill = skill;
+        }
+      });
+
+      setUserStats(averages);
+      setRecommendation(lowestSkill);
+    }
+  };
 
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -137,7 +188,9 @@ export default function App() {
         level: data.level,
         xp: data.xp,
         streak: data.streak,
-        has_completed_initial_test: data.has_completed_initial_test
+        has_completed_initial_test: data.has_completed_initial_test,
+        is_pro: data.is_pro || false,
+        subscription_plan: data.subscription_plan || 'Free'
       });
 
       if (!data.has_completed_initial_test) {
@@ -155,7 +208,31 @@ export default function App() {
     checkUser();
   };
 
-  const handleSelectPlan = (plan) => setAuthState('app');
+  const handleSelectPlan = (plan) => {
+    if (plan === 'free') {
+      setAuthState('app');
+    } else {
+      const planDetails = plan === 'monthly' 
+        ? { name: 'Pro Monthly', price: '49.000' }
+        : { name: 'Pro Yearly', price: '399.000' };
+      setSelectedPlan(planDetails);
+      setIsPaymentModalOpen(true);
+    }
+  };
+
+  const handlePaymentSuccess = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase
+        .from('user_profiles')
+        .update({ is_pro: true, subscription_plan: selectedPlan.name })
+        .eq('id', user.id);
+      
+      // Refresh profile
+      await fetchProfile(user.id);
+    }
+    setAuthState('app');
+  };
 
   const handleAssessmentComplete = (level) => {
     setUserProfile(prev => ({ ...prev, level, has_completed_initial_test: true }));
@@ -183,25 +260,26 @@ export default function App() {
   };
 
   const renderContent = () => {
+    const prompts = getPrompts(userProfile);
     switch (activeTab) {
       case 'home':
-        return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} />;
+        return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} recommendation={recommendation} />;
       case 'progress':
         return <ProgressDashboard userProfile={userProfile} />;
       case 'assessment':
         return <LevelTest onComplete={handleAssessmentComplete} />;
       case 'vocabulary':
-        return <SetupModule module="Vocabulary" basePrompt={PROMPTS.vocabulary} inputLabel="Topik Vocabulary" placeholder="Misal: Daily Routines, Food & Drinks" icon={<BookA size={24}/>} color="text-indigo-600" bg="bg-indigo-100" onComplete={(score) => saveProgress('vocabulary', score)} />;
+        return <SetupModule module="Vocabulary" basePrompt={prompts.vocabulary} inputLabel="Topik Vocabulary" placeholder="Misal: Daily Routines, Food & Drinks" icon={<BookA size={24}/>} color="text-indigo-600" bg="bg-indigo-100" onComplete={(score) => saveProgress('vocabulary', score)} isPro={userProfile.is_pro} />;
       case 'speaking':
         return <PronunciationCoach userProfile={userProfile} onComplete={(score) => saveProgress('speaking', score)} />;
       case 'grammar':
-        return <SetupModule module="Grammar for Speaking" basePrompt={PROMPTS.grammar} inputLabel="Materi Grammar" placeholder="Misal: Perbedaan Do/Does, Verb 2" icon={<LayoutDashboard size={24}/>} color="text-emerald-600" bg="bg-emerald-100" onComplete={(score) => saveProgress('grammar', score)} />;
+        return <SetupModule module="Grammar for Speaking" basePrompt={prompts.grammar} inputLabel="Materi Grammar" placeholder="Misal: Perbedaan Do/Does, Verb 2" icon={<LayoutDashboard size={24}/>} color="text-emerald-600" bg="bg-emerald-100" onComplete={(score) => saveProgress('grammar', score)} isPro={userProfile.is_pro} />;
       case 'listening':
-        return <SetupModule module="Listening & Talking" basePrompt={PROMPTS.listening} inputLabel="Tema Cerita / Monolog" placeholder="Misal: Liburan ke Bali..." icon={<Headphones size={24}/>} color="text-amber-600" bg="bg-amber-100" onComplete={(score) => saveProgress('listening', score)} />;
+        return <SetupModule module="Listening & Talking" basePrompt={prompts.listening} inputLabel="Tema Cerita / Monolog" placeholder="Misal: Liburan ke Bali..." icon={<Headphones size={24}/>} color="text-amber-600" bg="bg-amber-100" onComplete={(score) => saveProgress('listening', score)} isPro={userProfile.is_pro} />;
       case 'writing_analyzer':
-        return <WritingAnalyzer />;
+        return <WritingAnalyzer isPro={userProfile.is_pro} />;
       case 'conversation':
-        return <ConversationModule basePrompt={PROMPTS.conversation} />;
+        return <ConversationModule basePrompt={prompts.conversation} isPro={userProfile.is_pro} />;
       default:
         return <HomeDashboard onNavigate={handleTabChange} />;
     }
@@ -299,6 +377,14 @@ export default function App() {
           {renderContent()}
         </div>
       </main>
+
+      <PaymentModal 
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        onPaymentSuccess={handlePaymentSuccess}
+        planName={selectedPlan.name}
+        price={selectedPlan.price}
+      />
     </div>
   );
 }
@@ -322,7 +408,7 @@ function NavItem({ icon, label, isActive, onClick }) {
 // ==========================================
 // HOME DASHBOARD (Gamification)
 // ==========================================
-function HomeDashboard({ onNavigate, userProfile }) {
+function HomeDashboard({ onNavigate, userProfile, recommendation }) {
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20">
       {/* Welcome Banner */}
@@ -336,10 +422,10 @@ function HomeDashboard({ onNavigate, userProfile }) {
           
           <div className="flex flex-col md:flex-row gap-4 mb-8">
             <button 
-              onClick={() => onNavigate('speaking')}
+              onClick={() => onNavigate(recommendation)}
               className="bg-white text-blue-700 font-bold px-6 py-3 rounded-2xl shadow-lg shadow-blue-900/20 flex items-center gap-2 hover:bg-blue-50 transition-all active:scale-95"
             >
-              <Zap size={18} className="fill-blue-700" /> Lanjut ke Rekomendasi: Speaking
+              <Zap size={18} className="fill-blue-700" /> Lanjut ke Rekomendasi: {recommendation.charAt(0).toUpperCase() + recommendation.slice(1)}
             </button>
             <div className="flex gap-4">
                <div className="bg-white/20 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-2 flex items-center gap-3">
@@ -420,9 +506,32 @@ function DashboardCard({ title, desc, icon, color, hover, onClick }) {
 // ==========================================
 // MODUL SETUP WRAPPERS
 // ==========================================
-function SetupModule({ module, basePrompt, inputLabel, placeholder, icon, color, bg, onComplete }) {
+function SetupModule({ module, basePrompt, inputLabel, placeholder, icon, color, bg, onComplete, isPro }) {
   const [isStarted, setIsStarted] = useState(false);
   const [topic, setTopic] = useState('');
+
+  if (!isPro && !isStarted) {
+    return (
+      <div className="h-full flex items-center justify-center p-6 bg-slate-50">
+        <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-2xl border border-slate-100 max-w-lg text-center animate-in zoom-in-95 duration-500">
+           <div className="w-24 h-24 bg-gradient-to-tr from-amber-400 to-orange-500 text-white rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-orange-500/20">
+             <Crown size={48} />
+           </div>
+           <h2 className="text-3xl font-black text-slate-800 mb-4">Fitur Khusus PRO 👑</h2>
+           <p className="text-slate-500 mb-10 text-lg leading-relaxed">
+             Modul <strong>{module}</strong> adalah fitur eksklusif. Upgrade akunmu untuk membuka akses tanpa batas ke seluruh materi cerdas Kaka Richard.
+           </p>
+           <button 
+             onClick={() => window.location.reload()}
+             className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-all text-lg"
+           >
+             Upgrade Sekarang
+           </button>
+           <p className="mt-6 text-sm text-slate-400 font-medium">Banyak fitur seru lainnya menunggu kamu!</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isStarted) {
     const dynamicPrompt = `${basePrompt}\n\nTopik yang ingin dipelajari murid hari ini adalah: ${topic}`;

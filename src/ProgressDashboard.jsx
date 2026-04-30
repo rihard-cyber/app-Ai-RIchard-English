@@ -16,23 +16,91 @@ import { supabase } from './supabaseClient';
 
 export default function ProgressDashboard({ userProfile }) {
   const [stats, setStats] = useState({
-    speaking: 65,
-    writing: 42,
-    grammar: 58,
-    vocabulary: 70
+    speaking: 0,
+    writing: 0,
+    grammar: 0,
+    vocabulary: 0
   });
 
-  const [recentActivity, setRecentActivity] = useState([
-    { id: 1, type: 'Speaking', score: 85, date: '2 jam yang lalu', level: 'B1' },
-    { id: 2, type: 'Vocabulary', score: 92, date: 'Kemarin', level: 'B1' },
-    { id: 3, type: 'Grammar', score: 70, date: '2 hari yang lalu', level: 'A2' },
-  ]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Generate mock heatmap data (28 days)
+  useEffect(() => {
+    fetchProgress();
+  }, []);
+
+  const fetchProgress = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // 1. Fetch Skill Averages
+    const { data: progressData, error } = await supabase
+      .from('user_progress')
+      .select('skill_type, score')
+      .eq('user_id', user.id);
+
+    if (progressData) {
+      const skills = ['speaking', 'writing', 'grammar', 'vocabulary'];
+      const newStats = { ...stats };
+      
+      skills.forEach(skill => {
+        const skillScores = progressData.filter(p => p.skill_type === skill);
+        if (skillScores.length > 0) {
+          const avg = skillScores.reduce((acc, curr) => acc + curr.score, 0) / skillScores.length;
+          newStats[skill] = Math.round(avg);
+        }
+      });
+      setStats(newStats);
+    }
+
+    // 2. Fetch Recent Activity
+    const { data: activityData } = await supabase
+      .from('user_progress')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    if (activityData) {
+      setRecentActivity(activityData.map(act => ({
+        id: act.id,
+        type: act.skill_type.charAt(0).toUpperCase() + act.skill_type.slice(1),
+        score: act.score,
+        date: formatDate(act.created_at),
+        level: userProfile.level.split(' ')[0]
+      })));
+    }
+    setIsLoading(false);
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    
+    if (diffMins < 60) return `${diffMins} menit yang lalu`;
+    if (diffHours < 24) return `${diffHours} jam yang lalu`;
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  };
+
+  // Generate mock heatmap data (28 days) - keep this for visual flavor or implement real logic
   const heatmapData = Array.from({ length: 28 }, (_, i) => ({
     day: i,
-    value: Math.floor(Math.random() * 5) // 0 to 4 intensity
+    value: Math.floor(Math.random() * 5) 
   }));
+
+  if (isLoading) {
+    return (
+      <div className="h-full flex items-center justify-center p-20 min-h-[400px]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
+          <p className="text-slate-500 font-bold animate-pulse">Memuat data progres...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-24">
