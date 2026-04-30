@@ -1213,7 +1213,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
                     {msg.content}
                   </div>
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold shrink-0 text-xs shadow-inner">
-                    {userProfile.name.charAt(0)}
+                    <User size={16} />
                   </div>
                 </div>
               );
