@@ -31,6 +31,8 @@ import { LoginPage, SubscriptionPage } from './Auth';
 import LevelTest from './LevelTest';
 import ProgressDashboard from './ProgressDashboard';
 import WritingAnalyzer from './WritingAnalyzer';
+import PronunciationCoach from './PronunciationCoach';
+import AchievementSystem from './AchievementSystem';
 import { supabase } from './supabaseClient';
 
 // --- KONFIGURASI API GEMINI ---
@@ -160,6 +162,21 @@ export default function App() {
     setAuthState('app');
   };
 
+  const saveProgress = async (skill, score, details = {}) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('user_progress').insert({
+        user_id: user.id,
+        skill_type: skill,
+        score: score,
+        details: details
+      });
+      
+      // Update XP in profile
+      await supabase.rpc('increment_xp', { user_id: user.id, amount: 10 });
+    }
+  };
+
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setIsSidebarOpen(false); // Close sidebar on mobile after clicking
@@ -174,13 +191,13 @@ export default function App() {
       case 'assessment':
         return <LevelTest onComplete={handleAssessmentComplete} />;
       case 'vocabulary':
-        return <SetupModule module="Vocabulary" basePrompt={PROMPTS.vocabulary} inputLabel="Topik Vocabulary" placeholder="Misal: Daily Routines, Food & Drinks" icon={<BookA size={24}/>} color="text-indigo-600" bg="bg-indigo-100" />;
+        return <SetupModule module="Vocabulary" basePrompt={PROMPTS.vocabulary} inputLabel="Topik Vocabulary" placeholder="Misal: Daily Routines, Food & Drinks" icon={<BookA size={24}/>} color="text-indigo-600" bg="bg-indigo-100" onComplete={(score) => saveProgress('vocabulary', score)} />;
       case 'speaking':
-        return <SetupModule module="Speaking" basePrompt={PROMPTS.speaking} inputLabel="Topik Speaking" placeholder="Misal: Describing People, Hobbies" icon={<Mic size={24}/>} color="text-rose-600" bg="bg-rose-100" />;
+        return <PronunciationCoach userProfile={userProfile} onComplete={(score) => saveProgress('speaking', score)} />;
       case 'grammar':
-        return <SetupModule module="Grammar for Speaking" basePrompt={PROMPTS.grammar} inputLabel="Materi Grammar" placeholder="Misal: Perbedaan Do/Does, Verb 2" icon={<LayoutDashboard size={24}/>} color="text-emerald-600" bg="bg-emerald-100" />;
+        return <SetupModule module="Grammar for Speaking" basePrompt={PROMPTS.grammar} inputLabel="Materi Grammar" placeholder="Misal: Perbedaan Do/Does, Verb 2" icon={<LayoutDashboard size={24}/>} color="text-emerald-600" bg="bg-emerald-100" onComplete={(score) => saveProgress('grammar', score)} />;
       case 'listening':
-        return <SetupModule module="Listening & Talking" basePrompt={PROMPTS.listening} inputLabel="Tema Cerita / Monolog" placeholder="Misal: Liburan ke Bali..." icon={<Headphones size={24}/>} color="text-amber-600" bg="bg-amber-100" />;
+        return <SetupModule module="Listening & Talking" basePrompt={PROMPTS.listening} inputLabel="Tema Cerita / Monolog" placeholder="Misal: Liburan ke Bali..." icon={<Headphones size={24}/>} color="text-amber-600" bg="bg-amber-100" onComplete={(score) => saveProgress('listening', score)} />;
       case 'writing_analyzer':
         return <WritingAnalyzer />;
       case 'conversation':
@@ -247,7 +264,7 @@ export default function App() {
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-6">Modul Pembelajaran</p>
           <NavItem icon={<GraduationCap />} label="Test CEFR (Awal)" isActive={activeTab === 'assessment'} onClick={() => handleTabChange('assessment')} />
           <NavItem icon={<BookA />} label="Vocabulary" isActive={activeTab === 'vocabulary'} onClick={() => handleTabChange('vocabulary')} />
-          <NavItem icon={<Mic />} label="Speaking" isActive={activeTab === 'speaking'} onClick={() => handleTabChange('speaking')} />
+          <NavItem icon={<Mic />} label="Speaking Coach" isActive={activeTab === 'speaking'} onClick={() => handleTabChange('speaking')} />
           <NavItem icon={<PenTool />} label="Writing Analyzer" isActive={activeTab === 'writing_analyzer'} onClick={() => handleTabChange('writing_analyzer')} />
           <NavItem icon={<LayoutDashboard />} label="Grammar for Speaking" isActive={activeTab === 'grammar'} onClick={() => handleTabChange('grammar')} />
           <NavItem icon={<Headphones />} label="Listening & Talk" isActive={activeTab === 'listening'} onClick={() => handleTabChange('listening')} />
@@ -316,20 +333,23 @@ function HomeDashboard({ onNavigate, userProfile }) {
         <div className="relative z-10">
           <h2 className="text-2xl md:text-4xl font-bold mb-2">Welcome back, {userProfile.name}! 👋</h2>
           <p className="text-blue-100 mb-6 md:text-lg max-w-xl">Lanjutkan progres belajarmu hari ini bersama Kaka Richard. Konsistensi adalah kunci kefasihan!</p>
-          <div className="flex flex-wrap gap-4">
-            <div className="bg-white/20 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-3 flex items-center gap-3">
-              <div className="bg-orange-500 p-2 rounded-xl"><Flame size={20} className="text-white fill-white"/></div>
-              <div>
-                <p className="text-xs text-blue-100 uppercase font-semibold tracking-wider">Day Streak</p>
-                <p className="text-xl font-bold">{userProfile.streak} Hari</p>
-              </div>
-            </div>
-            <div className="bg-white/20 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-3 flex items-center gap-3">
-              <div className="bg-yellow-400 p-2 rounded-xl"><Trophy size={20} className="text-yellow-900 fill-yellow-900"/></div>
-              <div>
-                <p className="text-xs text-blue-100 uppercase font-semibold tracking-wider">Total XP</p>
-                <p className="text-xl font-bold">{userProfile.xp}</p>
-              </div>
+          
+          <div className="flex flex-col md:flex-row gap-4 mb-8">
+            <button 
+              onClick={() => onNavigate('speaking')}
+              className="bg-white text-blue-700 font-bold px-6 py-3 rounded-2xl shadow-lg shadow-blue-900/20 flex items-center gap-2 hover:bg-blue-50 transition-all active:scale-95"
+            >
+              <Zap size={18} className="fill-blue-700" /> Lanjut ke Rekomendasi: Speaking
+            </button>
+            <div className="flex gap-4">
+               <div className="bg-white/20 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-2 flex items-center gap-3">
+                 <div className="bg-orange-500 p-1.5 rounded-lg"><Flame size={16} className="text-white fill-white"/></div>
+                 <p className="text-sm font-bold">{userProfile.streak} Hari</p>
+               </div>
+               <div className="bg-white/20 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-2 flex items-center gap-3">
+                 <div className="bg-yellow-400 p-1.5 rounded-lg"><Trophy size={16} className="text-yellow-900 fill-yellow-900"/></div>
+                 <p className="text-sm font-bold">{userProfile.xp} XP</p>
+               </div>
             </div>
           </div>
         </div>
@@ -370,6 +390,11 @@ function HomeDashboard({ onNavigate, userProfile }) {
           onClick={() => onNavigate('conversation')}
         />
       </div>
+
+      {/* Achievement System */}
+      <div className="mt-12">
+          <AchievementSystem />
+      </div>
     </div>
   );
 }
@@ -395,13 +420,13 @@ function DashboardCard({ title, desc, icon, color, hover, onClick }) {
 // ==========================================
 // MODUL SETUP WRAPPERS
 // ==========================================
-function SetupModule({ module, basePrompt, inputLabel, placeholder, icon, color, bg }) {
+function SetupModule({ module, basePrompt, inputLabel, placeholder, icon, color, bg, onComplete }) {
   const [isStarted, setIsStarted] = useState(false);
   const [topic, setTopic] = useState('');
 
   if (isStarted) {
     const dynamicPrompt = `${basePrompt}\n\nTopik yang ingin dipelajari murid hari ini adalah: ${topic}`;
-    return <ChatModule module={module} basePrompt={dynamicPrompt} topic={topic} />;
+    return <ChatModule module={module} basePrompt={dynamicPrompt} topic={topic} onComplete={onComplete} />;
   }
 
   return (
@@ -494,7 +519,7 @@ function ConversationModule({ basePrompt }) {
 // ==========================================
 // CORE CHAT ENGINE (With STT & TTS)
 // ==========================================
-function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pelajaran hari ini Kaka Richard!', hideInputAtStart = false }) {
+function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pelajaran hari ini Kaka Richard!', hideInputAtStart = false, onComplete }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
