@@ -1,8 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, ArrowRight, CheckCircle2, Shield, Zap, Crown, Mail, KeyRound, User as UserIcon } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Sparkles, ArrowRight, CheckCircle2, Shield, Zap, Crown, Mail, KeyRound, User as UserIcon, Loader2 } from 'lucide-react';
+import { supabase } from './supabaseClient';
 
 export function LoginPage({ onLogin }) {
   const [mode, setMode] = useState('signin'); // 'signin', 'signup', 'verify'
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   
   // Sign In State
   const [email, setEmail] = useState('');
@@ -14,44 +17,90 @@ export function LoginPage({ onLogin }) {
 
   // Verification State
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [generatedCode, setGeneratedCode] = useState('');
   const otpRefs = [useRef(), useRef(), useRef(), useRef(), useRef(), useRef()];
 
-  const handleSignIn = (e) => {
+  const handleSignIn = async (e) => {
     e.preventDefault();
-    if (email && password) {
-      onLogin(); // Bypass directly to app for demo
+    if (!email || !password) return;
+    setIsLoading(true);
+    setErrorMsg('');
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    setIsLoading(false);
+
+    if (error) {
+      if (error.message === 'Invalid login credentials') {
+         setErrorMsg('Email atau password salah.');
+      } else if (error.message.includes('Email not confirmed')) {
+         setErrorMsg('Email belum diverifikasi. Silakan cek inbox Anda.');
+      } else {
+         setErrorMsg(error.message);
+      }
+    } else {
+      onLogin(); 
     }
   };
 
-  const handleSignUp = (e) => {
+  const handleSignUp = async (e) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      alert('Password tidak sama!');
+      setErrorMsg('Password dan konfirmasi tidak sama!');
       return;
     }
-    // Simulate sending OTP
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedCode(code);
-    alert(`[SIMULASI EMAIL] Kode OTP Anda telah dikirim ke ${email}:\n\nKode: ${code}`);
-    setMode('verify');
+    setIsLoading(true);
+    setErrorMsg('');
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+        }
+      }
+    });
+
+    setIsLoading(false);
+
+    if (error) {
+      setErrorMsg(error.message);
+    } else {
+      setMode('verify');
+    }
   };
 
-  const handleVerify = (e) => {
+  const handleVerify = async (e) => {
     e.preventDefault();
     const enteredCode = otp.join('');
-    if (enteredCode === generatedCode) {
+    if (enteredCode.length < 6) return;
+    
+    setIsLoading(true);
+    setErrorMsg('');
+
+    const { data: { session }, error } = await supabase.auth.verifyOtp({
+      email,
+      token: enteredCode,
+      type: 'signup'
+    });
+
+    setIsLoading(false);
+
+    if (error) {
+      setErrorMsg('Kode OTP salah atau sudah kadaluarsa.');
+    } else {
       alert('Verifikasi Berhasil! Selamat datang di AI Richard.');
       onLogin();
-    } else {
-      alert('Kode OTP salah! Coba lagi.');
     }
   };
 
   const handleOtpChange = (index, value) => {
     if (isNaN(value)) return;
     const newOtp = [...otp];
-    newOtp[index] = value.substring(value.length - 1); // Only keep last typed digit
+    newOtp[index] = value.substring(value.length - 1);
     setOtp(newOtp);
 
     // Auto focus next
@@ -66,14 +115,18 @@ export function LoginPage({ onLogin }) {
     }
   };
 
+  const switchMode = (newMode) => {
+    setMode(newMode);
+    setErrorMsg('');
+  };
+
   return (
     <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 overflow-hidden relative">
-      {/* Background blobs */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/30 rounded-full blur-[100px] pointer-events-none"></div>
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-[100px] pointer-events-none"></div>
 
       <div className="w-full max-w-md running-border rounded-3xl p-[3px] animate-in zoom-in-95 duration-500">
-        <div className="running-border-inner rounded-[22px] bg-[#0f172a]/90 backdrop-blur-xl p-8 flex flex-col relative z-10 overflow-hidden">
+        <div className="running-border-inner rounded-[22px] bg-[#0f172a]/90 backdrop-blur-xl p-8 flex flex-col relative z-10 overflow-hidden min-h-[480px]">
           
           <div className="flex justify-center mb-6">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
@@ -81,10 +134,16 @@ export function LoginPage({ onLogin }) {
             </div>
           </div>
 
-          <div className="relative">
+          {errorMsg && (
+            <div className="bg-red-500/10 border border-red-500/50 text-red-400 text-sm px-4 py-2 rounded-xl mb-4 text-center absolute top-24 left-8 right-8 z-20">
+              {errorMsg}
+            </div>
+          )}
+
+          <div className="relative flex-1">
             {/* SIGN IN FORM */}
-            <div className={`transition-all duration-500 transform ${mode === 'signin' ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0 absolute inset-0 pointer-events-none'}`}>
-              <h1 className="text-3xl font-bold text-white text-center mb-2">AI Richard</h1>
+            <div className={`transition-all duration-500 transform ${mode === 'signin' ? 'translate-x-0 opacity-100 relative' : '-translate-x-full opacity-0 absolute inset-0 pointer-events-none'}`}>
+              <h1 className="text-3xl font-bold text-white text-center mb-2 mt-4">AI Richard</h1>
               <p className="text-slate-400 text-center mb-8 text-sm">Masuk untuk memulai petualangan belajarmu.</p>
               
               <form onSubmit={handleSignIn} className="space-y-4">
@@ -110,19 +169,19 @@ export function LoginPage({ onLogin }) {
                     />
                   </div>
                 </div>
-                <button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 group mt-2">
-                  Sign In <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                <button disabled={isLoading} type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 group mt-2">
+                  {isLoading ? <Loader2 className="animate-spin" size={18} /> : <>Sign In <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" /></>}
                 </button>
               </form>
               <div className="mt-6 text-center">
-                <p className="text-slate-400 text-sm">Belum punya akun? <button onClick={() => setMode('signup')} className="text-blue-400 font-bold hover:underline">Daftar sekarang</button></p>
+                <p className="text-slate-400 text-sm">Belum punya akun? <button onClick={() => switchMode('signup')} className="text-blue-400 font-bold hover:underline focus:outline-none">Daftar sekarang</button></p>
               </div>
             </div>
 
             {/* SIGN UP FORM */}
-            <div className={`transition-all duration-500 transform ${mode === 'signup' ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 absolute inset-0 pointer-events-none'}`}>
-              <h1 className="text-2xl font-bold text-white text-center mb-2">Buat Akun Baru</h1>
-              <p className="text-slate-400 text-center mb-6 text-sm">Daftar untuk mendapatkan API key gratis.</p>
+            <div className={`transition-all duration-500 transform ${mode === 'signup' ? 'translate-x-0 opacity-100 relative' : 'translate-x-full opacity-0 absolute inset-0 pointer-events-none'}`}>
+              <h1 className="text-2xl font-bold text-white text-center mb-2 mt-2">Buat Akun Baru</h1>
+              <p className="text-slate-400 text-center mb-6 text-sm">Daftar untuk akses AI Richard.</p>
               
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div>
@@ -149,22 +208,22 @@ export function LoginPage({ onLogin }) {
                     <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Ulangi Password" className="w-full pl-11 pr-5 py-3 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" required />
                   </div>
                 </div>
-                <button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 group mt-2">
-                  Kirim Kode Verifikasi <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                <button disabled={isLoading} type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 group mt-2">
+                   {isLoading ? <Loader2 className="animate-spin" size={18} /> : <>Kirim Kode Verifikasi <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" /></>}
                 </button>
               </form>
               <div className="mt-4 text-center">
-                <p className="text-slate-400 text-sm">Sudah punya akun? <button onClick={() => setMode('signin')} className="text-blue-400 font-bold hover:underline">Sign In</button></p>
+                <p className="text-slate-400 text-sm">Sudah punya akun? <button onClick={() => switchMode('signin')} className="text-blue-400 font-bold hover:underline focus:outline-none">Sign In</button></p>
               </div>
             </div>
 
             {/* VERIFY OTP FORM */}
-            <div className={`transition-all duration-500 transform ${mode === 'verify' ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 absolute inset-0 pointer-events-none'}`}>
-              <h1 className="text-2xl font-bold text-white text-center mb-2">Verifikasi Email</h1>
+            <div className={`transition-all duration-500 transform ${mode === 'verify' ? 'translate-x-0 opacity-100 relative' : 'translate-x-full opacity-0 absolute inset-0 pointer-events-none'}`}>
+              <h1 className="text-2xl font-bold text-white text-center mb-2 mt-4">Verifikasi Email</h1>
               <p className="text-slate-400 text-center mb-8 text-sm">Kami telah mengirimkan 6 digit kode ke <span className="font-bold text-white">{email}</span></p>
               
               <form onSubmit={handleVerify} className="space-y-8">
-                <div className="flex justify-between gap-2">
+                <div className="flex justify-between gap-1 md:gap-2">
                   {otp.map((digit, index) => (
                     <input 
                       key={index}
@@ -174,20 +233,19 @@ export function LoginPage({ onLogin }) {
                       value={digit}
                       onChange={(e) => handleOtpChange(index, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                      className="w-12 h-14 text-center text-xl font-bold rounded-xl bg-slate-800/80 border-2 border-slate-600 text-white focus:outline-none focus:border-blue-500 focus:bg-slate-800 transition-all"
+                      className="w-10 h-12 md:w-12 md:h-14 text-center text-xl font-bold rounded-xl bg-slate-800/80 border-2 border-slate-600 text-white focus:outline-none focus:border-blue-500 focus:bg-slate-800 transition-all"
                       maxLength={1}
                       required
                     />
                   ))}
                 </div>
                 
-                <button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 group">
-                  Verifikasi & Masuk <CheckCircle2 size={18} className="group-hover:scale-110 transition-transform" />
+                <button disabled={isLoading} type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 group">
+                  {isLoading ? <Loader2 className="animate-spin" size={18} /> : <>Verifikasi & Masuk <CheckCircle2 size={18} className="group-hover:scale-110 transition-transform" /></>}
                 </button>
               </form>
               <div className="mt-6 text-center">
-                <p className="text-slate-400 text-sm">Tidak menerima kode? <button onClick={() => alert('Kode baru dikirim ulang!')} className="text-blue-400 font-bold hover:underline">Kirim ulang</button></p>
-                <button onClick={() => setMode('signup')} className="text-slate-500 text-sm mt-4 hover:text-white transition-colors">Kembali ke pendaftaran</button>
+                <button onClick={() => switchMode('signup')} className="text-slate-500 text-sm mt-4 hover:text-white transition-colors focus:outline-none">Kembali ke pendaftaran</button>
               </div>
             </div>
 
@@ -200,6 +258,7 @@ export function LoginPage({ onLogin }) {
 }
 
 export function SubscriptionPage({ onSelectPlan }) {
+  // Komponen Subscription tetap sama persis seperti sebelumnya
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 md:p-8">
       <div className="max-w-6xl w-full">
