@@ -17,25 +17,38 @@ import {
   Bot,
   Flame,
   Trophy,
-  ChevronRight
+  ChevronRight,
+  TrendingUp,
+  Award,
+  Clock,
+  BarChart2,
+  Calendar,
+  Zap,
+  ArrowUpRight,
+  PenTool
 } from 'lucide-react';
 import { LoginPage, SubscriptionPage } from './Auth';
+import LevelTest from './LevelTest';
+import ProgressDashboard from './ProgressDashboard';
+import WritingAnalyzer from './WritingAnalyzer';
+import { supabase } from './supabaseClient';
 
 // --- KONFIGURASI API GEMINI ---
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || ""; 
 
-// --- DATA PROFIL PENGGUNA ---
-const USER_PROFILE = {
-  name: "Richard",
+// --- DATA PROFIL DEFAULT ---
+const DEFAULT_PROFILE = {
+  name: "User",
   gender: "male",
-  level: "Intermediate (B1)",
-  xp: 1250,
-  streak: 5
+  level: "Pemula (A1-A2)",
+  xp: 0,
+  streak: 0,
+  has_completed_initial_test: false
 };
 
 // --- DATA PROMPT DARI SPREADSHEET ---
 const PROMPTS = {
-  assessment: `Perkenalkan nama ku: ${USER_PROFILE.name}.
+  assessment: `Perkenalkan nama ku: ${userProfile.name}.
 Saya ingin dites Bahasa Inggris saya sesuai standar CEFR (A1–C2). 🌍
 🧑🏫 Kamu adalah Kaka Richard dari Kampung Inggris. Tugas kamu adalah membimbing saya memahami kemampuan Bahasa Inggris saya 📚
 🎙️ - Di opening dan closing, Kaka Richard dari Kampung Inggris akan menyapa dengan gaya tutor santai dan seru 😎
@@ -53,10 +66,10 @@ Saya ingin dites Bahasa Inggris saya sesuai standar CEFR (A1–C2). 🌍
 🆘 Jangan kasih contoh jawaban, biar aku jawab sendiri.
 🗣️ Semua respon, pertanyaan lanjutan, dan koreksi dari kamu tetap dalam Bahasa Indonesia supaya saya makin paham.`,
 
-  vocabulary: `Perkenalkan nama ku: ${USER_PROFILE.name}. Genderku: ${USER_PROFILE.gender}.
-👉 Kalau aku cowok, panggil aku Bro ${USER_PROFILE.name}.
-🎯 Aku mau lancar dan jago bahasa Inggris. Level saat ini: ${USER_PROFILE.level}.
-🎓 Kamu adalah Kaka Richard dari Kampung Inggris. Tugas kamu membimbing aku belajar vocab melalui writing dan speaking di Level ${USER_PROFILE.level}.
+  vocabulary: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${USER_PROFILE.gender}.
+👉 Kalau aku cowok, panggil aku Bro ${userProfile.name}.
+🎯 Aku mau lancar dan jago bahasa Inggris. Level saat ini: ${userProfile.level}.
+🎓 Kamu adalah Kaka Richard dari Kampung Inggris. Tugas kamu membimbing aku belajar vocab melalui writing dan speaking di Level ${userProfile.level}.
 🗣️ Menyapa dengan gaya tutor santai. Koreksi dan penjelasan harus pakai Bahasa Indonesia.
 ✨ Tampilkan phonetic symbol (Cara Baca) setelah setiap kosakata, tulis di dalam tanda / /. Selalu pakai UK.
 ✨ Box of Words tabel bernomer berisi vocab, phonetic symbol dan arti saja, 2 kolom saja.
@@ -64,14 +77,14 @@ Saya ingin dites Bahasa Inggris saya sesuai standar CEFR (A1–C2). 🌍
 Selalu berikan 2 opsi Writing Challenge. 
 Langkah koreksi setelah aku jawab: 1. Koreksi Writing (Tabel: Kalimat Asli | Penjelasan Grammar | Kalimat Benar), 2. Analisa Penggunaan Box of Words, 3. Analisa Kosakata & CEFR, 4. Analisa CEFR Tulisan, 5. Analisa 5W+1H, 6. Analisa Transition Words, 7. Speaking Challenge (Berikan aku 1–3 pertanyaan speaking).`,
 
-  speaking: `Perkenalkan nama ku: ${USER_PROFILE.name}. Genderku: ${USER_PROFILE.gender}. Panggil aku Bro ${USER_PROFILE.name}.
-🎯 Tujuan: Aku mau lancar dan jago bahasa Inggris, khususnya speaking. Level saat ini: ${USER_PROFILE.level}.
+  speaking: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${USER_PROFILE.gender}. Panggil aku Bro ${userProfile.name}.
+🎯 Tujuan: Aku mau lancar dan jago bahasa Inggris, khususnya speaking. Level saat ini: ${userProfile.level}.
 🎓 Kamu adalah Kaka Richard dari Kampung Inggris. Tugas kamu membimbing aku belajar SPEAKING.
 🔔 Bahasa koreksi: Semua penjelasan dan koreksi harus disampaikan dalam Bahasa Indonesia.
-📚 Bagian A — Penjelasan Materi: Berikan penjelasan materi speaking sesuai level ${USER_PROFILE.level} (tujuan komunikasi, ekspresi penting, struktur kalimat). Sertakan 3–5 frasa contoh.
+📚 Bagian A — Penjelasan Materi: Berikan penjelasan materi speaking sesuai level ${userProfile.level} (tujuan komunikasi, ekspresi penting, struktur kalimat). Sertakan 3–5 frasa contoh.
 🎤 Bagian B — Speaking Challenge: Setelah aku bilang "I'm ready to practice", beri aku pertanyaan tentang topik yang dipelajari satu-satu. Terjemahkan ke bahasa indonesia. Saat aku minta koreksi, Beri tabel perbandingan kalimatku dengan native speaker.`,
 
-  grammar: `Namaku ${USER_PROFILE.name}🙋 Genderku: ${USER_PROFILE.gender}. Level: ${USER_PROFILE.level}.
+  grammar: `Namaku ${userProfile.name}🙋 Genderku: ${USER_PROFILE.gender}. Level: ${userProfile.level}.
 Kamu adalah Kaka Richard dari Kampung Inggris. Menyapa dengan gaya tutor santai dan seru.
 🎯 Fokus ke: pola kalimat, cara pakai dalam speaking sehari-hari, dan contoh alami. Penjelasan detail dengan pendekatan untuk gen Z/millenial. Kasih banyak bab dan sub bab.
 📄 Setelah penjelasan, beri 5 contoh kalimat natural + terjemahan Bahasa Indonesia (italic).
@@ -79,25 +92,73 @@ Kamu adalah Kaka Richard dari Kampung Inggris. Menyapa dengan gaya tutor santai 
 🔧 Setelah aku praktek, kasih feedback perbandingan kalimatku dan kalimat dengan grammar yang lebih baik.
 💬 Kalau aku bilang 'How to say + (kata Indonesia)', langsung jawab dengan penjelasan.`,
 
-  listening: `Perkenalkan nama ku: ${USER_PROFILE.name}. Genderku: ${USER_PROFILE.gender}. Level: ${USER_PROFILE.level}.
+  listening: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${USER_PROFILE.gender}. Level: ${userProfile.level}.
 🎓 Kamu adalah Kaka Richard dari Kampung Inggris. Tugas kamu membimbing belajar LISTENING & SPEAKING.
-🎧 Bagian A — Listening Practice (cerita/monolog): Di awal sesi, kamu *wajib memberikan 1 cerita atau monolog pendek dalam Bahasa Inggris* sesuai level ${USER_PROFILE.level}. Tidak boleh ada sapaan pembuka. Respon pertamamu adalah langsung cerita atau monolog sesuai tema yang aku mau. Cerita 8-15 kalimat. Sertakan vocabulary penting di bawah cerita dalam tabel.
+🎧 Bagian A — Listening Practice (cerita/monolog): Di awal sesi, kamu *wajib memberikan 1 cerita atau monolog pendek dalam Bahasa Inggris* sesuai level ${userProfile.level}. Tidak boleh ada sapaan pembuka. Respon pertamamu adalah langsung cerita atau monolog sesuai tema yang aku mau. Cerita 8-15 kalimat. Sertakan vocabulary penting di bawah cerita dalam tabel.
 🎤 Bagian B — Speaking Challenge: Setelah aku bilang "I'm ready to practice", beri aku pertanyaan tentang isi cerita (listening comprehension) satu per satu. Pertanyaan dalam Bahasa Inggris + terjemahan Bahasa Indonesia. Kalau salah koreksi sesuai teks monolog.`,
 
-  conversation: `Perkenalkan nama ku: ${USER_PROFILE.name}. Genderku: ${USER_PROFILE.gender}. Level: ${USER_PROFILE.level}.
-Instruksi untuk AI: Kamu adalah Kaka Richard. Kasih saya contoh conversation sesuai topik dan tokoh pilihan saya. Formatkan contoh conversation dalam bentuk tabel dengan 3 kolom: Speaker, English Dialogue, dan Terjemahan Bahasa Indonesia. Dialog hanya terdiri dari 2 tokoh: Tokoh pilihan dan saya (${USER_PROFILE.name}).
+  conversation: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${USER_PROFILE.gender}. Level: ${userProfile.level}.
+Instruksi untuk AI: Kamu adalah Kaka Richard. Kasih saya contoh conversation sesuai topik dan tokoh pilihan saya. Formatkan contoh conversation dalam bentuk tabel dengan 3 kolom: Speaker, English Dialogue, dan Terjemahan Bahasa Indonesia. Dialog hanya terdiri dari 2 tokoh: Tokoh pilihan dan saya (${userProfile.name}).
 Gaya bicara tokoh harus konsisten. Di bawah contoh conversation, kasih tabel highlight kosakata, idiom, phrasal verb.
 Lalu suruh saya bilang "I'm ready to practice".
 Di sesi latihan: Abaikan teks dialog, langsung improvisasi memerankan karakter tokoh tersebut dan beri pertanyaan-pertanyaan tanpa narasi, FULL BAHASA INGGRIS.`
 };
 
 export default function App() {
-  const [authState, setAuthState] = useState('login'); // 'login', 'subscription', 'app'
+  const [authState, setAuthState] = useState('login'); // 'login', 'subscription', 'assessment', 'app'
+  const [userProfile, setUserProfile] = useState(DEFAULT_PROFILE);
   const [activeTab, setActiveTab] = useState('home');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const handleLogin = () => setAuthState('subscription');
+  useEffect(() => {
+    checkUser();
+  }, []);
+
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await fetchProfile(user.id);
+    }
+  };
+
+  const fetchProfile = async (userId) => {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (data) {
+      setUserProfile({
+        name: data.full_name || "User",
+        gender: data.gender || "male",
+        level: data.level,
+        xp: data.xp,
+        streak: data.streak,
+        has_completed_initial_test: data.has_completed_initial_test
+      });
+
+      if (!data.has_completed_initial_test) {
+        setAuthState('assessment');
+      } else {
+        setAuthState('app');
+      }
+    } else {
+      // Create profile if not exists (failsafe)
+      setAuthState('app');
+    }
+  };
+
+  const handleLogin = () => {
+    checkUser();
+  };
+
   const handleSelectPlan = (plan) => setAuthState('app');
+
+  const handleAssessmentComplete = (level) => {
+    setUserProfile(prev => ({ ...prev, level, has_completed_initial_test: true }));
+    setAuthState('app');
+  };
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -107,9 +168,11 @@ export default function App() {
   const renderContent = () => {
     switch (activeTab) {
       case 'home':
-        return <HomeDashboard onNavigate={handleTabChange} />;
+        return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} />;
+      case 'progress':
+        return <ProgressDashboard userProfile={userProfile} />;
       case 'assessment':
-        return <ChatModule module="Assessment CEFR" basePrompt={PROMPTS.assessment} startMessage="Mulai Tes CEFR Saya" hideInputAtStart={true} />;
+        return <LevelTest onComplete={handleAssessmentComplete} />;
       case 'vocabulary':
         return <SetupModule module="Vocabulary" basePrompt={PROMPTS.vocabulary} inputLabel="Topik Vocabulary" placeholder="Misal: Daily Routines, Food & Drinks" icon={<BookA size={24}/>} color="text-indigo-600" bg="bg-indigo-100" />;
       case 'speaking':
@@ -118,6 +181,8 @@ export default function App() {
         return <SetupModule module="Grammar for Speaking" basePrompt={PROMPTS.grammar} inputLabel="Materi Grammar" placeholder="Misal: Perbedaan Do/Does, Verb 2" icon={<LayoutDashboard size={24}/>} color="text-emerald-600" bg="bg-emerald-100" />;
       case 'listening':
         return <SetupModule module="Listening & Talking" basePrompt={PROMPTS.listening} inputLabel="Tema Cerita / Monolog" placeholder="Misal: Liburan ke Bali..." icon={<Headphones size={24}/>} color="text-amber-600" bg="bg-amber-100" />;
+      case 'writing_analyzer':
+        return <WritingAnalyzer />;
       case 'conversation':
         return <ConversationModule basePrompt={PROMPTS.conversation} />;
       default:
@@ -127,6 +192,10 @@ export default function App() {
 
   if (authState === 'login') {
     return <LoginPage onLogin={handleLogin} />;
+  }
+
+  if (authState === 'assessment') {
+    return <LevelTest onComplete={handleAssessmentComplete} />;
   }
 
   if (authState === 'subscription') {
@@ -162,22 +231,24 @@ export default function App() {
         
         <div className="p-6 border-b border-slate-800 flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-blue-500/20">
-              {USER_PROFILE.name.charAt(0)}
+              {userProfile.name.charAt(0)}
             </div>
             <div className="flex flex-col">
-              <span className="text-base font-semibold text-white">{USER_PROFILE.name}</span>
-              <span className="text-xs text-blue-400 flex items-center gap-1"><Trophy size={12}/> {USER_PROFILE.level}</span>
+              <span className="text-base font-semibold text-white">{userProfile.name}</span>
+              <span className="text-xs text-blue-400 flex items-center gap-1"><Trophy size={12}/> {userProfile.level}</span>
             </div>
         </div>
 
         <nav className="flex-1 py-4 px-4 space-y-1 overflow-y-auto custom-scrollbar">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-2">Menu Utama</p>
           <NavItem icon={<LayoutDashboard />} label="Dasbor Belajar" isActive={activeTab === 'home'} onClick={() => handleTabChange('home')} />
+          <NavItem icon={<BarChart2 />} label="Statistik Progres" isActive={activeTab === 'progress'} onClick={() => handleTabChange('progress')} />
           
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-6">Modul Pembelajaran</p>
           <NavItem icon={<GraduationCap />} label="Test CEFR (Awal)" isActive={activeTab === 'assessment'} onClick={() => handleTabChange('assessment')} />
           <NavItem icon={<BookA />} label="Vocabulary" isActive={activeTab === 'vocabulary'} onClick={() => handleTabChange('vocabulary')} />
           <NavItem icon={<Mic />} label="Speaking" isActive={activeTab === 'speaking'} onClick={() => handleTabChange('speaking')} />
+          <NavItem icon={<PenTool />} label="Writing Analyzer" isActive={activeTab === 'writing_analyzer'} onClick={() => handleTabChange('writing_analyzer')} />
           <NavItem icon={<LayoutDashboard />} label="Grammar for Speaking" isActive={activeTab === 'grammar'} onClick={() => handleTabChange('grammar')} />
           <NavItem icon={<Headphones />} label="Listening & Talk" isActive={activeTab === 'listening'} onClick={() => handleTabChange('listening')} />
           <NavItem icon={<MessageSquare />} label="Conversation" isActive={activeTab === 'conversation'} onClick={() => handleTabChange('conversation')} />
@@ -201,7 +272,7 @@ export default function App() {
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 text-sm font-bold text-orange-500 bg-orange-50 px-3 py-1 rounded-full">
-              <Flame size={16} className="fill-orange-500" /> {USER_PROFILE.streak}
+              <Flame size={16} className="fill-orange-500" /> {userProfile.streak}
             </div>
           </div>
         </header>
@@ -234,7 +305,7 @@ function NavItem({ icon, label, isActive, onClick }) {
 // ==========================================
 // HOME DASHBOARD (Gamification)
 // ==========================================
-function HomeDashboard({ onNavigate }) {
+function HomeDashboard({ onNavigate, userProfile }) {
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-6 animate-in fade-in duration-500 pb-20">
       {/* Welcome Banner */}
@@ -243,21 +314,21 @@ function HomeDashboard({ onNavigate }) {
           <GraduationCap size={150} />
         </div>
         <div className="relative z-10">
-          <h2 className="text-2xl md:text-4xl font-bold mb-2">Welcome back, {USER_PROFILE.name}! 👋</h2>
+          <h2 className="text-2xl md:text-4xl font-bold mb-2">Welcome back, {userProfile.name}! 👋</h2>
           <p className="text-blue-100 mb-6 md:text-lg max-w-xl">Lanjutkan progres belajarmu hari ini bersama Kaka Richard. Konsistensi adalah kunci kefasihan!</p>
           <div className="flex flex-wrap gap-4">
             <div className="bg-white/20 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-3 flex items-center gap-3">
               <div className="bg-orange-500 p-2 rounded-xl"><Flame size={20} className="text-white fill-white"/></div>
               <div>
                 <p className="text-xs text-blue-100 uppercase font-semibold tracking-wider">Day Streak</p>
-                <p className="text-xl font-bold">{USER_PROFILE.streak} Hari</p>
+                <p className="text-xl font-bold">{userProfile.streak} Hari</p>
               </div>
             </div>
             <div className="bg-white/20 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-3 flex items-center gap-3">
               <div className="bg-yellow-400 p-2 rounded-xl"><Trophy size={20} className="text-yellow-900 fill-yellow-900"/></div>
               <div>
                 <p className="text-xs text-blue-100 uppercase font-semibold tracking-wider">Total XP</p>
-                <p className="text-xl font-bold">{USER_PROFILE.xp}</p>
+                <p className="text-xl font-bold">{userProfile.xp}</p>
               </div>
             </div>
           </div>
@@ -582,7 +653,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
         generationConfig: { temperature: 0.7 }
       };
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
       
       const res = await fetchWithRetry(url, {
         method: 'POST',
@@ -697,7 +768,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
                     {msg.content}
                   </div>
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold shrink-0 text-xs shadow-inner">
-                    {USER_PROFILE.name.charAt(0)}
+                    {userProfile.name.charAt(0)}
                   </div>
                 </div>
               );
