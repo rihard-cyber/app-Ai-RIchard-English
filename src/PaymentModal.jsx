@@ -156,7 +156,7 @@ export default function PaymentModal({ isOpen, onClose, onPaymentSuccess, planNa
             <div className="space-y-2 mb-8">
                <div className="text-sm font-bold text-slate-700 mb-2">Instruksi:</div>
                <div className="text-sm text-slate-600 flex gap-2"><span className="text-slate-400">1.</span> Buka aplikasi M-Banking Anda.</div>
-               <div className="text-sm text-slate-600 flex gap-2"><span className="text-slate-400">2.</span> Pilih menu Transfer > Virtual Account.</div>
+               <div className="text-sm text-slate-600 flex gap-2"><span className="text-slate-400">2.</span> Pilih menu Transfer &gt; Virtual Account.</div>
                <div className="text-sm text-slate-600 flex gap-2"><span className="text-slate-400">3.</span> Masukkan nomor VA di atas.</div>
             </div>
 
