@@ -16,8 +16,8 @@ export function LoginPage({ onLogin }) {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   // Verification State
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const otpRefs = [useRef(), useRef(), useRef(), useRef(), useRef(), useRef()];
+  const [otp, setOtp] = useState(['', '', '', '', '', '', '', '']);
+  const otpRefs = [useRef(), useRef(), useRef(), useRef(), useRef(), useRef(), useRef(), useRef()];
 
   const handleSignIn = async (e) => {
     e.preventDefault();
@@ -76,7 +76,7 @@ export function LoginPage({ onLogin }) {
   const handleVerify = async (e) => {
     e.preventDefault();
     const enteredCode = otp.join('');
-    if (enteredCode.length < 6) return;
+    if (enteredCode.length < 8) return;
     
     setIsLoading(true);
     setErrorMsg('');
@@ -104,7 +104,7 @@ export function LoginPage({ onLogin }) {
     setOtp(newOtp);
 
     // Auto focus next
-    if (value && index < 5) {
+    if (value && index < 7) {
       otpRefs[index + 1].current.focus();
     }
   };
@@ -220,10 +220,10 @@ export function LoginPage({ onLogin }) {
             {/* VERIFY OTP FORM */}
             <div className={`transition-all duration-500 transform ${mode === 'verify' ? 'translate-x-0 opacity-100 relative' : 'translate-x-full opacity-0 absolute inset-0 pointer-events-none'}`}>
               <h1 className="text-2xl font-bold text-white text-center mb-2 mt-4">Verifikasi Email</h1>
-              <p className="text-slate-400 text-center mb-8 text-sm">Kami telah mengirimkan 6 digit kode ke <span className="font-bold text-white">{email}</span></p>
+              <p className="text-slate-400 text-center mb-8 text-sm">Kami telah mengirimkan 8 digit kode ke <span className="font-bold text-white">{email}</span></p>
               
               <form onSubmit={handleVerify} className="space-y-8">
-                <div className="flex justify-between gap-1 md:gap-2">
+                <div className="flex justify-between gap-1 md:gap-1.5">
                   {otp.map((digit, index) => (
                     <input 
                       key={index}
