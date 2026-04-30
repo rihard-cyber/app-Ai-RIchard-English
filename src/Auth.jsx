@@ -258,77 +258,100 @@ export function LoginPage({ onLogin }) {
 }
 
 export function SubscriptionPage({ onSelectPlan }) {
-  // Komponen Subscription tetap sama persis seperti sebelumnya
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 md:p-8">
-      <div className="max-w-6xl w-full">
+      <div className="max-w-7xl w-full">
         <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <h1 className="text-3xl md:text-5xl font-bold text-slate-800 mb-4">Pilih Paket Belajarmu</h1>
-          <p className="text-slate-500 md:text-lg max-w-2xl mx-auto">Tingkatkan pengalaman belajarmu dengan akses tanpa batas ke fitur RichardMeha AI. Pilih paket yang paling sesuai dengan kebutuhanmu.</p>
+          <h1 className="text-3xl md:text-5xl font-black text-slate-800 mb-4 tracking-tight">Pilih Paket Belajarmu</h1>
+          <p className="text-slate-500 md:text-lg max-w-2xl mx-auto">Tingkatkan pengalaman belajarmu dengan akses tanpa batas ke fitur RichardMeha AI. Pilih paket yang paling sesuai dengan ambisi masa depanmu.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-6xl mx-auto">
           {/* Free Plan */}
-          <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm flex flex-col hover:shadow-md transition-shadow animate-in zoom-in-95 duration-500 delay-100">
+          <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm flex flex-col hover:shadow-lg transition-shadow animate-in zoom-in-95 duration-500 delay-100">
             <div className="w-12 h-12 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center mb-6">
               <Shield size={24} />
             </div>
-            <h3 className="text-xl font-bold text-slate-800 mb-2">Basic Free</h3>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Paket Gratis</h3>
             <div className="flex items-end gap-1 mb-6">
               <span className="text-4xl font-bold text-slate-800">Rp0</span>
-              <span className="text-slate-500 mb-1">/selamanya</span>
             </div>
             <ul className="space-y-4 mb-8 flex-1 text-slate-600 text-sm">
               <li className="flex gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={20}/> <span>Akses tes CEFR (1x sehari)</span></li>
-              <li className="flex gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={20}/> <span>Chat dengan RichardMeha AI (Terbatas)</span></li>
-              <li className="flex gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={20}/> <span>Materi Grammar dasar</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={20}/> <span>Akses 45% materi Basic</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={20}/> <span>Chat terbatas dengan AI</span></li>
             </ul>
             <button onClick={() => onSelectPlan('free')} className="w-full py-3.5 rounded-xl border-2 border-slate-200 text-slate-700 font-bold hover:bg-slate-50 hover:border-slate-300 transition-colors">
               Pilih Gratis
             </button>
           </div>
 
-          {/* Monthly Plan - Popular */}
+          {/* Monthly Plan */}
+          <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm flex flex-col hover:shadow-lg transition-shadow animate-in zoom-in-95 duration-500 delay-150">
+             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-6">
+              <Zap size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Pro Bulanan</h3>
+            <div className="flex items-end gap-1 mb-6">
+              <span className="text-3xl font-bold text-slate-800">Rp199.000</span>
+              <span className="text-slate-500 mb-1">/bln</span>
+            </div>
+            <ul className="space-y-4 mb-8 flex-1 text-slate-600 text-sm">
+              <li className="flex gap-3"><CheckCircle2 className="text-blue-500 shrink-0" size={20}/> <span>Akses 100% semua materi</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-blue-500 shrink-0" size={20}/> <span>Chat tanpa batas dengan AI</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-blue-500 shrink-0" size={20}/> <span>Fitur Voice & Roleplay bebas</span></li>
+            </ul>
+            <button onClick={() => onSelectPlan('monthly')} className="w-full py-3.5 rounded-xl bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 transition-colors">
+              Pilih Bulanan
+            </button>
+          </div>
+
+          {/* Yearly Plan - Popular */}
           <div className="bg-gradient-to-b from-blue-600 to-indigo-700 rounded-3xl p-8 shadow-xl shadow-blue-900/20 flex flex-col relative transform md:-translate-y-4 animate-in zoom-in-95 duration-500 delay-200">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-sm">
               PALING POPULER
             </div>
             <div className="w-12 h-12 bg-white/20 text-white rounded-xl flex items-center justify-center mb-6">
-              <Zap size={24} />
+              <Crown size={24} />
             </div>
-            <h3 className="text-xl font-bold text-white mb-2">Pro Monthly</h3>
+            <h3 className="text-xl font-bold text-white mb-2">Pro 1 Tahun</h3>
             <div className="flex items-end gap-1 mb-6 text-white">
-              <span className="text-4xl font-bold">Rp49.000</span>
-              <span className="text-blue-200 mb-1">/bulan</span>
+              <span className="text-3xl font-bold">Rp250.000</span>
+              <span className="text-blue-200 mb-1">/bln</span>
             </div>
             <ul className="space-y-4 mb-8 flex-1 text-blue-50 text-sm">
-              <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20}/> <span>Akses tes CEFR sepuasnya</span></li>
-              <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20}/> <span>Chat tanpa batas dengan RichardMeha AI</span></li>
-              <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20}/> <span>Semua materi Grammar & Vocabulary</span></li>
-              <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20}/> <span>Fitur Roleplay & Simulasi bebas</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20}/> <span>Semua fitur Pro Bulanan</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20}/> <span>Akses tes CEFR premium</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20}/> <span>Laporan proges komprehensif</span></li>
             </ul>
-            <button onClick={() => onSelectPlan('monthly')} className="w-full py-3.5 rounded-xl bg-white text-blue-600 font-bold hover:bg-blue-50 transition-colors shadow-sm">
+            <button onClick={() => onSelectPlan('yearly')} className="w-full py-3.5 rounded-xl bg-white text-blue-600 font-bold hover:bg-blue-50 transition-colors shadow-sm">
               Mulai Langganan
             </button>
           </div>
 
-          {/* Yearly Plan */}
-          <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm flex flex-col hover:shadow-md transition-shadow animate-in zoom-in-95 duration-500 delay-300">
-             <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mb-6">
-              <Crown size={24} />
+          {/* Discount Plan */}
+          <div className="bg-white rounded-3xl p-8 border-2 border-purple-200 shadow-sm flex flex-col relative hover:shadow-lg transition-shadow animate-in zoom-in-95 duration-500 delay-300">
+            <div className="absolute -top-3 right-4 bg-rose-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-sm rotate-3">
+              DISKON BESAR!
             </div>
-            <h3 className="text-xl font-bold text-slate-800 mb-2">Pro Yearly</h3>
-            <div className="flex items-end gap-1 mb-6">
-              <span className="text-4xl font-bold text-slate-800">Rp399.000</span>
-              <span className="text-slate-500 mb-1">/tahun</span>
+            <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center mb-6">
+              <Sparkles size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Pro Diskon</h3>
+            <div className="flex flex-col gap-1 mb-6">
+              <span className="text-sm font-semibold text-slate-400 line-through decoration-rose-400 decoration-2">Rp2.388.000</span>
+              <div className="flex items-end gap-1">
+                <span className="text-3xl font-black text-purple-700">Rp999.000</span>
+                <span className="text-slate-500 mb-1 font-medium">/thn</span>
+              </div>
             </div>
             <ul className="space-y-4 mb-8 flex-1 text-slate-600 text-sm">
-              <li className="flex gap-3"><CheckCircle2 className="text-purple-500 shrink-0" size={20}/> <span>Semua fitur Pro Monthly</span></li>
-              <li className="flex gap-3"><CheckCircle2 className="text-purple-500 shrink-0" size={20}/> <span>Lebih hemat 30%</span></li>
-              <li className="flex gap-3"><CheckCircle2 className="text-purple-500 shrink-0" size={20}/> <span>Laporan proges belajar mingguan</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-purple-500 shrink-0" size={20}/> <span>Hemat jutaan rupiah</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-purple-500 shrink-0" size={20}/> <span>Akses seumur hidup ke materi</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-purple-500 shrink-0" size={20}/> <span>Layanan prioritas</span></li>
             </ul>
-            <button onClick={() => onSelectPlan('yearly')} className="w-full py-3.5 rounded-xl border-2 border-purple-200 text-purple-700 font-bold hover:bg-purple-50 hover:border-purple-300 transition-colors">
-              Pilih Tahunan
+            <button onClick={() => onSelectPlan('discount')} className="w-full py-3.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors shadow-md shadow-purple-200">
+              Ambil Diskon
             </button>
           </div>
         </div>

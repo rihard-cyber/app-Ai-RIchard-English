@@ -31,7 +31,8 @@ import {
   Settings as SettingsIcon,
   LogOut,
   Moon,
-  Sun
+  Sun,
+  Lock
 } from 'lucide-react';
 import { LoginPage, SubscriptionPage } from './Auth';
 import LevelTest from './LevelTest';
@@ -42,6 +43,7 @@ import AchievementSystem from './AchievementSystem';
 import PaymentModal from './PaymentModal';
 import { supabase } from './supabaseClient';
 import { CURRICULUM } from './data/curriculum';
+import { VOCABULARY_TOPICS, GRAMMAR_TOPICS, SPEAKING_TOPICS, LISTENING_TOPICS, CONVERSATION_CHARACTERS } from './data/topics';
 
 // --- KONFIGURASI API GEMINI ---
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY || ""; 
@@ -61,65 +63,85 @@ const DEFAULT_PROFILE = {
 // --- DATA PROMPT DARI SPREADSHEET (LENGKAP - RichardMeha AI Persona) ---
 const getPrompts = (userProfile) => {
   return {
-  assessment: `Kamu adalah RichardMeha AI dari Kampung Inggris. Tugas kamu adalah melakukan Placement Test CEFR (A1-C2).
-  🎙️ - Sapa dengan gaya santai dan seru 😎. Sebut dirimu "RichardMeha AI dari Kampung Inggris".
-  🛡️ Struktur ini asli RichardMeha AI. Dilarang duplikasi tanpa izin ❌.
-  📋 Struktur tes: 1) Speaking 🗣️, 2) Grammar & Vocabulary 📘, 3) Reading 📖, 4) Writing ✍️.
-  ⚠️ Jangan langsung tentukan level. Mulai dari Speaking, lalu adaptif:
-  - Bagus di grammar? Kasih vocab lebih sulit. 
-  - Bagus di vocab? Kasih reading kompleks.
-  🚀 Mulai dari Speaking Test: Minta perkenalkan diri (Nama, Asal, Pekerjaan, Hobi).
-  🎤 Ingatkan murid pakai microphone.
-  📊 Tulis koreksi dalam tabel. Di akhir, berikan skor CEFR rata-rata dan rekomendasi:
-  - Basic -> Vocabulary Warrior 📗
-  - B1 -> Idea Shaper 💡
-  - B2 -> Fluent Thinker 🧠
-  - C1+ -> Fluent Thinker 🎓`,
+  assessment: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${userProfile.gender}. Kalau aku cowok, panggil aku Bro ${userProfile.name}. Kalau cewek, panggil aku Sis ${userProfile.name}.
+Saya ingin dites Bahasa Inggris saya sesuai standar CEFR (A1–C2).
+Kamu adalah RichardMeha AI dari Kampung Inggris. Tugas kamu adalah membimbing saya memahami kemampuan Bahasa Inggris saya.
+- Di opening dan closing, sapa dengan gaya tutor santai dan seru.
+- Jangan langsung tentukan level CEFR saya. Mulai dari Speaking, lalu nilai performa saya di setiap bagian tes.
+- Tingkat kesulitan setiap bagian harus disesuaikan berdasarkan hasil tes sebelumnya.
+- Berikan instruksi soal dalam *Bahasa Indonesia* agar saya paham.
+Langsung mulai dari Speaking Test:
+- Minta saya perkenalkan diri dalam Bahasa Inggris: Nama, Asal, Pekerjaan, dan Hobi.
+- Setelah itu, lanjutkan dengan pertanyaan lanjutan sesuai level kemampuan saya. Sertakan arti tiap pertanyaan dalam *Bahasa Indonesia*.
+- Grammar & Vocabulary Test diberikan langsung setelah Speaking.
+- Grammar: Jangan sebut nama tenses. Jelaskan cara pakai pola kalimat saja.
+- Vocabulary: Sesuaikan tantangan dengan performa saya.
+- Reading: Berikan teks pendek dan Pertanyaan yang disesuaikan level saya.
+- Writing: Minta saya menulis 5–7 kalimat.
+- Tulis koreksi dalam bentuk tabel supaya gampang dipelajari. Jangan kasih contoh jawaban, biar aku jawab sendiri.
+- Saat saya bicara, tolong transkripnya tetap ditulis dalam Bahasa Inggris. Tapi semua respon dari kamu tetap dalam Bahasa Indonesia.
+Terakhir, berikan saya nilai CEFR rata-rata dan rekomendasi belajar. Let's go!`,
 
-  vocabulary: `Sapa: 'Hallo aku RichardMeha AI dari kampung Inggris, ini Box of words kamu hari ini'.
-  🎓 Tugas: Bimbing belajar vocab di Level ${userProfile.level}.
-  ✨ Tampilkan phonetic symbol (Cara Baca) / / UK. 
-  ✨ Box of Words tabel 2 kolom saja: [1. Vocab /Phonetic/] | [Arti].
-  📝 Berikan 2 opsi Writing Challenge: 
-  - Opsi 1: Tulis cerita judul [Topik] pakai 3-5 BOW. 
-  - Opsi 2: Bikin 1 kalimat untuk masing-masing 3-5 BOW.
-  🔍 SETELAH JAWAB, WAJIB JALANKAN 7 LANGKAH KOREKSI:
-  1. Tabel: Kalimat Asli | Penjelasan Grammar | Kalimat Benar.
-  2. Analisa BOW (apakah tepat?).
-  3. Analisa Kosakata (Daftar vocab, CEFR, saran upgrade, contoh kalimat).
-  4. Analisa CEFR Tulisan & Tips naik level.
-  5. Sistem 5W+1H: Tabel comparison & list (What, Why, Where, When, Who, How). Lalu tulis paragraph utuh versi 5W+1H.
-  6. Analisa Transition Words: saran 1-3 kata + contoh + arti (italic).
-  7. Speaking Challenge: 1-3 pertanyaan satu-satu (Inggris + Italic Indo).`,
+  vocabulary: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${userProfile.gender}. Level bahasa Inggris aku saat ini: ${userProfile.level}.
+Kamu adalah RichardMeha AI dari Kampung Inggris. Tugas kamu adalah membimbing aku belajar vocab melalui writing dan speaking di Level ${userProfile.level}.
+- Di opening dan closing, sapa dengan gaya tutor santai dan seru. Koreksi dan penjelasan harus pakai Bahasa Indonesia.
+- Tampilkan phonetic symbol (Cara Baca) setelah setiap kosakata, tulis di dalam tanda / /. Contoh: choir /ˈkwaɪər/. Selalu pakai UK.
+- Box of Words tabel bernomer berisi vocab, phonetic symbol dan arti saja, 2 kolom saja.
+- Hal pertama yang kamu lakukan adalah memberikan sapaan 'Hallo aku RichardMeha AI dari kampung Inggris, ini Box of words kamu hari ini' dan dibawahnya hanya memberikan box of words. Lalu tawarin apakah mau lanjut ke sesi challenge.
+- Setelah aku jawab, berikan 2 opsi Writing Challenge: 1) Tulis cerita dengan 3-5 kata, 2) Bikin kalimat masing-masing dari 3-5 kata.
+- SETELAH AKU KIRIM TULISANKU, WAJIB JALANKAN LANGKAH INI:
+1. Koreksi Writing: Tabel 3 kolom (Kalimat Asli | Penjelasan Grammar | Kalimat Benar).
+2. Analisa Penggunaan Box of Words (BOW).
+3. Analisa Kosakata: Daftar vocab aku, CEFR, saran upgrade, dan contoh kalimat baru.
+4. Analisa CEFR Level Tulisan.
+5. Kasih perbandingan jawaban aku dan setelah diaplikasikan 5W + 1H sistem.
+6. Analisa Transition Words: Beri saran 1-3 kata penghubung dengan arti *italic*.
+7. Speaking Challenge: Berikan aku 1-3 pertanyaan speaking berdasarkan topik tulisan aku. (Berikan terjemahan *italic* di bawahnya).`,
 
-  speaking: `Kamu adalah RichardMeha AI dari Kampung Inggris.
-  📚 Bagian A — Penjelasan Materi: Detail sesuai level ${userProfile.level} + 3-5 frasa contoh + contoh dialog 1-2 kalimat.
-  🎤 Bagian B — Speaking Challenge: Setelah saya bilang "I'm ready to practice", beri pertanyaan satu-satu.
-  - Pertanyaan: English + Terjemahan (Italic).
-  - Koreksi: Tabel perbandingan kalimatku vs Native Speaker (2 kolom).`,
+  speaking: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${userProfile.gender}. Level bahasa Inggris aku saat ini: ${userProfile.level}.
+Kamu adalah RichardMeha AI dari Kampung Inggris. Tugas kamu adalah membimbing aku belajar SPEAKING di level ${userProfile.level}.
+- Semua penjelasan dan koreksi harus disampaikan dalam Bahasa Indonesia.
+Bagian A — Penjelasan Materi:
+- Berikan penjelasan materi speaking sesuai level ${userProfile.level}.
+- Sertakan 3–5 frasa contoh yang bisa langsung dipakai saat bercakap.
+Bagian B — Speaking Challenge:
+- Setelah aku bilang I'm ready to practice, beri aku pertanyaan satu-satu tentang topik materi.
+- Pertanyaannya dalam bahasa inggris dan terjemahkan ke bahasa indonesia.
+- Saat aku minta koreksi, Beri tabel perbandingan kalimatku dengan kalimat English native speaker, 2 kolom.`,
 
-  grammar: `Kamu adalah RichardMeha AI dari Kampung Inggris. 
-  🔧 ATURAN KERAS: Jangan sebut nama tenses. Jelaskan pola kalimat saja.
-  💡 Contoh: 'I buy a drink yesterday' → salah ❌. Harusnya 'I bought a drink yesterday', karena masa lalu → pakai verb ke-2 ✅.
-  📄 Beri 5 contoh kalimat natural + terjemahan (italic).
-  💪 Beri 3 pertanyaan speaking yang memaksaku memakai Grammar ini.
-  📊 Koreksi: Tabel perbandingan kalimatku vs Native Speaker.`,
+  grammar: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${userProfile.gender}. Level bahasa Inggris aku saat ini: ${userProfile.level}.
+Kamu adalah RichardMeha AI dari Kampung Inggris.
+- Di opening dan closing, sapa dengan gaya tutor santai dan seru.
+- Fokus ke: pola kalimat, cara pakai dalam speaking sehari-hari, dan contoh alami.
+- Penjelasan harus detail dengan pendekatan yang asyik, jangan kayak text book. Kalau ada istilah kasih arti dalam kurung *italic*.
+- Setelah penjelasan, beri 5 contoh kalimat natural + terjemahan Bahasa Indonesia (*italic*).
+- Setelah itu, beri aku 3 pertanyaan speaking yang akan memaksaku memakai Grammar ini.
+- Setelah aku praktek, kasih feedback perbandingan kalimatku dan kalimat dengan grammar yang lebih baik.
+- Kalau ada Verb 2 atau 3, tuliskan juga Verb 1-nya dalam kurung *italic*.
+- Saat saya bicara, transkripnya tetap ditulis dalam Bahasa Inggris. Tapi semua respon dari kamu tetap dalam Bahasa Indonesia.`,
 
-  listening: `Kamu adalah RichardMeha AI dari Kampung Inggris.
-  🎧 Bagian A — Listening Practice: Langsung berikan 1 monolog/cerita pendek. 
-  - Durasi: 4-8 kalimat (A1-B1), 8-15 kalimat (B2-C2). 
-  - Lampirkan tabel vocabulary penting di bawah cerita.
-  🎤 Bagian B — Speaking Challenge: Setelah saya bilang "I'm ready to practice", beri pertanyaan comprehension satu-satu.
-  - Jika salah, koreksi sesuai teks lalu berikan pertanyaan yang sama lagi sampai benar.`,
+  listening: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${userProfile.gender}. Level bahasa Inggris aku saat ini: ${userProfile.level}.
+Kamu adalah RichardMeha AI dari Kampung Inggris. Tugas kamu adalah membimbing aku belajar LISTENING & SPEAKING di level ${userProfile.level}.
+- Semua penjelasan dan koreksi harus disampaikan dalam Bahasa Indonesia.
+Bagian A — Listening Practice:
+- Di awal sesi, kamu *wajib memberikan 1 cerita atau monolog pendek dalam Bahasa Inggris* sesuai level ${userProfile.level}.
+- Tidak boleh ada sapaan pembuka. Langsung cerita.
+- Cerita harus jelas, 4-15 kalimat. List vocabulary penting di bawah cerita dalam tabel.
+Bagian B — Speaking Challenge:
+- Setelah aku bilang *I'm ready to practice*, beri aku pertanyaan comprehension tentang isi cerita satu per satu.
+- Pertanyaan dalam Bahasa Inggris + terjemahan Bahasa Indonesia.
+- Kalau jawabanku salah koreksi jawabanku sesuai Teks cerita. Lalu berikan pertanyaan yang sama biar aku bisa menjawab dengan benar.`,
 
-  conversation: `Kamu adalah RichardMeha AI dari Kampung Inggris.
-  - Sapa: 'Hallo aku RichardMeha AI dari kampung Inggris'.
-  - Format: Tabel 3 kolom (Speaker, English Dialogue, Terjemahan).
-  - Tokoh: Tirukan kepribadian tokoh terkenal (Naruto, Soekarno, dll) sesuai pilihan user.
-  - Highlight: Tabel kosakata, idiom, phrasal verb, expression + arti & konteks.
-  - Voice Mode: Tanya "Mau baca teks dulu atau improvisasi?".
-  - Baca: AI baca bagiannya, saya baca bagian saya. AI tidak boleh memuji atau memberi arahan.
-  - Improvisasi: FULL ENGLISH. AI mulai dengan pertanyaan sesuai topik.`
+  conversation: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${userProfile.gender}. Level bahasa Inggris saya: ${userProfile.level}.
+Instruksi untuk AI:
+- Kamu adalah RichardMeha AI dari Kampung Inggris yang menyapaku di awal dan akhir sesi.
+- Kasih saya contoh conversation sesuai topik dan tokoh yang saya pilih. Formatkan dalam tabel 3 kolom: Speaker, English Dialogue, dan Terjemahan Bahasa Indonesia.
+- Gaya bicara HARUS sesuai dengan karakter tokoh yang aku pilih.
+- Di bawah tabel, kasih highlight kosakata/idiom dengan arti Bahasa Indonesia.
+Di sesi latihan baca dialog (Voice mode):
+- Kalau aku jawab Baca text dulu, kamu langsung baca text dari dialog bergantian denganku.
+- Kalau aku bilang improvisasi, abaikan text dialog langsung memerankan karakter tanpa narasi dan memberikan pertanyaan bahasa inggris. TIDAK BOLEH PAKAI BAHASA INDONESIA.
+- Jangan kasih pujian seperti 'good job' saat baca teks. Jangan tambahkan komentar.`
   };
 };
 
@@ -233,9 +255,11 @@ export default function App() {
     if (plan === 'free') {
       setAuthState('app');
     } else {
-      const planDetails = plan === 'monthly' 
-        ? { name: 'Pro Monthly', price: '49.000' }
-        : { name: 'Pro Yearly', price: '399.000' };
+      let planDetails = { name: '', price: '' };
+      if (plan === 'monthly') planDetails = { name: 'Pro Bulanan', price: '199.000' };
+      else if (plan === 'yearly') planDetails = { name: 'Pro 1 Tahun', price: '250.000/bln' };
+      else if (plan === 'discount') planDetails = { name: 'Pro Diskon', price: '999.000' };
+      
       setSelectedPlan(planDetails);
       setIsPaymentModalOpen(true);
     }
@@ -308,17 +332,17 @@ export default function App() {
       case 'assessment':
         return <LevelTest onComplete={handleAssessmentComplete} />;
       case 'vocabulary':
-        return <SetupModule module="Vocabulary" basePrompt={prompts.vocabulary} inputLabel="Topik Vocabulary" placeholder="Misal: Daily Routines, Food & Drinks" icon={<BookA size={24}/>} color="text-indigo-600" bg="bg-indigo-100" onComplete={(score) => saveProgress('vocabulary', score)} isPro={userProfile.is_pro} />;
+        return <SetupModule module="Vocabulary" basePrompt={prompts.vocabulary} icon={<BookA size={24}/>} color="text-indigo-600" bg="bg-indigo-100" onComplete={(score) => saveProgress('vocabulary', score)} isPro={userProfile.is_pro} topicsList={VOCABULARY_TOPICS} />;
       case 'speaking':
-        return <PronunciationCoach userProfile={userProfile} onComplete={(score) => saveProgress('speaking', score)} isPro={userProfile.is_pro} />;
+        return <SetupModule module="Speaking Coach" basePrompt={prompts.speaking} icon={<Mic size={24}/>} color="text-rose-600" bg="bg-rose-100" onComplete={(score) => saveProgress('speaking', score)} isPro={userProfile.is_pro} topicsList={SPEAKING_TOPICS} />;
       case 'grammar':
-        return <SetupModule module="Grammar for Speaking" basePrompt={prompts.grammar} inputLabel="Materi Grammar" placeholder="Misal: Perbedaan Do/Does, Verb 2" icon={<LayoutDashboard size={24}/>} color="text-emerald-600" bg="bg-emerald-100" onComplete={(score) => saveProgress('grammar', score)} isPro={userProfile.is_pro} />;
+        return <SetupModule module="Grammar for Speaking" basePrompt={prompts.grammar} icon={<LayoutDashboard size={24}/>} color="text-emerald-600" bg="bg-emerald-100" onComplete={(score) => saveProgress('grammar', score)} isPro={userProfile.is_pro} topicsList={GRAMMAR_TOPICS} />;
       case 'listening':
-        return <SetupModule module="Listening & Talking" basePrompt={prompts.listening} inputLabel="Tema Cerita / Monolog" placeholder="Misal: Liburan ke Bali..." icon={<Headphones size={24}/>} color="text-amber-600" bg="bg-amber-100" onComplete={(score) => saveProgress('listening', score)} isPro={userProfile.is_pro} />;
+        return <SetupModule module="Listening & Talking" basePrompt={prompts.listening} icon={<Headphones size={24}/>} color="text-amber-600" bg="bg-amber-100" onComplete={(score) => saveProgress('listening', score)} isPro={userProfile.is_pro} topicsList={LISTENING_TOPICS} />;
       case 'writing_analyzer':
         return <WritingAnalyzer isPro={userProfile.is_pro} />;
       case 'conversation':
-        return <ConversationModule basePrompt={prompts.conversation} isPro={userProfile.is_pro} />;
+        return <ConversationModule basePrompt={prompts.conversation} isPro={userProfile.is_pro} charactersList={CONVERSATION_CHARACTERS} />;
       case 'settings':
         return (
           <div className="p-6 md:p-10 max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -482,7 +506,7 @@ export default function App() {
       </main>
 
       <PaymentModal 
-        isOpen={isPaymentModalOpen}
+        isOpen={isPaymentModalOpen} userName={userProfile.name}
         onClose={() => setIsPaymentModalOpen(false)}
         onPaymentSuccess={handlePaymentSuccess}
         planName={selectedPlan.name}
@@ -653,11 +677,24 @@ function DashboardCard({ title, desc, icon, color, hover, onClick }) {
 // ==========================================
 // MODUL SETUP WRAPPERS
 // ==========================================
-function SetupModule({ module, basePrompt, inputLabel, placeholder, icon, color, bg, onComplete, isPro }) {
+function SetupModule({ module, basePrompt, icon, color, bg, onComplete, isPro, topicsList = [] }) {
   const [isStarted, setIsStarted] = useState(false);
   const [topic, setTopic] = useState('');
+  const [showProWarning, setShowProWarning] = useState(false);
 
-  if (!isPro && !isStarted) {
+  // 45% Free logic
+  const freeCount = Math.ceil(topicsList.length * 0.45);
+
+  const handleSelectTopic = (selectedTopic, index) => {
+    if (index >= freeCount && !isPro) {
+      setShowProWarning(true);
+      return;
+    }
+    setTopic(selectedTopic);
+    setIsStarted(true);
+  };
+
+  if (showProWarning) {
     return (
       <div className="h-full flex items-center justify-center p-6 bg-slate-50">
         <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-2xl border border-slate-100 max-w-lg text-center animate-in zoom-in-95 duration-500">
@@ -666,7 +703,7 @@ function SetupModule({ module, basePrompt, inputLabel, placeholder, icon, color,
            </div>
            <h2 className="text-3xl font-black text-slate-800 mb-4">Fitur Khusus PRO 👑</h2>
            <p className="text-slate-500 mb-10 text-lg leading-relaxed">
-             Modul <strong>{module}</strong> adalah fitur eksklusif. Upgrade akunmu untuk membuka akses tanpa batas ke seluruh materi cerdas RichardMeha AI.
+             Topik <strong>Premium</strong> ini adalah fitur eksklusif. Upgrade akunmu untuk membuka akses tanpa batas ke seluruh materi cerdas RichardMeha AI.
            </p>
            <button 
              onClick={() => window.location.reload()}
@@ -674,111 +711,160 @@ function SetupModule({ module, basePrompt, inputLabel, placeholder, icon, color,
            >
              Upgrade Sekarang
            </button>
-           <p className="mt-6 text-sm text-slate-400 font-medium">Banyak fitur seru lainnya menunggu kamu!</p>
+           <button onClick={() => setShowProWarning(false)} className="mt-6 text-sm text-slate-400 font-medium hover:text-slate-600 transition-colors">Kembali pilih topik gratis</button>
         </div>
       </div>
     );
   }
 
   if (isStarted) {
-    const dynamicPrompt = `${basePrompt}\n\nTopik yang ingin dipelajari murid hari ini adalah: ${topic}`;
+    const dynamicPrompt = `${basePrompt}
+
+Topik yang ingin dipelajari murid hari ini adalah: ${topic}`;
     return <ChatModule module={module} basePrompt={dynamicPrompt} topic={topic} onComplete={onComplete} />;
   }
 
   return (
-    <div className="h-full flex items-center justify-center p-4 md:p-6 animate-in zoom-in-95 duration-300">
-      <div className="bg-white max-w-md w-full p-6 md:p-8 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
-        <div className={`w-16 h-16 ${bg} ${color} rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-inner`}>
+    <div className="h-full flex flex-col p-4 md:p-8 animate-in zoom-in-95 duration-300 max-w-6xl mx-auto w-full">
+      <div className="flex items-center gap-4 mb-8">
+        <div className={`w-16 h-16 ${bg} ${color} rounded-2xl flex items-center justify-center shadow-inner shrink-0`}>
           {icon}
         </div>
-        <h2 className="text-2xl font-bold text-slate-800 mb-2 text-center">Modul {module}</h2>
-        <p className="text-sm text-slate-500 mb-8 text-center px-4">Pilih materi atau topik yang ingin kamu kuasai bersama RichardMeha AI hari ini.</p>
-        
-        <div className="space-y-5">
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">{inputLabel}</label>
-            <input 
-              type="text" 
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder={placeholder}
-              className="w-full px-5 py-4 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all text-base"
-              onKeyDown={(e) => e.key === 'Enter' && topic.trim() && setIsStarted(true)}
-            />
-          </div>
-          <button 
-            onClick={() => setIsStarted(true)}
-            disabled={!topic.trim()}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 shadow-lg shadow-blue-600/30"
-          >
-            Mulai Belajar <Send size={18} />
-          </button>
+        <div>
+          <h2 className="text-3xl font-black text-slate-800">Modul {module}</h2>
+          <p className="text-slate-500">Pilih topik yang ingin kamu kuasai bersama RichardMeha AI hari ini.</p>
         </div>
+      </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto pb-20 custom-scrollbar pr-2">
+        {topicsList.map((t, i) => {
+          const isLocked = i >= freeCount && !isPro;
+          return (
+            <button 
+              key={i}
+              onClick={() => handleSelectTopic(t.name || t, i)}
+              className={`p-5 rounded-2xl border-2 text-left transition-all group relative overflow-hidden flex flex-col min-h-[100px] justify-center
+                ${isLocked 
+                  ? 'bg-slate-50 border-slate-200 hover:border-amber-300 cursor-pointer' 
+                  : 'bg-white border-blue-100 hover:border-blue-500 hover:shadow-lg hover:-translate-y-1'
+                }
+              `}
+            >
+              {isLocked && (
+                <div className="absolute top-3 right-3 text-amber-500 bg-amber-100 p-1.5 rounded-lg opacity-80 group-hover:opacity-100 transition-opacity">
+                  <Lock size={16} />
+                </div>
+              )}
+              <span className={`font-bold text-sm md:text-base leading-snug pr-6 ${isLocked ? 'text-slate-500 group-hover:text-amber-700' : 'text-slate-700 group-hover:text-blue-700'}`}>
+                {t.name || t}
+              </span>
+              {t.topic && <span className="text-xs text-slate-400 mt-2 block opacity-80">{t.topic}</span>}
+            </button>
+          )
+        })}
       </div>
     </div>
   );
 }
 
-function ConversationModule({ basePrompt }) {
+function ConversationModule({ basePrompt, isPro, charactersList = [] }) {
   const [isStarted, setIsStarted] = useState(false);
   const [topic, setTopic] = useState('');
   const [character, setCharacter] = useState('');
+  const [showProWarning, setShowProWarning] = useState(false);
+
+  const freeCount = Math.ceil(charactersList.length * 0.45);
+
+  const handleSelectChar = (charObj, index) => {
+    if (index >= freeCount && !isPro) {
+      setShowProWarning(true);
+      return;
+    }
+    setCharacter(charObj.name);
+    setTopic(charObj.topic);
+    setIsStarted(true);
+  };
+
+  if (showProWarning) {
+    return (
+      <div className="h-full flex items-center justify-center p-6 bg-slate-50">
+        <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-2xl border border-slate-100 max-w-lg text-center animate-in zoom-in-95 duration-500">
+           <div className="w-24 h-24 bg-gradient-to-tr from-amber-400 to-orange-500 text-white rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-orange-500/20">
+             <Crown size={48} />
+           </div>
+           <h2 className="text-3xl font-black text-slate-800 mb-4">Karakter Premium 👑</h2>
+           <p className="text-slate-500 mb-10 text-lg leading-relaxed">
+             Tokoh percakapan ini eksklusif. Upgrade akunmu untuk ngobrol dengan seluruh tokoh cerdas RichardMeha AI.
+           </p>
+           <button 
+             onClick={() => window.location.reload()}
+             className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-all text-lg"
+           >
+             Upgrade Sekarang
+           </button>
+           <button onClick={() => setShowProWarning(false)} className="mt-6 text-sm text-slate-400 font-medium hover:text-slate-600 transition-colors">Kembali pilih tokoh gratis</button>
+        </div>
+      </div>
+    );
+  }
 
   if (isStarted) {
-    const dynamicPrompt = `${basePrompt}\n\nTokoh yang mau saya ajak ngobrol adalah: ${character}\nTopik obrolannya adalah: ${topic}`;
+    const dynamicPrompt = `${basePrompt}
+
+Tokoh yang mau saya ajak ngobrol adalah: ${character}
+Topik obrolannya adalah: ${topic}`;
     return <ChatModule module="Conversation" basePrompt={dynamicPrompt} topic={`${character} - ${topic}`} startMessage={`Tolong beri contoh dialog antara aku dan ${character} tentang ${topic}`} hideInputAtStart={false} />;
   }
 
   return (
-    <div className="h-full flex items-center justify-center p-4 md:p-6 animate-in zoom-in-95 duration-300">
-      <div className="bg-white max-w-md w-full p-6 md:p-8 rounded-3xl shadow-xl shadow-purple-200/50 border border-purple-100">
-        <div className="w-16 h-16 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-inner">
+    <div className="h-full flex flex-col p-4 md:p-8 animate-in zoom-in-95 duration-300 max-w-6xl mx-auto w-full">
+      <div className="flex items-center gap-4 mb-8">
+        <div className="w-16 h-16 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center shadow-inner shrink-0">
           <MessageSquare size={24} />
         </div>
-        <h2 className="text-2xl font-bold text-slate-800 mb-2 text-center">Roleplay Percakapan</h2>
-        <p className="text-sm text-slate-500 mb-8 text-center">Pilih tokoh favoritmu dan topik obrolan untuk berlatih improvisasi speaking.</p>
-        
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">Tokoh Simulasi</label>
-            <input 
-              type="text" 
-              value={character}
-              onChange={(e) => setCharacter(e.target.value)}
-              placeholder="Misal: Elon Musk, Taylor Swift..."
-              className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-50 transition-all text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2 ml-1">Topik Obrolan</label>
-            <input 
-              type="text" 
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="Misal: Cita-cita, Liburan ke Mars..."
-              className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-50 transition-all text-sm"
-            />
-          </div>
-          <button 
-            onClick={() => setIsStarted(true)}
-            disabled={!topic.trim() || !character.trim()}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-2xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed mt-4 shadow-lg shadow-purple-600/30"
-          >
-            Siapkan Skenario
-          </button>
+        <div>
+          <h2 className="text-3xl font-black text-slate-800">Roleplay Percakapan</h2>
+          <p className="text-slate-500">Pilih tokoh favoritmu dan topik obrolan untuk berlatih improvisasi speaking.</p>
         </div>
+      </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto pb-20 custom-scrollbar pr-2">
+        {charactersList.map((t, i) => {
+          const isLocked = i >= freeCount && !isPro;
+          return (
+            <button 
+              key={i}
+              onClick={() => handleSelectChar(t, i)}
+              className={`p-5 rounded-2xl border-2 text-left transition-all group relative overflow-hidden flex flex-col min-h-[100px] justify-center
+                ${isLocked 
+                  ? 'bg-slate-50 border-slate-200 hover:border-amber-300 cursor-pointer' 
+                  : 'bg-white border-purple-100 hover:border-purple-500 hover:shadow-lg hover:-translate-y-1'
+                }
+              `}
+            >
+              {isLocked && (
+                <div className="absolute top-3 right-3 text-amber-500 bg-amber-100 p-1.5 rounded-lg opacity-80 group-hover:opacity-100 transition-opacity">
+                  <Lock size={16} />
+                </div>
+              )}
+              <span className={`font-bold text-lg leading-snug pr-6 ${isLocked ? 'text-slate-500 group-hover:text-amber-700' : 'text-purple-700 group-hover:text-purple-800'}`}>
+                {t.name}
+              </span>
+              <span className="text-sm text-slate-500 mt-2 block opacity-90 leading-tight">{t.topic}</span>
+            </button>
+          )
+        })}
       </div>
     </div>
   );
 }
 
-// ==========================================
-// CORE CHAT ENGINE (With STT & TTS)
-// ==========================================
 function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pelajaran hari ini RichardMeha AI!', hideInputAtStart = false, onComplete }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [translationPopover, setTranslationPopover] = useState(null);
+  const [inlineTranslation, setInlineTranslation] = useState(null);
   
   // Voice recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -794,6 +880,46 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
+
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (e.target.classList.contains('translatable-sentence')) {
+        const rect = e.target.getBoundingClientRect();
+        setTranslationPopover({
+          text: e.target.innerText,
+          x: rect.left,
+          y: rect.bottom + window.scrollY,
+          targetRef: e.target
+        });
+        setInlineTranslation(null);
+      } else if (!e.target.closest('.translation-popover')) {
+        setTranslationPopover(null);
+      }
+    };
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
+  
+  const handleInlineTranslate = async (lang) => {
+    if (!translationPopover) return;
+    setInlineTranslation({ loading: true, text: '' });
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: `Tolong terjemahkan kalimat bahasa Inggris berikut ke bahasa ${lang} secara natural:\n\n"${translationPopover.text}"` }] }]
+        })
+      });
+      const data = await res.json();
+      const translation = data.candidates[0].content.parts[0].text;
+      setInlineTranslation({ loading: false, text: translation });
+    } catch (err) {
+      setInlineTranslation({ loading: false, text: "Gagal menerjemahkan." });
+    }
+  };
+
 
   useEffect(() => {
     if (messages.length === 0 && hideInputAtStart) {
@@ -984,8 +1110,8 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
       if (data.candidates && data.candidates[0].content.parts[0].text) {
         const aiText = data.candidates[0].content.parts[0].text;
         setMessages(prev => [...prev, { role: 'ai', content: aiText }]);
-        // Optional: auto speak AI response
-        // handleTTS(aiText); 
+        // Auto speak AI response for Stimuler-like experience
+        handleTTS(aiText); 
       } else {
         throw new Error("Invalid response format");
       }
@@ -1160,6 +1286,38 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
           <div ref={messagesEndRef} />
         </div>
       </div>
+
+      
+      {translationPopover && (
+        <div 
+          className="absolute z-50 bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 w-72 translation-popover animate-in fade-in zoom-in duration-200"
+          style={{ top: translationPopover.y + 10, left: Math.min(translationPopover.x, window.innerWidth - 300) }}
+        >
+          <div className="flex justify-between items-center mb-3 border-b pb-2">
+            <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><Languages size={14}/> Terjemahkan ke:</span>
+            <button onClick={() => setTranslationPopover(null)} className="text-slate-400 hover:text-slate-700">&times;</button>
+          </div>
+          
+          {!inlineTranslation && (
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <button onClick={() => handleInlineTranslate('Indonesia')} className="text-xs bg-red-50 text-red-700 hover:bg-red-100 py-1.5 rounded-lg font-bold border border-red-100">🇮🇩 Indonesia</button>
+              <button onClick={() => handleInlineTranslate('Spanyol')} className="text-xs bg-yellow-50 text-yellow-700 hover:bg-yellow-100 py-1.5 rounded-lg font-bold border border-yellow-100">🇪🇸 Spanyol</button>
+              <button onClick={() => handleInlineTranslate('Jepang')} className="text-xs bg-slate-50 text-slate-700 hover:bg-slate-200 py-1.5 rounded-lg font-bold border border-slate-200">🇯🇵 Jepang</button>
+              <button onClick={() => handleInlineTranslate('Korea')} className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 py-1.5 rounded-lg font-bold border border-blue-100">🇰🇷 Korea</button>
+            </div>
+          )}
+
+          {inlineTranslation && (
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-sm text-slate-800">
+              {inlineTranslation.loading ? (
+                <div className="flex items-center gap-2 text-slate-500"><Loader2 size={14} className="animate-spin" /> Menerjemahkan...</div>
+              ) : (
+                <p className="font-medium">{inlineTranslation.text}</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Input Area */}
       <div className="absolute bottom-0 w-full bg-gradient-to-t from-slate-100 via-slate-50 to-transparent pt-6 pb-4 px-3 md:px-6">

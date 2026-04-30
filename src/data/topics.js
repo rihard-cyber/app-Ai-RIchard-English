@@ -1,0 +1,101 @@
+export const VOCABULARY_TOPICS = [
+  "Daily Routines",
+  "Family & People",
+  "Food & Drinks",
+  "Jobs & Workplaces",
+  "Places in Town",
+  "Common Actions (Everyday Verbs)",
+  "Feelings & Emotions",
+  "Shopping & Money",
+  "Transportation",
+  "Time & Calendar",
+  "Health & Body",
+  "House & Furniture",
+  "Weather",
+  "Basic Descriptions (Simple Adjectives)",
+  "Travel & Holidays",
+  "Restaurant & Ordering Food",
+  "Technology & Gadgets",
+  "School & Learning",
+  "Describing Places",
+  "Describing People (Appearance + Personality)",
+  "Hobbies & Free Time",
+  "Common Collocations",
+  "Phrasal Verbs (Everyday Life)",
+  "Phrasal Verbs (Work & Study)",
+  "Expressing Opinions",
+  "Advanced Feelings & Emotions",
+  "Business Basics",
+  "Idioms for Daily Situations",
+  "Transition Words for Speaking",
+  "Basic to Intermediate Vocabulary"
+];
+
+export const GRAMMAR_TOPICS = [
+  "Adjective (kata sifat). macam-macam kata sifat dan beberapa cara makeknya di kalimat",
+  "Verb 1 (sehari2/terjadi lagi/kebiasaan). Semua macam cara makeknya",
+  "kapan pakek verb 1 yang ada s/es",
+  "Verb 2 (tadi/kemarin/masa lalu). semua macam cara memakai verb 2",
+  "Verb 1 VS Verb 2 (perbedaan cara pakai)",
+  "Kapan Pakek Do/Does/Did",
+  "Kapan pakai Is/am/are dan was/were",
+  "perbedaan  kapan pakai Do/does VS is/am/are",
+  "is/am/are + V-ing (sedang terjadi)",
+  "perbedaan  kapan pakai Did VS was/were",
+  "Verb 3 (sudah terjadi)",
+  "Verb 2 VS Verb 3 (kadang sama, kadang beda fungsi)",
+  "kapan pakai be",
+  "kapan pakai been",
+  "Have been + Ving (sudah tapi masih berlangsung)",
+  "used to + verb 1 (kebiasaan di masa lalu)",
+  "Is/am/are + used to + Ving (kebiasaan sekarang)",
+  "Will (akan/masa depan)",
+  "Will VS Going to",
+  "Have to VS Must (Keharusan dan kewajiban)",
+  "Should have + Verb 3 (penyesalan datang terlambat)",
+  "If I were ...., I would .... (Ngayal/berandai-andai)",
+  "Cara membuat pertanyaan pakai 5 W + 1H",
+  "kapan pakai Could, Would, Should",
+  "Kalimat passive (di/ter)",
+  "Transition words sesuai level",
+  "Perbedaan who dan Whom",
+  "cara pakai Which, Whose",
+  "Comparative and superlative dan cara pakai"
+];
+
+export const SPEAKING_TOPICS = [
+  "Self Introduction & Hobbies",
+  "Meditasi untuk kesehatan mental",
+  "My Dream Job",
+  "Describing my hometown",
+  "My favorite holiday destination",
+  "Talking about the future (Goals)",
+  "Why learning English is important",
+  "Social Media impact on society",
+  "Climate Change and Environment",
+  "My biggest achievement"
+];
+
+export const LISTENING_TOPICS = [
+  "A Trip to Bali",
+  "Job Interview Simulation",
+  "Phrasal verbs in daily life",
+  "Ordering food at a busy restaurant",
+  "A story about failing and learning",
+  "Technology changing our habits",
+  "A mystery story in an old town",
+  "Tips for a healthy lifestyle",
+  "The history of a famous invention",
+  "A debate on remote work"
+];
+
+export const CONVERSATION_CHARACTERS = [
+  { name: "Naruto", topic: "Perjuangan menjadi Hokage" },
+  { name: "Elon Musk", topic: "Masa depan umat manusia di Mars" },
+  { name: "Taylor Swift", topic: "Proses menulis lagu patah hati" },
+  { name: "Soekarno", topic: "Perjuangan kemerdekaan Indonesia" },
+  { name: "Steve Jobs", topic: "Inovasi dan mendirikan Apple" },
+  { name: "Spongebob", topic: "Bekerja di Krusty Krab" },
+  { name: "Spiderman", topic: "Tanggung jawab menjadi pahlawan" },
+  { name: "Albert Einstein", topic: "Pentingnya imajinasi dalam sains" }
+];
