@@ -27,7 +27,11 @@ import {
   ArrowUpRight,
   PenTool,
   Crown,
-  Languages
+  Languages,
+  Settings as SettingsIcon,
+  LogOut,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { LoginPage, SubscriptionPage } from './Auth';
 import LevelTest from './LevelTest';
