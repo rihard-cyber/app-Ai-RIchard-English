@@ -92,7 +92,7 @@ export function LoginPage({ onLogin }) {
     if (error) {
       setErrorMsg('Kode OTP salah atau sudah kadaluarsa.');
     } else {
-      alert('Verifikasi Berhasil! Selamat datang di AI Richard.');
+      alert('Verifikasi Berhasil! Selamat datang di RichardMeha AI.');
       onLogin();
     }
   };
@@ -143,7 +143,7 @@ export function LoginPage({ onLogin }) {
           <div className="relative flex-1">
             {/* SIGN IN FORM */}
             <div className={`transition-all duration-500 transform ${mode === 'signin' ? 'translate-x-0 opacity-100 relative' : '-translate-x-full opacity-0 absolute inset-0 pointer-events-none'}`}>
-              <h1 className="text-3xl font-bold text-white text-center mb-2 mt-4">AI Richard</h1>
+              <h1 className="text-3xl font-bold text-white text-center mb-2 mt-4">RichardMeha AI</h1>
               <p className="text-slate-400 text-center mb-8 text-sm">Masuk untuk memulai petualangan belajarmu.</p>
               
               <form onSubmit={handleSignIn} className="space-y-4">
@@ -181,7 +181,7 @@ export function LoginPage({ onLogin }) {
             {/* SIGN UP FORM */}
             <div className={`transition-all duration-500 transform ${mode === 'signup' ? 'translate-x-0 opacity-100 relative' : 'translate-x-full opacity-0 absolute inset-0 pointer-events-none'}`}>
               <h1 className="text-2xl font-bold text-white text-center mb-2 mt-2">Buat Akun Baru</h1>
-              <p className="text-slate-400 text-center mb-6 text-sm">Daftar untuk akses AI Richard.</p>
+              <p className="text-slate-400 text-center mb-6 text-sm">Daftar untuk akses RichardMeha AI.</p>
               
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div>
@@ -264,7 +264,7 @@ export function SubscriptionPage({ onSelectPlan }) {
       <div className="max-w-6xl w-full">
         <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h1 className="text-3xl md:text-5xl font-bold text-slate-800 mb-4">Pilih Paket Belajarmu</h1>
-          <p className="text-slate-500 md:text-lg max-w-2xl mx-auto">Tingkatkan pengalaman belajarmu dengan akses tanpa batas ke fitur AI Richard. Pilih paket yang paling sesuai dengan kebutuhanmu.</p>
+          <p className="text-slate-500 md:text-lg max-w-2xl mx-auto">Tingkatkan pengalaman belajarmu dengan akses tanpa batas ke fitur RichardMeha AI. Pilih paket yang paling sesuai dengan kebutuhanmu.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -280,7 +280,7 @@ export function SubscriptionPage({ onSelectPlan }) {
             </div>
             <ul className="space-y-4 mb-8 flex-1 text-slate-600 text-sm">
               <li className="flex gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={20}/> <span>Akses tes CEFR (1x sehari)</span></li>
-              <li className="flex gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={20}/> <span>Chat dengan Kaka Richard (Terbatas)</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={20}/> <span>Chat dengan RichardMeha AI (Terbatas)</span></li>
               <li className="flex gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={20}/> <span>Materi Grammar dasar</span></li>
             </ul>
             <button onClick={() => onSelectPlan('free')} className="w-full py-3.5 rounded-xl border-2 border-slate-200 text-slate-700 font-bold hover:bg-slate-50 hover:border-slate-300 transition-colors">
@@ -303,7 +303,7 @@ export function SubscriptionPage({ onSelectPlan }) {
             </div>
             <ul className="space-y-4 mb-8 flex-1 text-blue-50 text-sm">
               <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20}/> <span>Akses tes CEFR sepuasnya</span></li>
-              <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20}/> <span>Chat tanpa batas dengan Kaka Richard</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20}/> <span>Chat tanpa batas dengan RichardMeha AI</span></li>
               <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20}/> <span>Semua materi Grammar & Vocabulary</span></li>
               <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20}/> <span>Fitur Roleplay & Simulasi bebas</span></li>
             </ul>

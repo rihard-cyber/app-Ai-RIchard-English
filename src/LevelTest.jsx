@@ -51,13 +51,16 @@ export default function LevelTest({ onComplete }) {
   const saveResult = async (level) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase
+      const { error } = await supabase
         .from('user_profiles')
         .update({ 
           level: level, 
           has_completed_initial_test: true 
         })
         .eq('id', user.id);
+      
+      if (error) console.error("Error saving level:", error);
+      else console.log("Level saved successfully:", level);
     }
     
     setTimeout(() => {
@@ -74,7 +77,7 @@ export default function LevelTest({ onComplete }) {
         </div>
         <h1 className="text-3xl md:text-5xl font-black mb-4">Tes Penempatan Awal</h1>
         <p className="text-slate-400 max-w-md mb-10 text-lg leading-relaxed">
-          Halo! Saya **Kaka Richard**. Mari kita ukur sejauh mana kemampuan kosa kata Bahasa Inggrismu untuk menentukan kurikulum yang tepat.
+          Halo! Saya **RichardMeha AI**. Mari kita ukur sejauh mana kemampuan kosa kata Bahasa Inggrismu untuk menentukan kurikulum yang tepat.
         </p>
         <button 
           onClick={() => setStep('quiz')}
@@ -94,7 +97,7 @@ export default function LevelTest({ onComplete }) {
           <Trophy size={64} className="text-white" />
         </div>
         <h2 className="text-4xl font-black mb-2">Luar Biasa!</h2>
-        <p className="text-slate-400 mb-8">Kaka Richard telah menganalisa hasil tesmu.</p>
+        <p className="text-slate-400 mb-8">RichardMeha AI telah menganalisa hasil tesmu.</p>
         
         <div className="bg-slate-800/50 border border-slate-700 p-8 rounded-[2.5rem] mb-10 w-full max-w-sm">
            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2">Level Kamu Saat Ini:</p>
@@ -128,7 +131,7 @@ export default function LevelTest({ onComplete }) {
           <div className="text-center space-y-6 animate-in fade-in duration-500">
             <Loader2 className="animate-spin text-blue-500 mx-auto" size={64} />
             <h2 className="text-2xl font-bold">Menganalisa jawabanmu...</h2>
-            <p className="text-slate-400">Kaka Richard sedang menyusun profil belajarmu.</p>
+            <p className="text-slate-400">RichardMeha AI sedang menyusun profil belajarmu.</p>
           </div>
         ) : (
           <div className="space-y-10 animate-in slide-in-from-bottom-4 duration-500">

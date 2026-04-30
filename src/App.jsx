@@ -26,7 +26,8 @@ import {
   Zap,
   ArrowUpRight,
   PenTool,
-  Crown
+  Crown,
+  Languages
 } from 'lucide-react';
 import { LoginPage, SubscriptionPage } from './Auth';
 import LevelTest from './LevelTest';
@@ -53,45 +54,68 @@ const DEFAULT_PROFILE = {
   subscription_plan: 'Free'
 };
 
-// --- DATA PROMPT DARI SPREADSHEET (LEVEL SPECIFIC) ---
+// --- DATA PROMPT DARI SPREADSHEET (LENGKAP - RichardMeha AI Persona) ---
 const getPrompts = (userProfile) => {
-  const levelData = CURRICULUM[userProfile.level] || CURRICULUM['Pemula Dasar (A1)'];
-  const goalsText = levelData.goals.join(', ');
-  
   return {
-  assessment: `Tugasmu adalah melakukan tes penempatan (Placement Test) kosa kata. 
-  Namun saat ini murid akan diarahkan ke modul Quiz Vocabulary khusus. 
-  Sapa murid dan beri semangat!`,
+  assessment: `Kamu adalah RichardMeha AI dari Kampung Inggris. Tugas kamu adalah melakukan Placement Test CEFR (A1-C2).
+  🎙️ - Sapa dengan gaya santai dan seru 😎. Sebut dirimu "RichardMeha AI dari Kampung Inggris".
+  🛡️ Struktur ini asli RichardMeha AI. Dilarang duplikasi tanpa izin ❌.
+  📋 Struktur tes: 1) Speaking 🗣️, 2) Grammar & Vocabulary 📘, 3) Reading 📖, 4) Writing ✍️.
+  ⚠️ Jangan langsung tentukan level. Mulai dari Speaking, lalu adaptif:
+  - Bagus di grammar? Kasih vocab lebih sulit. 
+  - Bagus di vocab? Kasih reading kompleks.
+  🚀 Mulai dari Speaking Test: Minta perkenalkan diri (Nama, Asal, Pekerjaan, Hobi).
+  🎤 Ingatkan murid pakai microphone.
+  📊 Tulis koreksi dalam tabel. Di akhir, berikan skor CEFR rata-rata dan rekomendasi:
+  - Basic -> Vocabulary Warrior 📗
+  - B1 -> Idea Shaper 💡
+  - B2 -> Fluent Thinker 🧠
+  - C1+ -> Fluent Thinker 🎓`,
 
-  vocabulary: `Perkenalkan nama ku: ${userProfile.name}. Level saat ini: ${userProfile.level}.
-  🎯 Goals level ini: ${goalsText}.
-  🎓 Kamu adalah Kaka Richard. Bimbing aku belajar vocab di Level ${userProfile.level}.
-  🗣️ Gunakan gaya santai. Koreksi dan penjelasan harus pakai Bahasa Indonesia.
-  ✨ Box of Words tabel bernomer berisi vocab, phonetic symbol (UK) dan arti.
-  ✨ Berikan sapaan 'Hallo aku Kaka Richard dari kampung Inggris, ini Box of words kamu hari ini' dan berikan box.
-  Selalu berikan 2 opsi Writing Challenge sesuai topik level ${userProfile.level}.`,
+  vocabulary: `Sapa: 'Hallo aku RichardMeha AI dari kampung Inggris, ini Box of words kamu hari ini'.
+  🎓 Tugas: Bimbing belajar vocab di Level ${userProfile.level}.
+  ✨ Tampilkan phonetic symbol (Cara Baca) / / UK. 
+  ✨ Box of Words tabel 2 kolom saja: [1. Vocab /Phonetic/] | [Arti].
+  📝 Berikan 2 opsi Writing Challenge: 
+  - Opsi 1: Tulis cerita judul [Topik] pakai 3-5 BOW. 
+  - Opsi 2: Bikin 1 kalimat untuk masing-masing 3-5 BOW.
+  🔍 SETELAH JAWAB, WAJIB JALANKAN 7 LANGKAH KOREKSI:
+  1. Tabel: Kalimat Asli | Penjelasan Grammar | Kalimat Benar.
+  2. Analisa BOW (apakah tepat?).
+  3. Analisa Kosakata (Daftar vocab, CEFR, saran upgrade, contoh kalimat).
+  4. Analisa CEFR Tulisan & Tips naik level.
+  5. Sistem 5W+1H: Tabel comparison & list (What, Why, Where, When, Who, How). Lalu tulis paragraph utuh versi 5W+1H.
+  6. Analisa Transition Words: saran 1-3 kata + contoh + arti (italic).
+  7. Speaking Challenge: 1-3 pertanyaan satu-satu (Inggris + Italic Indo).`,
 
-  speaking: `Perkenalkan nama ku: ${userProfile.name}. Level: ${userProfile.level}.
-  🎯 Goals level ini: ${goalsText}.
-  🎓 Kamu adalah Kaka Richard. Bimbing aku belajar SPEAKING sesuai level ${userProfile.level}.
-  📚 Bagian A — Penjelasan Materi: Berikan penjelasan materi speaking sesuai level ini (tujuan komunikasi, ekspresi penting).
-  🎤 Bagian B — Speaking Challenge: Beri aku pertanyaan satu per satu.`,
+  speaking: `Kamu adalah RichardMeha AI dari Kampung Inggris.
+  📚 Bagian A — Penjelasan Materi: Detail sesuai level ${userProfile.level} + 3-5 frasa contoh + contoh dialog 1-2 kalimat.
+  🎤 Bagian B — Speaking Challenge: Setelah saya bilang "I'm ready to practice", beri pertanyaan satu-satu.
+  - Pertanyaan: English + Terjemahan (Italic).
+  - Koreksi: Tabel perbandingan kalimatku vs Native Speaker (2 kolom).`,
 
-  grammar: `Namaku ${userProfile.name}. Level: ${userProfile.level}.
-  🎯 Goals level ini: ${goalsText}.
-  Kamu adalah Kaka Richard. Fokus ke pola kalimat sehari-hari sesuai level ${userProfile.level}.
-  📄 Setelah penjelasan, beri 5 contoh kalimat natural + terjemahan.
-  💪 Beri aku 3 pertanyaan speaking yang memakai Grammar ini.`,
+  grammar: `Kamu adalah RichardMeha AI dari Kampung Inggris. 
+  🔧 ATURAN KERAS: Jangan sebut nama tenses. Jelaskan pola kalimat saja.
+  💡 Contoh: 'I buy a drink yesterday' → salah ❌. Harusnya 'I bought a drink yesterday', karena masa lalu → pakai verb ke-2 ✅.
+  📄 Beri 5 contoh kalimat natural + terjemahan (italic).
+  💪 Beri 3 pertanyaan speaking yang memaksaku memakai Grammar ini.
+  📊 Koreksi: Tabel perbandingan kalimatku vs Native Speaker.`,
 
-  listening: `Namaku ${userProfile.name}. Level: ${userProfile.level}.
-  🎯 Goals level ini: ${goalsText}.
-  🎓 Kaka Richard. Wajib berikan 1 cerita/monolog pendek (8-15 kalimat) sesuai level ${userProfile.level}.
-  🎤 Bagian B — Speaking Challenge: Tanya tentang isi cerita satu per satu.`,
+  listening: `Kamu adalah RichardMeha AI dari Kampung Inggris.
+  🎧 Bagian A — Listening Practice: Langsung berikan 1 monolog/cerita pendek. 
+  - Durasi: 4-8 kalimat (A1-B1), 8-15 kalimat (B2-C2). 
+  - Lampirkan tabel vocabulary penting di bawah cerita.
+  🎤 Bagian B — Speaking Challenge: Setelah saya bilang "I'm ready to practice", beri pertanyaan comprehension satu-satu.
+  - Jika salah, koreksi sesuai teks lalu berikan pertanyaan yang sama lagi sampai benar.`,
 
-  conversation: `Namaku ${userProfile.name}. Level: ${userProfile.level}.
-  🎯 Goals level ini: ${goalsText}.
-  Kaka Richard. Kasih contoh conversation sesuai tokoh pilihan saya. 
-  Dialog harus menantang sesuai level ${userProfile.level}.`
+  conversation: `Kamu adalah RichardMeha AI dari Kampung Inggris.
+  - Sapa: 'Hallo aku RichardMeha AI dari kampung Inggris'.
+  - Format: Tabel 3 kolom (Speaker, English Dialogue, Terjemahan).
+  - Tokoh: Tirukan kepribadian tokoh terkenal (Naruto, Soekarno, dll) sesuai pilihan user.
+  - Highlight: Tabel kosakata, idiom, phrasal verb, expression + arti & konteks.
+  - Voice Mode: Tanya "Mau baca teks dulu atau improvisasi?".
+  - Baca: AI baca bagiannya, saya baca bagian saya. AI tidak boleh memuji atau memberi arahan.
+  - Improvisasi: FULL ENGLISH. AI mulai dengan pertanyaan sesuai topik.`
   };
 };
 
@@ -104,6 +128,7 @@ export default function App() {
   const [selectedPlan, setSelectedPlan] = useState({ name: '', price: 0 });
   const [userStats, setUserStats] = useState({ speaking: 0, writing: 0, grammar: 0, vocabulary: 0 });
   const [recommendation, setRecommendation] = useState('vocabulary');
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
     checkUser();
@@ -154,10 +179,15 @@ export default function App() {
   };
 
   const checkUser = async () => {
+    setIsInitializing(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await fetchProfile(user.id);
+      setAuthState('app');
+    } else {
+      setAuthState('login');
     }
+    setIsInitializing(false);
   };
 
   const fetchProfile = async (userId) => {
@@ -171,10 +201,10 @@ export default function App() {
       setUserProfile({
         name: data.full_name || "User",
         gender: data.gender || "male",
-        level: data.level,
-        xp: data.xp,
-        streak: data.streak,
-        has_completed_initial_test: data.has_completed_initial_test,
+        level: data.level || "Pemula Dasar (A1)",
+        xp: data.xp || 0,
+        streak: data.streak || 0,
+        has_completed_initial_test: data.has_completed_initial_test || false,
         is_pro: data.is_pro || false,
         subscription_plan: data.subscription_plan || 'Free'
       });
@@ -220,9 +250,17 @@ export default function App() {
     setAuthState('app');
   };
 
-  const handleAssessmentComplete = (level) => {
+  const handleAssessmentComplete = async (level) => {
+    // Update local state first for immediate UI response
     setUserProfile(prev => ({ ...prev, level, has_completed_initial_test: true }));
+    setActiveTab('home');
     setAuthState('app');
+    
+    // Then refresh profile from DB to be safe
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await fetchProfile(user.id);
+    }
   };
 
   const saveProgress = async (skill, score, details = {}) => {
@@ -271,6 +309,15 @@ export default function App() {
     }
   };
 
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-6 text-white">
+        <Loader2 className="animate-spin text-blue-500 mb-4" size={48} />
+        <p className="text-slate-400 font-bold animate-pulse">Menyiapkan RichardMeha AI...</p>
+      </div>
+    );
+  }
+
   if (authState === 'login') {
     return <LoginPage onLogin={handleLogin} />;
   }
@@ -303,7 +350,7 @@ export default function App() {
       `}>
         <div className="h-16 flex items-center justify-between px-6 bg-[#0b1121]">
           <h1 className="text-xl font-bold tracking-wider flex items-center gap-2 text-white">
-            <Sparkles className="text-blue-500" /> AI Richard<span className="text-blue-500">.AI</span>
+            <Sparkles className="text-blue-500" /> RichardMeha<span className="text-blue-500"> AI</span>
           </h1>
           <button className="md:hidden text-slate-400 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}>
             <X size={24} />
@@ -348,7 +395,7 @@ export default function App() {
               <Menu size={24} />
             </button>
             <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-              AI Richard<span className="text-blue-600">.AI</span>
+              RichardMeha<span className="text-blue-600"> AI</span>
             </h2>
           </div>
           <div className="flex items-center gap-2">
@@ -415,7 +462,7 @@ function HomeDashboard({ onNavigate, userProfile, recommendation }) {
             
             <h2 className="text-3xl md:text-5xl font-black mb-4 leading-tight">Lanjut Belajar,<br/>{userProfile.name}!</h2>
             <p className="text-blue-100 mb-8 md:text-lg max-w-md opacity-90 leading-relaxed">
-               Target kamu hari ini: **{levelData.goals[0]}**. Kaka Richard sudah siapkan materinya!
+               Target kamu hari ini: **{levelData.goals[0]}**. RichardMeha AI sudah siapkan materinya!
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4">
@@ -549,7 +596,7 @@ function SetupModule({ module, basePrompt, inputLabel, placeholder, icon, color,
            </div>
            <h2 className="text-3xl font-black text-slate-800 mb-4">Fitur Khusus PRO 👑</h2>
            <p className="text-slate-500 mb-10 text-lg leading-relaxed">
-             Modul <strong>{module}</strong> adalah fitur eksklusif. Upgrade akunmu untuk membuka akses tanpa batas ke seluruh materi cerdas Kaka Richard.
+             Modul <strong>{module}</strong> adalah fitur eksklusif. Upgrade akunmu untuk membuka akses tanpa batas ke seluruh materi cerdas RichardMeha AI.
            </p>
            <button 
              onClick={() => window.location.reload()}
@@ -575,7 +622,7 @@ function SetupModule({ module, basePrompt, inputLabel, placeholder, icon, color,
           {icon}
         </div>
         <h2 className="text-2xl font-bold text-slate-800 mb-2 text-center">Modul {module}</h2>
-        <p className="text-sm text-slate-500 mb-8 text-center px-4">Pilih materi atau topik yang ingin kamu kuasai bersama Kaka Richard hari ini.</p>
+        <p className="text-sm text-slate-500 mb-8 text-center px-4">Pilih materi atau topik yang ingin kamu kuasai bersama RichardMeha AI hari ini.</p>
         
         <div className="space-y-5">
           <div>
@@ -658,7 +705,7 @@ function ConversationModule({ basePrompt }) {
 // ==========================================
 // CORE CHAT ENGINE (With STT & TTS)
 // ==========================================
-function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pelajaran hari ini Kaka Richard!', hideInputAtStart = false, onComplete }) {
+function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pelajaran hari ini RichardMeha AI!', hideInputAtStart = false, onComplete }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -682,7 +729,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
     if (messages.length === 0 && hideInputAtStart) {
       sendMessage(startMessage, true);
     } else if (messages.length === 0 && topic) {
-      sendMessage(`Topik pilihan saya: ${topic}. Ayo kita mulai sesuai prosedurmu Kaka Richard!`, true);
+      sendMessage(`Topik pilihan saya: ${topic}. Ayo kita mulai sesuai prosedurmu RichardMeha AI!`, true);
     }
   }, []);
 
@@ -757,6 +804,36 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
     }
   };
 
+
+  const translateMessage = async (index, text) => {
+    // Use the existing message state
+    const currentMessages = [...messages];
+    if (currentMessages[index].translation) {
+      currentMessages[index].showTranslation = !currentMessages[index].showTranslation;
+      setMessages(currentMessages);
+      return;
+    }
+
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: `Tolong terjemahkan teks Bahasa Inggris berikut ke Bahasa Indonesia yang natural dan santai:\n\n${text}` }] }]
+        })
+      });
+      const data = await res.json();
+      const translation = data.candidates[0].content.parts[0].text;
+      
+      const updatedMessages = [...messages];
+      updatedMessages[index].translation = translation;
+      updatedMessages[index].showTranslation = true;
+      setMessages(updatedMessages);
+    } catch (err) {
+      console.error("Translation error:", err);
+    }
+  };
 
   const fetchWithRetry = async (url, options, maxRetries = 3) => {
     let retries = 0;
@@ -855,7 +932,8 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
 
   // Parser Text & Table
   const renderFormattedText = (text) => {
-    const lines = text.split('\\n');
+    if (!text) return null;
+    const lines = text.split('\n');
     let inTable = false;
     let tableRows = [];
     const elements = [];
@@ -922,7 +1000,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
         </div>
         <div className="flex items-center gap-1.5 text-[10px] md:text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 md:py-1.5 rounded-full border border-emerald-100 shrink-0">
           <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-          Kaka Richard Online
+          RichardMeha AI Online
         </div>
       </div>
 
@@ -965,16 +1043,30 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
                   <div className="bg-white border border-slate-200 text-slate-700 px-4 md:px-5 py-4 rounded-3xl rounded-tl-sm shadow-sm text-sm md:text-base w-full overflow-hidden leading-relaxed">
                     {renderFormattedText(msg.content)}
                   </div>
-                  {/* TTS Action Button for AI Message */}
-                  <div className="flex justify-start ml-2">
+                  {/* TTS & Translate Action Buttons for AI Message */}
+                  <div className="flex justify-start gap-2 ml-2">
                     <button 
                       onClick={() => handleTTS(msg.content)}
-                      className="text-xs text-slate-400 hover:text-blue-600 flex items-center gap-1 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm transition-colors"
-                      title="Baca pesan ini"
+                      className="text-[10px] text-slate-400 hover:text-blue-600 flex items-center gap-1 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm transition-colors"
                     >
                       <Volume2 size={12} /> Dengar
                     </button>
+                    <button 
+                      onClick={() => translateMessage(idx, msg.content)}
+                      className={`text-[10px] flex items-center gap-1 px-3 py-1.5 rounded-full border transition-colors shadow-sm
+                        ${msg.showTranslation 
+                          ? 'bg-blue-50 border-blue-200 text-blue-600' 
+                          : 'bg-white border-slate-200 text-slate-400 hover:text-blue-600'}
+                      `}
+                    >
+                      <Languages size={12} /> {msg.showTranslation ? 'Sembunyikan' : 'Terjemahkan'}
+                    </button>
                   </div>
+                  {msg.showTranslation && msg.translation && (
+                    <div className="mx-2 mt-2 p-3 bg-blue-50/50 rounded-2xl border border-blue-100 text-sm text-blue-800 animate-in fade-in slide-in-from-top-1 duration-300 italic">
+                       {msg.translation}
+                    </div>
+                  )}
                 </div>
               </div>
             );
