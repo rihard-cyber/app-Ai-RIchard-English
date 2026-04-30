@@ -9,7 +9,8 @@ import {
   Trophy,
   Play,
   Loader2,
-  Sparkles
+  Sparkles,
+  Crown
 } from 'lucide-react';
 
 const PRONUNCIATION_PROMPT = `
@@ -30,13 +31,35 @@ Analysis: [Analisa kata per kata]
 Tips: [Saran perbaikan]
 `;
 
-export default function PronunciationCoach({ userProfile, onComplete }) {
+export default function PronunciationCoach({ userProfile, onComplete, isPro }) {
   const [targetSentence, setTargetSentence] = useState('');
   const [transcript, setTranscript] = useState('');
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef(null);
+
+  if (!isPro) {
+    return (
+      <div className="h-full flex items-center justify-center p-6 bg-slate-50">
+        <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-2xl border border-slate-100 max-w-lg text-center animate-in zoom-in-95 duration-500">
+           <div className="w-24 h-24 bg-gradient-to-tr from-rose-400 to-pink-600 text-white rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-rose-500/20">
+             <Crown size={48} />
+           </div>
+           <h2 className="text-3xl font-black text-slate-800 mb-4">Speaking Coach PRO 👑</h2>
+           <p className="text-slate-500 mb-10 text-lg leading-relaxed">
+             Latihan pengucapan dengan feedback AI instan adalah fitur eksklusif. Upgrade sekarang untuk mulai melatih aksen dan kelancaran bicaramu!
+           </p>
+           <button 
+             onClick={() => window.location.reload()}
+             className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-all text-lg"
+           >
+             Upgrade Sekarang
+           </button>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     generateNewSentence();
