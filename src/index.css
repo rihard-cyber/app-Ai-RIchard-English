@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.3);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(148, 163, 184, 0.5);
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+@keyframes border-spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.running-border {
+  position: relative;
+  overflow: hidden;
+}
+
+.running-border::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    transparent, 
+    transparent, 
+    transparent, 
+    #3b82f6, 
+    #8b5cf6, 
+    #ec4899
+  );
+  transform: translate(-50%, -50%);
+  transform-origin: 0 0;
+  animation: border-spin 3s linear infinite;
+  z-index: 0;
+}
+
+.running-border-inner {
+  position: relative;
+  border-radius: inherit;
+  z-index: 1;
+}
