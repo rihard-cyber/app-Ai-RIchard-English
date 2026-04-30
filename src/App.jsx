@@ -129,6 +129,7 @@ export default function App() {
   const [userStats, setUserStats] = useState({ speaking: 0, writing: 0, grammar: 0, vocabulary: 0 });
   const [recommendation, setRecommendation] = useState('vocabulary');
   const [isInitializing, setIsInitializing] = useState(true);
+  const [theme, setTheme] = useState('light'); // 'light' or 'dark'
 
   useEffect(() => {
     checkUser();
@@ -263,6 +264,16 @@ export default function App() {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setAuthState('login');
+    setUserProfile(DEFAULT_PROFILE);
+  };
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
   const saveProgress = async (skill, score, details = {}) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -304,6 +315,52 @@ export default function App() {
         return <WritingAnalyzer isPro={userProfile.is_pro} />;
       case 'conversation':
         return <ConversationModule basePrompt={prompts.conversation} isPro={userProfile.is_pro} />;
+      case 'settings':
+        return (
+          <div className="p-6 md:p-10 max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h2 className="text-3xl font-black text-slate-800 flex items-center gap-3">
+              <SettingsIcon className="text-blue-600" /> Pengaturan Akun
+            </h2>
+            
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-slate-800">Tema Aplikasi</h4>
+                  <p className="text-xs text-slate-500">Pilih tampilan yang nyaman di mata.</p>
+                </div>
+                <button onClick={toggleTheme} className="p-3 bg-slate-100 rounded-2xl text-slate-600 hover:bg-slate-200 transition-all active:scale-95">
+                  {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+                </button>
+              </div>
+              
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h4 className="font-bold text-slate-800">Status Akun</h4>
+                  <p className="text-xs text-slate-500">Paket langganan aktif Anda.</p>
+                </div>
+                <span className={`text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest ${userProfile.is_pro ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-600'}`}>
+                  {userProfile.is_pro ? '👑 Pro' : 'Free'}
+                </span>
+              </div>
+
+              <div className="p-6">
+                <button 
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-center gap-2 py-4 bg-rose-50 text-rose-600 font-bold rounded-2xl hover:bg-rose-100 transition-all active:scale-95"
+                >
+                  <LogOut size={18} /> Keluar dari Akun
+                </button>
+              </div>
+            </div>
+            
+            <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100">
+              <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2"><User size={18}/> Profil RichardMeha AI</h4>
+              <p className="text-sm text-blue-600 leading-relaxed">
+                Data Anda tersimpan dengan aman di server cloud RichardMeha AI. Semua progres belajar disinkronkan secara real-time.
+              </p>
+            </div>
+          </div>
+        );
       default:
         return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} recommendation={recommendation} />;
     }
@@ -331,7 +388,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-[100dvh] bg-slate-50 text-slate-800 font-sans overflow-hidden">
+    <div className={`flex h-[100dvh] font-sans overflow-hidden transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b1121] text-slate-200 dark-mode' : 'bg-slate-50 text-slate-800'}`}>
       
       {/* Mobile Overlay */}
       {isSidebarOpen && (
@@ -380,6 +437,15 @@ export default function App() {
           <NavItem icon={<LayoutDashboard />} label="Grammar for Speaking" isActive={activeTab === 'grammar'} onClick={() => handleTabChange('grammar')} />
           <NavItem icon={<Headphones />} label="Listening & Talk" isActive={activeTab === 'listening'} onClick={() => handleTabChange('listening')} />
           <NavItem icon={<MessageSquare />} label="Conversation" isActive={activeTab === 'conversation'} onClick={() => handleTabChange('conversation')} />
+          
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-6">Akun</p>
+          <NavItem icon={<SettingsIcon />} label="Pengaturan" isActive={activeTab === 'settings'} onClick={() => handleTabChange('settings')} />
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-rose-400 hover:bg-rose-900/20 hover:text-rose-300 transition-all"
+          >
+            <LogOut size={18} /> <span className="text-sm">Log Out</span>
+          </button>
         </nav>
       </aside>
 

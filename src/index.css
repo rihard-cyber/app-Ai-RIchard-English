@@ -21,6 +21,48 @@
     background-color: rgba(148, 163, 184, 0.5);
   }
 
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Dark Mode Enhancements */
+  .dark-mode {
+    color-scheme: dark;
+  }
+
+  .dark-mode .bg-white {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+  }
+
+  .dark-mode .text-slate-800 {
+    color: #f1f5f9 !important;
+  }
+
+  .dark-mode .text-slate-700 {
+    color: #e2e8f0 !important;
+  }
+
+  .dark-mode .text-slate-600 {
+    color: #cbd5e1 !important;
+  }
+
+  .dark-mode .bg-slate-50 {
+    background-color: #0f172a !important;
+  }
+
+  .dark-mode .border-slate-200, 
+  .dark-mode .border-slate-100 {
+    border-color: #334155 !important;
+  }
+
+  .dark-mode .shadow-sm,
+  .dark-mode .shadow-md,
+  .dark-mode .shadow-xl {
+    shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2) !important;
+  }
+
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
