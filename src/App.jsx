@@ -37,7 +37,8 @@ import {
   Moon,
   Sun,
   LogOut,
-  Lightbulb
+  Lightbulb,
+  Lock
 } from 'lucide-react';
 import { LoginPage, SubscriptionPage } from './Auth';
 import AchievementSystem from './AchievementSystem';
@@ -160,6 +161,7 @@ export default function App() {
   useEffect(() => { if (authState === 'app') fetchStats(); }, [authState]);
 
   const fetchStats = async () => {
+    if (!supabase) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { data } = await supabase.from('user_progress').select('skill_type, score').eq('user_id', user.id);
@@ -182,6 +184,11 @@ export default function App() {
 
   const checkUser = async () => {
     setIsInitializing(true);
+    if (!supabase) {
+      setAuthState('login');
+      setIsInitializing(false);
+      return;
+    }
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -199,6 +206,7 @@ export default function App() {
   };
 
   const fetchProfile = async (userObj) => {
+    if (!supabase) return;
     try {
       const userId = typeof userObj === 'string' ? userObj : userObj.id;
       const metaName = typeof userObj === 'object' ? (userObj.user_metadata?.full_name || '') : '';
