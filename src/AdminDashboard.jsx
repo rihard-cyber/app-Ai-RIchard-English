@@ -190,46 +190,92 @@ export default function AdminDashboard({ onLogout }) {
                 )}
 
                 {activeTab === 'banks' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in">
-                        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {banks.map(bank => (
-                                <div key={bank.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden group">
-                                    <div className="absolute top-4 right-4 flex gap-2">
-                                        <button onClick={() => handleDeleteBank(bank.id)} className="text-rose-400 hover:text-rose-600 bg-rose-50 p-1.5 rounded-md"><Trash2 size={16} /></button>
+                    <div className="space-y-8 animate-in fade-in">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* Form Tambah */}
+                            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm h-fit">
+                                <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                                    <Plus className="text-emerald-500" /> Tambah Rekening
+                                </h3>
+                                <form onSubmit={handleAddBank} className="space-y-5">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Provider Pembayaran</label>
+                                        <select value={newBank.provider} onChange={e => setNewBank({ ...newBank, provider: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm font-bold">
+                                            <option value="BCA">BCA (Bank Central Asia)</option>
+                                            <option value="BRI">BRI (Bank Rakyat Indonesia)</option>
+                                            <option value="MANDIRI">Mandiri (Bank Mandiri)</option>
+                                            <option value="VA">Virtual Account (VA)</option>
+                                            <option value="QRIS">QRIS / Barcode</option>
+                                            <option value="DANA">DANA (E-Wallet)</option>
+                                            <option value="GOPAY">GoPay (E-Wallet)</option>
+                                        </select>
                                     </div>
-                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">{bank.provider}</p>
-                                    <h3 className="text-2xl font-black text-slate-800 tracking-wider mb-2">{bank.account_number}</h3>
-                                    <p className="text-sm font-medium text-slate-500 uppercase">A.N. {bank.account_name}</p>
-                                </div>
-                            ))}
-                        </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Nomor Rekening / HP / VA</label>
+                                        <input type="text" value={newBank.account_number} onChange={e => setNewBank({ ...newBank, account_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm font-bold" placeholder="Contoh: 123456789" required />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Atas Nama (A.N)</label>
+                                        <input type="text" value={newBank.account_name} onChange={e => setNewBank({ ...newBank, account_name: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm font-bold" placeholder="Contoh: RICHARD MEHA" required />
+                                    </div>
+                                    <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-emerald-600/20 active:scale-95 flex items-center justify-center gap-2">
+                                        <Plus size={18} /> Simpan Rekening Baru
+                                    </button>
+                                </form>
+                            </div>
 
-                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm h-fit">
-                            <h3 className="font-bold text-slate-800 mb-6">Tambah Rekening Baru</h3>
-                            <form onSubmit={handleAddBank} className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-1">Provider Bank / E-Wallet</label>
-                                    <select value={newBank.provider} onChange={e => setNewBank({ ...newBank, provider: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-500 text-sm">
-                                        <option value="BCA">BCA</option>
-                                        <option value="BRI">BRI</option>
-                                        <option value="MANDIRI">Mandiri</option>
-                                        <option value="DANA">DANA</option>
-                                        <option value="GOPAY">GoPay</option>
-                                        <option value="QRIS">QRIS / Barcode</option>
-                                    </select>
+                            {/* Tabel Daftar Rekening */}
+                            <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+                                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                    <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                        <CreditCard className="text-blue-500" /> Rekening Terdaftar
+                                    </h3>
+                                    <span className="text-[10px] font-black text-slate-400 uppercase bg-white px-3 py-1 rounded-full border border-slate-200">{banks.length} Rekening</span>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-1">Nomor Rekening / HP</label>
-                                    <input type="text" value={newBank.account_number} onChange={e => setNewBank({ ...newBank, account_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-500 text-sm" placeholder="Contoh: 123456789" required />
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-slate-50/80 text-slate-500 font-black uppercase tracking-widest text-[10px]">
+                                            <tr>
+                                                <th className="p-6">Provider</th>
+                                                <th className="p-6">Nomor Akun</th>
+                                                <th className="p-6">Atas Nama</th>
+                                                <th className="p-6 text-center">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {banks.map(bank => (
+                                                <tr key={bank.id} className="hover:bg-slate-50/50 transition-colors">
+                                                    <td className="p-6">
+                                                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest ${
+                                                            bank.provider === 'QRIS' ? 'bg-purple-100 text-purple-700' : 
+                                                            bank.provider === 'VA' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                                                        }`}>
+                                                            {bank.provider}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-6 font-black text-slate-800 text-lg tracking-wider">{bank.account_number}</td>
+                                                    <td className="p-6 text-slate-500 font-bold uppercase text-xs">{bank.account_name}</td>
+                                                    <td className="p-6">
+                                                        <div className="flex justify-center">
+                                                            <button onClick={() => handleDeleteBank(bank.id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors" title="Hapus">
+                                                                <Trash2 size={20} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {banks.length === 0 && (
+                                                <tr>
+                                                    <td colSpan="4" className="p-20 text-center text-slate-300">
+                                                        <CreditCard size={48} className="mx-auto mb-4 opacity-20" />
+                                                        <p className="font-bold">Belum ada rekening terdaftar.</p>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-1">Atas Nama</label>
-                                    <input type="text" value={newBank.account_name} onChange={e => setNewBank({ ...newBank, account_name: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:border-emerald-500 text-sm" placeholder="Contoh: PT. Pembayaran" required />
-                                </div>
-                                <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
-                                    <Plus size={18} /> Simpan Rekening
-                                </button>
-                            </form>
+                            </div>
                         </div>
                     </div>
                 )}
