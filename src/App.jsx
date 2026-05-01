@@ -65,46 +65,56 @@ const DEFAULT_PROFILE = {
 
 // --- MASTER PROMPT (RICHARDMEHA AI v5.0) ---
 const RICHARD_MASTER_PROMPT = (userProfile, currentTopic) => `
-== 📞 VOICE MODE: PHONE CALL SIMULATION ==
-You are simulating a NATURAL phone call conversation with TWO tutors:
-1. "Rina" 🇮🇩 → Indonesian Tutor (warm, casual, bestie vibes).
-2. "Alex" 🇬🇧 → English Tutor (fluent, natural, conversational).
+SYSTEM: RichardMeha AI – Real Human Conversation Mode
 
-== 🎭 INTERACTION RULES (DYNAMIC & HUMAN) ==
-- Speak like you are on a real phone call. Use natural fillers: "hmm...", "okay wait...", "nah jadi gini...", "you know...", "actually...".
-- Rina and Alex can take turns naturally. They can even react to EACH OTHER briefly.
-  Example: Rina: "Nah, coba dengerin Alex deh." Alex: "Yeah, Rina is right! You can say..."
-- NEVER sound like a script. Keep it alive, messy, and fun.
+You are NOT an AI assistant. You are a real human tutor having a casual conversation with ${userProfile.name}.
+You are warm, funny, and sound like a real person on a phone call or chat.
 
-== 🧠 AUTOMATIC LANGUAGE DETECTION ==
-- If user input is ~70% Indonesian → Rina leads the response.
-- If user input is ~70% English → Alex leads the response.
-- If Mixed → They both jump in to help.
+== 🎯 MAIN GOAL ==
+- Make the user feel like chatting with a real person.
+- Teach English naturally through conversation.
+- Keep it interactive, alive, and fun.
 
-== 🎭 RESPONSE FORMAT (PHONE CALL STYLE) ==
-[Rina 🇮🇩]
-(Casual Indonesian. Use "bestie" tone. React naturally to user or Alex.)
+== 🧠 LANGUAGE RULE ==
+- If user uses Indonesian → reply in natural Indonesian + English examples.
+- If user uses English → reply in English + light Indonesian support.
+- NEVER explain like a textbook. Talk like a friend helping another friend.
 
-[Alex 🇬🇧]
-(Conversational English. Fluent, uses idioms, very natural.)
+== 💬 HOW YOU TALK ==
+- Use short, punchy sentences.
+- Use natural reactions: "hmm...", "oh interesting!", "nah gitu dong", "okay wait", "actually...", "you know what?".
+- React to what the user said with empathy or humor.
+- Like chatting, NOT teaching.
 
-== 🧑‍🏫 TEACHING BEHAVIOR ==
-- Ask questions ONE by ONE. Don't overwhelm the user.
-- [GENTLE CORRECTION]: "hampir bener nih, tapi kalau di US orang biasanya bilang..."
-- [SMART SUGGESTIONS]: If user is quiet, give 2-3 short "cheat sheet" options.
+== 🚫 FORBIDDEN ==
+- DO NOT use labels like "CORRECTION:", "EXPLANATION:", "SCORE:".
+- DO NOT use numbered lists or formal structure.
+- DO NOT use long paragraphs.
 
-== 📊 SCORING & FEEDBACK (APPEND SILENTLY) ==
-After every turn, append this block:
-1. 🔍 CORRECTION: ❌ [Wrong] ✅ [Natural]
-2. 💡 EXPLANATION: Short casual Indo tip.
-3. 🔊 PHONETIC: Tricky word -> /sound/
-4. 📊 SCORE BLOCK:
-   ---
-   SCORE: {"grammar": [0-100], "vocab": [0-100], "fluency": [0-100], "feedback": "Short tip", "phonetic": "word -> /sound/"}
+== ✅ HOW TO CORRECT ==
+- Correct naturally within the conversation.
+- Instead of "Your grammar is wrong", say: "hampir bener nih, tapi biasanya kita bilang gini..." or "lebih natural kalau bilangnya..."
+
+== 🧑‍🏫 TEACHING FLOW ==
+1. React to the user's message naturally.
+2. Improve their sentence/thought in a natural way.
+3. Give 1 simple example.
+4. Ask 1 follow-up question.
+
+== 🆘 IF USER IS SILENT / CONFUSED ==
+- Give a gentle suggestion: "Kalau bingung, kamu bisa jawab kayak gini: [Suggestion]"
+
+== 📊 DATA TRACKING (STRICTLY HIDDEN) ==
+At the very end of your response, AFTER the separator "---", append a single JSON object for the app's XP system.
+Example: 
+... (your natural message) ...
+---
+{"grammar": 85, "vocab": 90, "fluency": 80, "feedback": "Natural tip", "phonetic": "word -> sound"}
 
 == USER PROFILE ==
 Name: ${userProfile.name} | Level: ${userProfile.level} | Topic: ${currentTopic}
 `;
+
 
 
 
@@ -282,8 +292,8 @@ export default function App() {
             },
             'daily': {
               topic: 'Daily Routines',
-              msg: "[Rina 🇮🇩]\nHmm... halo! Alex, are you there? 📞\n\n[Alex 🇬🇧]\nYeah, I'm here! Hey Richard, we're on a call today to talk about your daily routines. \n\n[Rina 🇮🇩]\nNah, jadi gitu! Kita ngobrol santai ya. Alex, what should we ask him first?",
-              suggestions: ["I wake up at...", "First, I check my phone", "I usually have coffee", "Wait, what's routine?"]
+              msg: "Hmm... pagi Richard! 😊\nHari ini kita ngobrol santai aja soal 'Daily Routines'.\n\nBiasanya kalau pagi-pagi gini kamu ngapain dulu? Langsung cek HP atau kopi dulu? 😄",
+              suggestions: ["I check my phone", "I have coffee", "I take a shower", "I usually wake up at..."]
             }
           }
           : {};
@@ -545,7 +555,7 @@ function ChatModule({
   module,
   basePrompt,
   topic = '',
-  startMessage = '📞 [Phone Ringing...] Halo! Rina dan Alex di sini. Siap ngobrol?',
+  startMessage = 'Halo! Richard di sini. Siap buat ngobrol santai hari ini? 😊',
   hideInputAtStart = false,
   onComplete,
   onBack,
@@ -650,9 +660,13 @@ function ChatModule({
   };
 
   const detectLanguage = (text) => {
-    const idWords = ['apa', 'saya', 'kamu', 'ingin', 'bisa', 'belajar', 'Halo', 'pagi', 'siang', 'sore', 'malam'];
-    const lowerText = text.toLowerCase();
-    return idWords.some(word => lowerText.includes(word)) ? 'id' : 'en';
+    const indoWords = ["saya", "kamu", "apa", "kenapa", "bangun", "makan", "bingung", "ngerti", "tau"];
+    const lower = text.toLowerCase();
+    let score = 0;
+    indoWords.forEach(word => {
+      if (lower.includes(word)) score++;
+    });
+    return score >= 1 ? "id" : "en";
   };
 
   const handleTTS = async (text) => {
@@ -817,10 +831,14 @@ function ChatModule({
       contents: contents,
       systemInstruction: {
         parts: [{
-          text: `${basePrompt}\n\n[USER EMOTION: ${emotionState}]\n[PERSONALITY: ${personalityInstruction}]\n[WEAK AREAS MEMORY: ${memory.mistakes.length > 0 ? memory.mistakes.join(', ') : 'None yet'}]\n${modeInstruction}`
+          text: `${basePrompt}\n\n[CURRENT STATUS: ${emotionState}]\n[VIBE: ${personalityInstruction}]\n${modeInstruction}`
         }]
       },
-      generationConfig: { temperature: voicePersonality === 'buddy' ? 0.9 : voicePersonality === 'strict' ? 0.3 : 0.7 }
+      generationConfig: { 
+        temperature: 0.9,
+        topP: 0.95,
+        maxOutputTokens: 512
+      }
     };
 
     try {
@@ -842,22 +860,35 @@ function ChatModule({
         throw new Error("Invalid response format from Gemini");
       }
 
-      // Extract Score
-      const scoreMatch = aiText.match(/SCORE: (\{.*\})/);
-      if (scoreMatch) {
+      // Extract Hidden Score Data for XP/Dashboard
+      if (aiText.includes('---')) {
+        const parts = aiText.split('---');
+        const jsonPart = parts[parts.length - 1].trim();
         try {
-          const scoreObj = JSON.parse(scoreMatch[1]);
+          const scoreObj = JSON.parse(jsonPart);
           setLastScore(scoreObj);
           updateXP(15);
-
+          
+          // Clean text for UI: remove everything from --- onwards
+          aiText = parts.slice(0, -1).join('---').trim();
+          
           // Memory tracking: if mistake detected
           if (aiText.includes('❌')) {
             const mistake = aiText.match(/❌ (.*)/)?.[1];
             if (mistake) setMemory(prev => ({ ...prev, mistakes: [...new Set([...prev.mistakes, mistake])].slice(-5) }));
           }
-
-          aiText = aiText.replace(/---[\s\S]*SCORE: \{.*\}[\s\S]*/, '').trim();
-        } catch (e) { console.warn(e); }
+        } catch (e) { 
+          // Fallback regex if split fails
+          const match = aiText.match(/---[\s\S]*(\{[\s\S]*\})/);
+          if (match) {
+            try {
+              const obj = JSON.parse(match[1]);
+              setLastScore(obj);
+              updateXP(15);
+              aiText = aiText.replace(/---[\s\S]*/, '').trim();
+            } catch(ee) { console.warn("JSON Parse failed", ee); }
+          }
+        }
       }
 
       if (callMode) {
