@@ -46,7 +46,7 @@ import { CURRICULUM } from './data/curriculum';
 import { VOCABULARY_TOPICS, GRAMMAR_TOPICS, SPEAKING_TOPICS, LISTENING_TOPICS, CONVERSATION_CHARACTERS } from './data/topics';
 
 // --- KONFIGURASI API GEMINI ---
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || ""; 
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY_B64 ? atob(import.meta.env.VITE_GEMINI_API_KEY_B64) : (import.meta.env.VITE_GEMINI_API_KEY || ""); 
 
 // --- DATA PROFIL DEFAULT ---
 const DEFAULT_PROFILE = {
@@ -904,7 +904,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
     if (!translationPopover) return;
     setInlineTranslation({ loading: true, text: '' });
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const url = `http://localhost:3000/api/gemini`;
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1011,7 +1011,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
     }
 
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const url = `http://localhost:3000/api/gemini`;
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1059,13 +1059,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
   const sendMessage = async (text, isSystemInitiated = false) => {
     if (!text.trim()) return;
 
-    if (!apiKey) {
-       setMessages(prev => [...prev, { 
-        role: 'system', 
-        content: '⚠️ API Key Gemini belum diatur. Silakan isi VITE_GEMINI_API_KEY di file .env.' 
-      }]);
-      return;
-    }
+
 
     // Stop recording if active
     if (isRecording) {
@@ -1101,7 +1095,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
         generationConfig: { temperature: 0.7 }
       };
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const url = `http://localhost:3000/api/gemini`;
       
       const res = await fetchWithRetry(url, {
         method: 'POST',
