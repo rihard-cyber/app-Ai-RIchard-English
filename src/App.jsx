@@ -921,10 +921,17 @@ function ChatModule({
     };
 
     try {
-      const res = await fetch('http://localhost:3000/api/gemini', {
+      // Direct Client-Side Call to Gemini API (GitHub Pages compatible)
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      
+      const res = await fetch(geminiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          contents: payload.contents,
+          systemInstruction: payload.systemInstruction,
+          generationConfig: payload.generationConfig
+        })
       });
 
       const data = await res.json();
