@@ -2,57 +2,90 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 
-// Load environment variables from .env file
 dotenv.config();
 
 const app = express();
-
-// Enable CORS so the React app can talk to this server
 app.use(cors());
-
-// Parse incoming JSON requests
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
-const API_KEY = process.env.GEMINI_API_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
-if (!API_KEY) {
-  console.error("FATAL ERROR: GEMINI_API_KEY is not defined in backend/.env");
+if (!GROQ_API_KEY) {
+  console.error("FATAL ERROR: GROQ_API_KEY is not defined in backend/.env");
   process.exit(1);
 }
 
-// Reverse Proxy Endpoint for Gemini API
-// Frontend will send requests here instead of directly to Google
+// Proxy endpoint — receives messages from React and forwards to Groq
 app.post('/api/gemini', async (req, res) => {
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
-    
-    // Forward the payload from React directly to Google
-    const response = await fetch(url, {
+    // Convert Gemini-format payload to Groq/OpenAI format
+    const { contents, systemInstruction, generationConfig } = req.body;
+
+    // Build messages array in OpenAI format
+    const messages = [];
+
+    // Add system instruction if present
+    if (systemInstruction?.parts?.[0]?.text) {
+      messages.push({ role: 'system', content: systemInstruction.parts[0].text });
+    }
+
+    // Convert Gemini "contents" to OpenAI "messages"
+    if (contents && Array.isArray(contents)) {
+      contents.forEach(c => {
+        if (c.role === 'user' || c.role === 'assistant') {
+          const text = c.parts?.map(p => p.text).join('') || '';
+          messages.push({ role: c.role, content: text });
+        }
+      });
+    }
+
+    const groqPayload = {
+      model: 'llama-3.3-70b-versatile',
+      messages,
+      temperature: generationConfig?.temperature || 0.7,
+      max_tokens: 2048,
+    };
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req.body)
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GROQ_API_KEY}`
+      },
+      body: JSON.stringify(groqPayload)
     });
 
-    // Parse Google's response
     const data = await response.json();
-    
-    // If Google returns an error (e.g. 400 Bad Request, 429 Too Many Requests)
+
     if (!response.ok) {
-      console.error("Gemini API Error:", data);
+      console.error("Groq API Error:", data);
       return res.status(response.status).json(data);
     }
 
-    // Send successful response back to React
-    res.json(data);
+    // Convert Groq response back to Gemini-like format so React doesn't need changes
+    const groqText = data.choices?.[0]?.message?.content || '';
+    const geminiLikeResponse = {
+      candidates: [
+        {
+          content: {
+            parts: [{ text: groqText }],
+            role: 'model'
+          },
+          finishReason: 'STOP'
+        }
+      ]
+    };
+
+    res.json(geminiLikeResponse);
   } catch (error) {
     console.error("Server Error:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-// Start the server
 app.listen(PORT, () => {
-  console.log(`✅ Backend server running safely on http://localhost:${PORT}`);
-  console.log(`🛡️ API Key is hidden and secure!`);
+  console.log(`✅ Backend server running on http://localhost:${PORT}`);
+  console.log(`⚡ Powered by GROQ (llama-3.3-70b) — Gratis & Super Cepat!`);
+  console.log(`🛡️  API Key tersembunyi aman di server!`);
 });
