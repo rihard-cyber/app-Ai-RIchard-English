@@ -33,7 +33,10 @@ import {
   Zap,
   ArrowUpRight,
   PenTool,
-  Crown
+  Crown,
+  Moon,
+  Sun,
+  LogOut
 } from 'lucide-react';
 import { Lightbulb } from 'lucide-react';
 import { LoginPage, SubscriptionPage } from './Auth';
@@ -44,8 +47,20 @@ import WritingAnalyzer from './WritingAnalyzer';
 import PaymentModal from './PaymentModal';
 import { supabase } from './supabaseClient';
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY_B64 ? atob(import.meta.env.VITE_GEMINI_API_KEY_B64) : (import.meta.env.VITE_GEMINI_API_KEY || ""); 
-
+const apiKey = (() => {
+  try {
+    const b64 = import.meta.env.VITE_GEMINI_API_KEY_B64 || "";
+    if (b64) {
+      // Handle potential Base64Url characters
+      const standardB64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+      return atob(standardB64);
+    }
+    return import.meta.env.VITE_GEMINI_API_KEY || "";
+  } catch (e) {
+    console.error("Failed to decode API key", e);
+    return "";
+  }
+})();
 // --- DATA PROFIL DEFAULT ---
 const DEFAULT_PROFILE = {
   name: "User",
@@ -150,30 +165,50 @@ export default function App() {
 
   const checkUser = async () => {
     setIsInitializing(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) { await fetchProfile(user); setAuthState('app'); } else { setAuthState('login'); }
-    setIsInitializing(false);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) { 
+        await fetchProfile(user); 
+        setAuthState('app'); 
+      } else { 
+        setAuthState('login'); 
+      }
+    } catch (err) {
+      console.error("Auth check failed", err);
+      setAuthState('login');
+    } finally {
+      setIsInitializing(false);
+    }
   };
 
   const fetchProfile = async (userObj) => {
-    const userId = typeof userObj === 'string' ? userObj : userObj.id;
-    const metaName = typeof userObj === 'object' ? (userObj.user_metadata?.full_name || '') : '';
-    const { data } = await supabase.from('user_profiles').select('*').eq('id', userId).single();
-    if (data) {
-      setUserProfile({
-        name: data.full_name || metaName || 'User',
-        gender: data.gender || "male",
-        level: data.level || "Beginner (A1)",
-        xp: data.xp || 0,
-        streak: data.streak || 0,
-        has_completed_initial_test: data.has_completed_initial_test || false,
-        is_pro: data.is_pro || false,
-        subscription_plan: data.subscription_plan || 'Free'
-      });
-      if (!data.has_completed_initial_test) setAuthState('assessment');
-      else setAuthState('app');
-    } else {
-      if (metaName) setUserProfile(prev => ({ ...prev, name: metaName }));
+    try {
+      const userId = typeof userObj === 'string' ? userObj : userObj.id;
+      const metaName = typeof userObj === 'object' ? (userObj.user_metadata?.full_name || '') : '';
+      const { data, error } = await supabase.from('user_profiles').select('*').eq('id', userId).maybeSingle();
+      
+      if (error) throw error;
+
+      if (data) {
+        setUserProfile({
+          name: data.full_name || metaName || 'User',
+          gender: data.gender || "male",
+          level: data.level || "Beginner (A1)",
+          xp: data.xp || 0,
+          streak: data.streak || 0,
+          has_completed_initial_test: data.has_completed_initial_test || false,
+          is_pro: data.is_pro || false,
+          subscription_plan: data.subscription_plan || 'Free'
+        });
+        if (!data.has_completed_initial_test) setAuthState('assessment');
+        else setAuthState('app');
+      } else {
+        if (metaName) setUserProfile(prev => ({ ...prev, name: metaName }));
+        setAuthState('app');
+      }
+    } catch (err) {
+      console.error("Profile fetch failed", err);
+      // Fallback to minimal profile if DB fails
       setAuthState('app');
     }
   };
@@ -270,7 +305,7 @@ export default function App() {
       case 'settings':
         return (
           <div className="p-6 md:p-10 max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-3xl font-black text-slate-800 flex items-center gap-3"><SettingsIcon className="text-blue-600" /> Pengaturan Akun</h2>
+            <h2 className="text-3xl font-black text-slate-800 flex items-center gap-3"><Settings className="text-blue-600" /> Pengaturan Akun</h2>
             <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
               <div className="p-6 border-b border-slate-100 flex items-center justify-between">
                 <div><h4 className="font-bold text-slate-800">Tema Aplikasi</h4><p className="text-xs text-slate-500">Pilih tampilan yang nyaman di mata.</p></div>
@@ -314,7 +349,7 @@ export default function App() {
           <NavItem icon={<PenTool />} label="Writing Analyzer" isActive={activeTab === 'writing_analyzer'} onClick={() => handleTabChange('writing_analyzer')} />
           <NavItem icon={<GraduationCap />} label="Grammar Speaking" isActive={activeTab === 'grammar'} onClick={() => handleTabChange('grammar')} />
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-6">Akun</p>
-          <NavItem icon={<SettingsIcon />} label="Pengaturan" isActive={activeTab === 'settings'} onClick={() => handleTabChange('settings')} />
+          <NavItem icon={<Settings />} label="Pengaturan" isActive={activeTab === 'settings'} onClick={() => handleTabChange('settings')} />
           <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-rose-400 hover:bg-rose-900/20 hover:text-rose-300 transition-all"><LogOut size={18} /> <span className="text-sm">Log Out</span></button>
         </nav>
       </aside>
