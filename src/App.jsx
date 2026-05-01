@@ -44,8 +44,11 @@ import AchievementSystem from './AchievementSystem';
 import LevelTest from './LevelTest';
 import ProgressDashboard from './ProgressDashboard';
 import WritingAnalyzer from './WritingAnalyzer';
+import PronunciationCoach from './PronunciationCoach';
 import PaymentModal from './PaymentModal';
 import { supabase } from './supabaseClient';
+import { CURRICULUM } from './data/curriculum';
+import { VOCABULARY_TOPICS as VOCAB_RAW, GRAMMAR_TOPICS as GRAMMAR_RAW, SPEAKING_TOPICS as SPEAKING_RAW, LISTENING_TOPICS as LISTENING_RAW, CONVERSATION_CHARACTERS as CHARS_RAW } from './data/topics';
 
 const apiKey = (() => {
   try {
@@ -265,14 +268,15 @@ export default function App() {
       case 'progress': return <ProgressDashboard userProfile={userProfile} />;
       case 'assessment': return <LevelTest onComplete={handleAssessmentComplete} />;
       case 'vocabulary': return <SetupModule module="Vocabulary" basePrompt={prompts.vocabulary} icon={<BookA size={24}/>} color="text-indigo-600" bg="bg-indigo-100" onComplete={(score) => saveProgress('vocabulary', score)} isPro={userProfile.is_pro} topicsList={VOCABULARY_TOPICS} />;
-      case 'speaking': return <SetupModule module="Speaking Coach" basePrompt={prompts.speaking} icon={<Mic size={24}/>} color="text-rose-600" bg="bg-rose-100" onComplete={(score) => saveProgress('speaking', score)} isPro={userProfile.is_pro} topicsList={SPEAKING_TOPICS} />;
+      case 'speaking': return <PronunciationCoach userProfile={userProfile} isPro={userProfile.is_pro} onComplete={(score) => saveProgress('speaking', score)} onUpgrade={() => setIsPaymentModalOpen(true)} />;
       case 'grammar': return <SetupModule module="Grammar for Speaking" basePrompt={prompts.grammar} icon={<LayoutDashboard size={24}/>} color="text-emerald-600" bg="bg-emerald-100" onComplete={(score) => saveProgress('grammar', score)} isPro={userProfile.is_pro} topicsList={GRAMMAR_TOPICS} />;
       case 'listening': return <SetupModule module="Listening & Talking" basePrompt={prompts.listening} icon={<Headphones size={24}/>} color="text-amber-600" bg="bg-amber-100" onComplete={(score) => saveProgress('listening', score)} isPro={userProfile.is_pro} topicsList={LISTENING_TOPICS} />;
-      case 'writing_analyzer': return <WritingAnalyzer isPro={userProfile.is_pro} />;
+      case 'writing_analyzer': return <WritingAnalyzer userProfile={userProfile} onUpgrade={() => setIsPaymentModalOpen(true)} />;
       case 'call_tutor': return <ChatModule module="🎧 Call Tutor" basePrompt={prompts.call_tutor} initialCallMode={true} topic="Daily Practice" onBack={() => handleTabChange('home')} />;
       case 'conversation': return <ConversationModule basePrompt={prompts.conversation} isPro={userProfile.is_pro} charactersList={CONVERSATION_CHARACTERS} />;
       case 'goal_session':
-        const goalData = (userProfile.level.includes('A1') || userProfile.level.includes('Beginner')) 
+        const safeLevel = userProfile?.level || "Beginner (A1)";
+        const goalData = (safeLevel.includes('A1') || safeLevel.includes('Beginner')) 
           ? {
               'intro': { 
                 topic: 'Basic Introduction', 
@@ -372,109 +376,24 @@ export default function App() {
 // DATA & CURRICULUM
 // ==========================================
 
-const CURRICULUM = {
-  'Beginner (A1)': {
-    goals: [
-      { id: 'intro', name: "Self Introduction (Name, Age, Origin)" },
-      { id: 'numbers', name: "Numbers & Basic Colors Mastery" },
-      { id: 'daily', name: "Daily Vocabulary (Morning Routine)" },
-      { id: 'family', name: "Talking about Family Members" }
-    ],
-    nextLevel: 'Elementary (A2)'
-  },
-  'Elementary (A2)': {
-    goals: [
-      { id: 'hobbies', name: "Describing Hobbies and Interests" },
-      { id: 'past_exp', name: "Talking about Last Weekend (Past Tense)" },
-      { id: 'directions', name: "Asking and Giving Directions" },
-      { id: 'shopping', name: "Basic Shopping & Prices" }
-    ],
-    nextLevel: 'Intermediate (B1)'
-  },
-  'Intermediate (B1)': {
-    goals: [
-      { id: 'opinions', name: "Expressing Opinions on Social Issues" },
-      { id: 'career', name: "Work, Career, and Job Interviews" },
-      { id: 'plans', name: "Future Plans and Aspirations" },
-      { id: 'travel', name: "Travel Experiences & Planning" }
-    ],
-    nextLevel: 'Advanced (B2)'
-  },
-  'Advanced (B2)': {
-    goals: [
-      { id: 'debate', name: "Debating Complex Global Topics" },
-      { id: 'business', name: "Professional Business Negotiations" },
-      { id: 'literature', name: "Analyzing Stories & Literature" },
-      { id: 'idioms', name: "Mastering Native Idioms & Slang" }
-    ],
-    nextLevel: 'Proficient (C1)'
-  }
-};
-
-const VOCABULARY_TOPICS = [
-  { name: "Family & Relations", level: "Beginner" },
-  { name: "Fruits & Vegetables", level: "Beginner" },
-  { name: "Common Daily Objects", level: "Beginner" },
-  { name: "Public Transport", level: "Elementary" },
-  { name: "Kitchen Utensils", level: "Elementary" },
-  { name: "Medical Terms", level: "Intermediate" },
-  { name: "IT & Technology", level: "Intermediate" },
-  { name: "Banking & Finance", level: "Advanced" },
-  { name: "Abstract Concepts", level: "Advanced" },
-  { name: "Environment & Climate", level: "Advanced" }
-];
-
-const SPEAKING_TOPICS = [
-  { name: "Ordering at a Cafe", level: "Beginner" },
-  { name: "Checking into a Hotel", level: "Beginner" },
-  { name: "Talking to a Neighbor", level: "Elementary" },
-  { name: "Giving a Short Speech", level: "Elementary" },
-  { name: "Job Interview Prep", level: "Intermediate" },
-  { name: "Doctor Consultation", level: "Intermediate" },
-  { name: "Resolving a Complaint", level: "Intermediate" },
-  { name: "Salary Negotiation", level: "Advanced" },
-  { name: "Ted Talk Simulation", level: "Advanced" },
-  { name: "Political Debate", level: "Advanced" }
-];
-
-const GRAMMAR_TOPICS = [
-  { name: "Simple Present Tense", level: "Beginner" },
-  { name: "Pronouns & Articles", level: "Beginner" },
-  { name: "Past Simple Tense", level: "Elementary" },
-  { name: "Present Continuous", level: "Elementary" },
-  { name: "Present Perfect", level: "Intermediate" },
-  { name: "Conditional Type 1 & 2", level: "Intermediate" },
-  { name: "Passive Voice", level: "Intermediate" },
-  { name: "Reported Speech", level: "Advanced" },
-  { name: "Inversion & Emphasis", level: "Advanced" },
-  { name: "Advanced Modals", level: "Advanced" }
-];
-
-const LISTENING_TOPICS = [
-  { name: "Slow Morning News", level: "Beginner" },
-  { name: "Funny Daily Vlogs", level: "Beginner" },
-  { name: "Airport Announcements", level: "Elementary" },
-  { name: "Short Story Audio", level: "Elementary" },
-  { name: "Podcast: Life in London", level: "Intermediate" },
-  { name: "Business News Brief", level: "Intermediate" },
-  { name: "University Lecture", level: "Advanced" },
-  { name: "Native Slang Breakdown", level: "Advanced" }
-];
-
-const CONVERSATION_CHARACTERS = [
-  { name: "Elon Musk", role: "Tech Innovator", prompt: "Speak like Elon Musk: visionary, intense, and focused on the future of humanity." },
-  { name: "Taylor Swift", role: "Singer-Songwriter", prompt: "Speak like Taylor Swift: poetic, friendly, and very expressive." },
-  { name: "Sherlock Holmes", role: "Detective", prompt: "Speak like Sherlock Holmes: highly analytical, slightly arrogant, and observant." },
-  { name: "Gordon Ramsay", role: "Chef", prompt: "Speak like Gordon Ramsay: intense, passionate, and slightly blunt (but encouraging as a tutor)." },
-  { name: "Oprah Winfrey", role: "Talk Show Host", prompt: "Speak like Oprah: warm, inspiring, and very empathetic." }
-];
+const mapTopics = (arr) => arr.map(t => ({ name: t, level: "Semua Level" }));
+const VOCABULARY_TOPICS = mapTopics(VOCAB_RAW);
+const SPEAKING_TOPICS = mapTopics(SPEAKING_RAW);
+const GRAMMAR_TOPICS = mapTopics(GRAMMAR_RAW);
+const LISTENING_TOPICS = mapTopics(LISTENING_RAW);
+const CONVERSATION_CHARACTERS = CHARS_RAW.map(c => ({
+  name: c.name,
+  role: c.topic,
+  prompt: `Berperanlah sebagai ${c.name} dan bicarakan tentang ${c.topic}.`
+}));
 
 
 // ==========================================
 // HOME DASHBOARD
 // ==========================================
 function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal }) {
-  const levelData = CURRICULUM[userProfile.level] || CURRICULUM['Beginner (A1)'];
+  const safeLevel = userProfile?.level || 'Pemula Dasar (A1)';
+  const levelData = CURRICULUM[safeLevel] || CURRICULUM['Pemula Dasar (A1)'];
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
@@ -490,7 +409,7 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal })
             </div>
             <h2 className="text-3xl md:text-5xl font-black mb-4 leading-tight">Lanjut Belajar,<br/>{userProfile.name}!</h2>
             <p className="text-blue-100 mb-8 md:text-lg max-w-md opacity-90 leading-relaxed">
-               Target kamu hari ini: **{levelData.goals[0].name || levelData.goals[0]}**. RichardMeha AI sudah siapkan materinya!
+               Target kamu hari ini: **{levelData?.goals?.[0]?.name || levelData?.goals?.[0] || 'Mulai belajar'}**. RichardMeha AI sudah siapkan materinya!
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <button 
@@ -517,10 +436,10 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal })
         <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-xl flex flex-col">
            <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2"><Trophy size={24} className="text-yellow-500" /> Goals Level {userProfile.level.split(' ')[0]}</h3>
            <div className="space-y-4 flex-1">
-              {levelData.goals.map((goal, i) => (
+              {(levelData?.lessons || levelData?.goals || []).map((goal, i) => (
                 <div key={i} onClick={() => goal.id ? onStartGoal(goal.id) : null} className={`flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 group transition-all cursor-pointer ${goal.id ? 'hover:border-blue-500 hover:bg-blue-50/30 hover:shadow-lg hover:-translate-y-1' : ''}`}>
                   <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-black shrink-0 mt-0.5 shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors">{i + 1}</div>
-                  <div className="flex-1"><p className="text-sm font-black text-slate-700 group-hover:text-blue-700 transition-colors">{goal.name || goal}</p>{goal.id && <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Klik untuk mulai latihan</p>}</div>
+                  <div className="flex-1"><p className="text-sm font-black text-slate-700 group-hover:text-blue-700 transition-colors">{goal.title || goal.name || goal}</p>{goal.id && <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{goal.topic || 'Klik untuk mulai latihan'}</p>}</div>
                   {goal.id && <ArrowUpRight size={18} className="text-slate-300 group-hover:text-blue-500 transition-colors" />}
                 </div>
               ))}
@@ -538,7 +457,7 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal })
         <DashboardCard title="Writing Analyzer" desc="Koreksi tulisanmu secara detail." icon={<PenTool size={24}/>} color="bg-blue-50 text-blue-600" hover="hover:border-blue-300 hover:shadow-blue-200" onClick={() => onNavigate('writing_analyzer')} />
         <DashboardCard title="Conversation" desc="Simulasi ngobrol bareng tokoh idola." icon={<MessageSquare size={24}/>} color="bg-purple-50 text-purple-600" hover="hover:border-purple-300 hover:shadow-purple-200" onClick={() => onNavigate('conversation')} />
       </div>
-      <div className="mt-12"><AchievementSystem /></div>
+      <div className="mt-12"><AchievementSystem userProfile={userProfile} /></div>
     </div>
   );
 }
