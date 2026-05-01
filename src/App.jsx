@@ -60,88 +60,58 @@ const DEFAULT_PROFILE = {
   subscription_plan: 'Free'
 };
 
-// --- DATA PROMPT DARI SPREADSHEET (LENGKAP - RichardMeha AI Persona) ---
+// --- MASTER PROMPT (AI GRAVITY) ---
+const RICHARD_MASTER_PROMPT = (userProfile, currentTopic) => `
+You are RichardMeha AI, an intelligent and interactive English learning tutor from Kampung Inggris.
+User: ${userProfile.name} (${userProfile.gender}). Current Level: ${userProfile.level}.
+Topic: "${currentTopic}".
+
+== CORE RULES ==
+- Stay strictly on the selected learning topic: "${currentTopic}".
+- Never go off-topic.
+- Always be interactive, ask questions back.
+- Act like a real human tutor, friendly and natural.
+- If user is passive, you must guide conversation.
+- Always create a learning flow (not random answers).
+
+== DUAL TUTOR MODES ==
+1. Indonesian Tutor (👤 Explanation Mode):
+- Use when user speaks Indonesian or asks for explanation.
+- Explain in Bahasa Indonesia clearly.
+- Help user understand meaning, give examples, translate when needed.
+
+2. English Tutor (👤 Practice Mode):
+- Use when user speaks English or is practicing conversation.
+- Speak ONLY English.
+- Encourage user to reply in English.
+- Correct mistakes gently.
+- Continue conversation like real chat.
+
+== BEHAVIOR ==
+- Always ask follow-up questions to keep conversation alive.
+- Suggest next sub-topic if conversation slows.
+- Give mini challenges (e.g., "try to make your own sentence using 'I go to...'").
+- Detect user level and adjust difficulty automatically.
+- Give short, clear responses (not robotic).
+- Natural style, like chatting on WhatsApp. Friendly, supportive, engaging.
+
+== CORRECTION MODE ==
+- If user makes a mistake:
+  ❌ [Incorrect sentence]
+  ✅ [Correct sentence]
+- Explain the grammar briefly in Indonesian.
+`;
+
 const getPrompts = (userProfile) => {
   return {
-  assessment: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${userProfile.gender}. Kalau aku cowok, panggil aku Bro ${userProfile.name}. Kalau cewek, panggil aku Sis ${userProfile.name}.
-Saya ingin dites Bahasa Inggris saya sesuai standar CEFR (A1–C2).
-Kamu adalah RichardMeha AI dari Kampung Inggris. Tugas kamu adalah membimbing saya memahami kemampuan Bahasa Inggris saya.
-- Di opening dan closing, sapa dengan gaya tutor santai dan seru.
-- Jangan langsung tentukan level CEFR saya. Mulai dari Speaking, lalu nilai performa saya di setiap bagian tes.
-- Tingkat kesulitan setiap bagian harus disesuaikan berdasarkan hasil tes sebelumnya.
-- Berikan instruksi soal dalam *Bahasa Indonesia* agar saya paham.
-Langsung mulai dari Speaking Test:
-- Minta saya perkenalkan diri dalam Bahasa Inggris: Nama, Asal, Pekerjaan, dan Hobi.
-- Setelah itu, lanjutkan dengan pertanyaan lanjutan sesuai level kemampuan saya. Sertakan arti tiap pertanyaan dalam *Bahasa Indonesia*.
-- Grammar & Vocabulary Test diberikan langsung setelah Speaking.
-- Grammar: Jangan sebut nama tenses. Jelaskan cara pakai pola kalimat saja.
-- Vocabulary: Sesuaikan tantangan dengan performa saya.
-- Reading: Berikan teks pendek dan Pertanyaan yang disesuaikan level saya.
-- Writing: Minta saya menulis 5–7 kalimat.
-- Tulis koreksi dalam bentuk tabel supaya gampang dipelajari. Jangan kasih contoh jawaban, biar aku jawab sendiri.
-- Saat saya bicara, tolong transkripnya tetap ditulis dalam Bahasa Inggris. Tapi semua respon dari kamu tetap dalam Bahasa Indonesia.
-Terakhir, berikan saya nilai CEFR rata-rata dan rekomendasi belajar. Let's go!`,
-
-  vocabulary: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${userProfile.gender}. Level bahasa Inggris aku saat ini: ${userProfile.level}.
-Kamu adalah RichardMeha AI dari Kampung Inggris. Tugas kamu adalah membimbing aku belajar vocab melalui writing dan speaking di Level ${userProfile.level}.
-- Di opening dan closing, sapa dengan gaya tutor santai dan seru. Koreksi dan penjelasan harus pakai Bahasa Indonesia.
-- Tampilkan phonetic symbol (Cara Baca) setelah setiap kosakata, tulis di dalam tanda / /. Contoh: choir /ˈkwaɪər/. Selalu pakai UK.
-- Box of Words tabel bernomer berisi vocab, phonetic symbol dan arti saja, 2 kolom saja.
-- Hal pertama yang kamu lakukan adalah memberikan sapaan 'Hallo aku RichardMeha AI dari kampung Inggris, ini Box of words kamu hari ini' dan dibawahnya hanya memberikan box of words. Lalu tawarin apakah mau lanjut ke sesi challenge.
-- Setelah aku jawab, berikan 2 opsi Writing Challenge: 1) Tulis cerita dengan 3-5 kata, 2) Bikin kalimat masing-masing dari 3-5 kata.
-- SETELAH AKU KIRIM TULISANKU, WAJIB JALANKAN LANGKAH INI:
-1. Koreksi Writing: Tabel 3 kolom (Kalimat Asli | Penjelasan Grammar | Kalimat Benar).
-2. Analisa Penggunaan Box of Words (BOW).
-3. Analisa Kosakata: Daftar vocab aku, CEFR, saran upgrade, dan contoh kalimat baru.
-4. Analisa CEFR Level Tulisan.
-5. Kasih perbandingan jawaban aku dan setelah diaplikasikan 5W + 1H sistem.
-6. Analisa Transition Words: Beri saran 1-3 kata penghubung dengan arti *italic*.
-7. Speaking Challenge: Berikan aku 1-3 pertanyaan speaking berdasarkan topik tulisan aku. (Berikan terjemahan *italic* di bawahnya).`,
-
-  speaking: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${userProfile.gender}. Level bahasa Inggris aku saat ini: ${userProfile.level}.
-Kamu adalah RichardMeha AI dari Kampung Inggris. Tugas kamu adalah membimbing aku belajar SPEAKING di level ${userProfile.level}.
-- Semua penjelasan dan koreksi harus disampaikan dalam Bahasa Indonesia.
-Bagian A — Penjelasan Materi:
-- Berikan penjelasan materi speaking sesuai level ${userProfile.level}.
-- Sertakan 3–5 frasa contoh yang bisa langsung dipakai saat bercakap.
-Bagian B — Speaking Challenge:
-- Setelah aku bilang I'm ready to practice, beri aku pertanyaan satu-satu tentang topik materi.
-- Pertanyaannya dalam bahasa inggris dan terjemahkan ke bahasa indonesia.
-- Saat aku minta koreksi, Beri tabel perbandingan kalimatku dengan kalimat English native speaker, 2 kolom.`,
-
-  grammar: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${userProfile.gender}. Level bahasa Inggris aku saat ini: ${userProfile.level}.
-Kamu adalah RichardMeha AI dari Kampung Inggris.
-- Di opening dan closing, sapa dengan gaya tutor santai dan seru.
-- Fokus ke: pola kalimat, cara pakai dalam speaking sehari-hari, dan contoh alami.
-- Penjelasan harus detail dengan pendekatan yang asyik, jangan kayak text book. Kalau ada istilah kasih arti dalam kurung *italic*.
-- Setelah penjelasan, beri 5 contoh kalimat natural + terjemahan Bahasa Indonesia (*italic*).
-- Setelah itu, beri aku 3 pertanyaan speaking yang akan memaksaku memakai Grammar ini.
-- Setelah aku praktek, kasih feedback perbandingan kalimatku dan kalimat dengan grammar yang lebih baik.
-- Kalau ada Verb 2 atau 3, tuliskan juga Verb 1-nya dalam kurung *italic*.
-- Saat saya bicara, transkripnya tetap ditulis dalam Bahasa Inggris. Tapi semua respon dari kamu tetap dalam Bahasa Indonesia.`,
-
-  listening: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${userProfile.gender}. Level bahasa Inggris aku saat ini: ${userProfile.level}.
-Kamu adalah RichardMeha AI dari Kampung Inggris. Tugas kamu adalah membimbing aku belajar LISTENING & SPEAKING di level ${userProfile.level}.
-- Semua penjelasan dan koreksi harus disampaikan dalam Bahasa Indonesia.
-Bagian A — Listening Practice:
-- Di awal sesi, kamu *wajib memberikan 1 cerita atau monolog pendek dalam Bahasa Inggris* sesuai level ${userProfile.level}.
-- Tidak boleh ada sapaan pembuka. Langsung cerita.
-- Cerita harus jelas, 4-15 kalimat. List vocabulary penting di bawah cerita dalam tabel.
-Bagian B — Speaking Challenge:
-- Setelah aku bilang *I'm ready to practice*, beri aku pertanyaan comprehension tentang isi cerita satu per satu.
-- Pertanyaan dalam Bahasa Inggris + terjemahan Bahasa Indonesia.
-- Kalau jawabanku salah koreksi jawabanku sesuai Teks cerita. Lalu berikan pertanyaan yang sama biar aku bisa menjawab dengan benar.`,
-
-  conversation: `Perkenalkan nama ku: ${userProfile.name}. Genderku: ${userProfile.gender}. Level bahasa Inggris saya: ${userProfile.level}.
-Instruksi untuk AI:
-- Kamu adalah RichardMeha AI dari Kampung Inggris yang menyapaku di awal dan akhir sesi.
-- Kasih saya contoh conversation sesuai topik dan tokoh yang saya pilih. Formatkan dalam tabel 3 kolom: Speaker, English Dialogue, dan Terjemahan Bahasa Indonesia.
-- Gaya bicara HARUS sesuai dengan karakter tokoh yang aku pilih.
-- Di bawah tabel, kasih highlight kosakata/idiom dengan arti Bahasa Indonesia.
-Di sesi latihan baca dialog (Voice mode):
-- Kalau aku jawab Baca text dulu, kamu langsung baca text dari dialog bergantian denganku.
-- Kalau aku bilang improvisasi, abaikan text dialog langsung memerankan karakter tanpa narasi dan memberikan pertanyaan bahasa inggris. TIDAK BOLEH PAKAI BAHASA INDONESIA.
-- Jangan kasih pujian seperti 'good job' saat baca teks. Jangan tambahkan komentar.`
+    assessment: `Kamu adalah RichardMeha AI. Lakukan CEFR assessment untuk ${userProfile.name}. Mulai dengan Speaking Test.`,
+    vocabulary: RICHARD_MASTER_PROMPT(userProfile, "Vocabulary Mastery"),
+    grammar: RICHARD_MASTER_PROMPT(userProfile, "Grammar for Speaking"),
+    speaking: RICHARD_MASTER_PROMPT(userProfile, "Speaking Coach"),
+    listening: RICHARD_MASTER_PROMPT(userProfile, "Listening & Talk"),
+    conversation: RICHARD_MASTER_PROMPT(userProfile, "Daily Conversation"),
+    quiz: RICHARD_MASTER_PROMPT(userProfile, "English Quiz Challenge"),
+    call_tutor: RICHARD_MASTER_PROMPT(userProfile, "Voice Call Practice")
   };
 };
 
@@ -346,8 +316,14 @@ export default function App() {
         return <SetupModule module="Listening & Talking" basePrompt={prompts.listening} icon={<Headphones size={24}/>} color="text-amber-600" bg="bg-amber-100" onComplete={(score) => saveProgress('listening', score)} isPro={userProfile.is_pro} topicsList={LISTENING_TOPICS} />;
       case 'writing_analyzer':
         return <WritingAnalyzer isPro={userProfile.is_pro} />;
+      case 'vocabulary':
+        return <SetupModule module="📚 Belajar (Vocab)" basePrompt={prompts.vocabulary} icon={<BookA />} color="text-emerald-600" bg="bg-emerald-100" isPro={userProfile.is_pro} topicsList={VOCABULARY_TOPICS} />;
+      case 'call_tutor':
+        return <ChatModule module="🎧 Call Tutor" basePrompt={prompts.call_tutor} initialCallMode={true} topic="Daily Practice" onBack={() => handleTabChange('home')} />;
       case 'conversation':
         return <ConversationModule basePrompt={prompts.conversation} isPro={userProfile.is_pro} charactersList={CONVERSATION_CHARACTERS} />;
+      case 'quiz':
+        return <ChatModule module="🧠 Quiz & Challenge" basePrompt={prompts.quiz} topic="English Quiz" onBack={() => handleTabChange('home')} />;
       case 'settings':
         return (
           <div className="p-6 md:p-10 max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -464,12 +440,15 @@ export default function App() {
           
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-6">Modul Pembelajaran</p>
           <NavItem icon={<GraduationCap />} label="Test CEFR (Awal)" isActive={activeTab === 'assessment'} onClick={() => handleTabChange('assessment')} />
-          <NavItem icon={<BookA />} label="Vocabulary" isActive={activeTab === 'vocabulary'} onClick={() => handleTabChange('vocabulary')} />
+          <NavItem icon={<BookA />} label="📚 Belajar (Vocab)" isActive={activeTab === 'vocabulary'} onClick={() => handleTabChange('vocabulary')} />
+          <NavItem icon={<Headphones />} label="🎧 Call Tutor" isActive={activeTab === 'call_tutor'} onClick={() => handleTabChange('call_tutor')} />
+          <NavItem icon={<MessageSquare />} label="💬 Chat Tutor" isActive={activeTab === 'conversation'} onClick={() => handleTabChange('conversation')} />
+          <NavItem icon={<Zap />} label="🧠 Quiz & Challenge" isActive={activeTab === 'quiz'} onClick={() => handleTabChange('quiz')} />
+          
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-6">Praktek & Analisa</p>
           <NavItem icon={<Mic />} label="Speaking Coach" isActive={activeTab === 'speaking'} onClick={() => handleTabChange('speaking')} />
           <NavItem icon={<PenTool />} label="Writing Analyzer" isActive={activeTab === 'writing_analyzer'} onClick={() => handleTabChange('writing_analyzer')} />
-          <NavItem icon={<LayoutDashboard />} label="Grammar for Speaking" isActive={activeTab === 'grammar'} onClick={() => handleTabChange('grammar')} />
-          <NavItem icon={<Headphones />} label="Listening & Talk" isActive={activeTab === 'listening'} onClick={() => handleTabChange('listening')} />
-          <NavItem icon={<MessageSquare />} label="Conversation" isActive={activeTab === 'conversation'} onClick={() => handleTabChange('conversation')} />
+          <NavItem icon={<GraduationCap />} label="Grammar Speaking" isActive={activeTab === 'grammar'} onClick={() => handleTabChange('grammar')} />
           
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-6">Akun</p>
           <NavItem icon={<SettingsIcon />} label="Pengaturan" isActive={activeTab === 'settings'} onClick={() => handleTabChange('settings')} />
@@ -876,18 +855,21 @@ Topik obrolannya adalah: ${topic}`;
   );
 }
 
-function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pelajaran hari ini RichardMeha AI!', hideInputAtStart = false, onComplete, onBack }) {
+function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pelajaran hari ini RichardMeha AI!', hideInputAtStart = false, onComplete, onBack, initialCallMode = false }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [translationPopover, setTranslationPopover] = useState(null);
   const [inlineTranslation, setInlineTranslation] = useState(null);
+  const [callMode, setCallMode] = useState(initialCallMode);
+  const [subtitle, setSubtitle] = useState('');
   
   // Voice recording states
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const recognitionRef = useRef(null);
   const hasInitialized = useRef(false);
+  const audioRef = useRef(null);
   
   const messagesEndRef = useRef(null);
 
@@ -899,45 +881,17 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
     scrollToBottom();
   }, [messages, isLoading]);
 
-  useEffect(() => {
-    const handleClick = (e) => {
-      if (e.target.classList.contains('translatable-sentence')) {
-        const rect = e.target.getBoundingClientRect();
-        setTranslationPopover({
-          text: e.target.innerText,
-          x: rect.left,
-          y: rect.bottom + window.scrollY,
-          targetRef: e.target
-        });
-        setInlineTranslation(null);
-      } else if (!e.target.closest('.translation-popover')) {
-        setTranslationPopover(null);
-      }
-    };
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
-  }, []);
-  
-  const handleInlineTranslate = async (lang) => {
-    if (!translationPopover) return;
-    setInlineTranslation({ loading: true, text: '' });
-    try {
-      const url = `http://localhost:3000/api/gemini`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: `Tolong terjemahkan kalimat bahasa Inggris berikut ke bahasa ${lang} secara natural:\n\n"${translationPopover.text}"` }] }]
-        })
-      });
-      const data = await res.json();
-      const translation = data.candidates[0].content.parts[0].text;
-      setInlineTranslation({ loading: false, text: translation });
-    } catch (err) {
-      setInlineTranslation({ loading: false, text: "Gagal menerjemahkan." });
-    }
-  };
+  // Language Detection Logic
+  const detectLanguage = (text) => {
+    const indonesianWords = ["apa", "saya", "kamu", "belajar", "mau", "halo", "bisa", "tolong", "ngomong", "arti", "terjemahkan"];
+    const englishWords = ["what", "i", "you", "learn", "want", "hello", "can", "please", "speak", "meaning", "translate"];
 
+    const lowerText = text.toLowerCase();
+    let scoreID = indonesianWords.filter(w => lowerText.includes(w)).length;
+    let scoreEN = englishWords.filter(w => lowerText.includes(w)).length;
+
+    return scoreID > scoreEN ? "id" : "en";
+  };
 
   useEffect(() => {
     if (hasInitialized.current) return;
@@ -946,16 +900,12 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
     if (messages.length === 0 && hideInputAtStart) {
       sendMessage(startMessage, true);
     } else if (messages.length === 0 && topic) {
-      // Send topic name explicitly and prominently so AI knows the exact topic
       sendMessage(`TOPIK HARI INI: ${topic}. Mulai sesi pembelajaran tentang "${topic}" sekarang!`, true);
     }
   }, []);
 
-  // --- TTS: Gemini 2.5 Flash Neural Voice (Natural Human Sound) ---
-  const audioRef = useRef(null); // Track current playing audio
-
+  // --- TTS: Gemini 2.5 Flash Neural Voice ---
   const handleTTS = async (text) => {
-    // Stop any previous audio
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
@@ -964,6 +914,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
 
     if (!text?.trim()) return;
     setIsSpeaking(true);
+    setSubtitle(text);
 
     try {
       const res = await fetch('http://localhost:3000/api/tts', {
@@ -971,7 +922,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text,
-          voiceName: 'Puck', // Puck = Very natural energetic male voice, good for tutors
+          voiceName: 'Puck', 
         })
       });
 
@@ -980,7 +931,6 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
       const data = await res.json();
       if (!data.audioData) throw new Error('No audio returned');
 
-      // Decode base64 audio and play it
       const audioBytes = atob(data.audioData);
       const audioArray = new Uint8Array(audioBytes.length);
       for (let i = 0; i < audioBytes.length; i++) {
@@ -993,8 +943,10 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
       audioRef.current = audio;
       audio.onended = () => {
         setIsSpeaking(false);
+        setSubtitle('');
         URL.revokeObjectURL(audioUrl);
         audioRef.current = null;
+        if (callMode) toggleRecording();
       };
       audio.onerror = () => {
         setIsSpeaking(false);
@@ -1003,31 +955,19 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
       audio.play();
 
     } catch (err) {
-      console.warn('Gemini TTS failed, falling back to browser voice:', err.message);
-      // Fallback to browser Web Speech API
+      console.warn('Fallback to browser voice');
       setIsSpeaking(false);
-      const cleanText = text.replace(/<[^>]*>/g, '').replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1').replace(/#{1,6}\s/g, '').replace(/`{1,3}/g, '').trim();
+      const cleanText = text.replace(/<[^>]*>/g, '').replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1').trim();
       if (cleanText && 'speechSynthesis' in window) {
         const u = new SpeechSynthesisUtterance(cleanText);
-        u.rate = 0.9; u.lang = 'id-ID';
+        u.lang = detectLanguage(cleanText) === 'id' ? 'id-ID' : 'en-US';
         u.onstart = () => setIsSpeaking(true);
-        u.onend = () => setIsSpeaking(false);
-        window.speechSynthesis.cancel();
+        u.onend = () => { setIsSpeaking(false); if (callMode) toggleRecording(); };
         window.speechSynthesis.speak(u);
       }
     }
   };
 
-  const stopTTS = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    window.speechSynthesis?.cancel();
-    setIsSpeaking(false);
-  };
-
-  // --- SPEECH TO TEXT (STT) --- Bilingual EN + ID
   const toggleRecording = () => {
     if (isRecording) {
       recognitionRef.current?.stop();
@@ -1035,262 +975,148 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
       return;
     }
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Browser Anda tidak mendukung Microphone. Gunakan Chrome di HP atau PC.");
-      return;
-    }
+    const SpeechRecognition = window.window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
 
-    // Stop TTS if it's speaking before recording
     window.speechSynthesis?.cancel();
+    if (audioRef.current) audioRef.current.pause();
     setIsSpeaking(false);
 
     try {
       recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false; // Single utterance mode - more reliable on mobile
+      recognitionRef.current.continuous = false;
       recognitionRef.current.interimResults = true;
-      recognitionRef.current.maxAlternatives = 1;
-      // Use id-ID for better bilingual support in Indonesian context
-      recognitionRef.current.lang = 'id-ID';
+      recognitionRef.current.lang = callMode ? 'en-US' : 'id-ID';
 
       recognitionRef.current.onresult = (event) => {
         let finalTranscript = '';
-        let interimTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcript;
-          } else {
-            interimTranscript += transcript;
-          }
+          if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
         }
         if (finalTranscript) {
-          setInputValue(prev => prev + finalTranscript + ' ');
+          if (callMode) {
+            sendMessage(finalTranscript);
+          } else {
+            setInputValue(prev => prev + finalTranscript + ' ');
+          }
         }
       };
 
-      recognitionRef.current.onerror = (event) => {
-        console.error("STT Error:", event.error);
-        setIsRecording(false);
-        if (event.error === 'not-allowed') {
-          alert("⚠️ Izin Microphone ditolak!\n\nCara mengaktifkan:\n1. Klik ikon gembok/info di address bar browser\n2. Ubah izin Microphone menjadi 'Izinkan'\n3. Refresh halaman dan coba lagi.");
-        } else if (event.error === 'network') {
-          alert("Error jaringan saat merekam. Pastikan koneksi internet stabil.");
-        } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
-          alert(`Microphone error: ${event.error}`);
-        }
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsRecording(false);
-      };
-
+      recognitionRef.current.onend = () => setIsRecording(false);
       recognitionRef.current.start();
       setIsRecording(true);
     } catch (err) {
-      console.error("STT start error:", err);
       setIsRecording(false);
-      alert("Gagal mengaktifkan microphone. Coba refresh dan ulangi.");
-    }
-  };
-
-
-  const translateMessage = async (index, text) => {
-    // Use the existing message state
-    const currentMessages = [...messages];
-    if (currentMessages[index].translation) {
-      currentMessages[index].showTranslation = !currentMessages[index].showTranslation;
-      setMessages(currentMessages);
-      return;
-    }
-
-    try {
-      const url = `http://localhost:3000/api/gemini`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: `Tolong terjemahkan teks Bahasa Inggris berikut ke Bahasa Indonesia yang natural dan santai:\n\n${text}` }] }]
-        })
-      });
-      const data = await res.json();
-      const translation = data.candidates[0].content.parts[0].text;
-      
-      const updatedMessages = [...messages];
-      updatedMessages[index].translation = translation;
-      updatedMessages[index].showTranslation = true;
-      setMessages(updatedMessages);
-    } catch (err) {
-      console.error("Translation error:", err);
-    }
-  };
-
-  const fetchWithRetry = async (url, options, maxRetries = 3) => {
-    let retries = 0;
-    while (retries < maxRetries) {
-      try {
-        const res = await fetch(url, options);
-        if (res.ok) return res;
-        
-        const errText = await res.text();
-        console.error("Gemini API Error details:", errText);
-        
-        if (res.status === 429 || res.status >= 500) {
-          const delay = Math.pow(2, retries) * 1000;
-          await new Promise(resolve => setTimeout(resolve, delay));
-          retries++;
-        } else {
-          throw new Error(`API Error ${res.status}: ${errText}`);
-        }
-      } catch (err) {
-        if (retries === maxRetries - 1) throw err;
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retries) * 1000));
-        retries++;
-      }
     }
   };
 
   const sendMessage = async (text, isSystemInitiated = false) => {
     if (!text.trim()) return;
 
-
-
-    // Stop recording if active
     if (isRecording) {
       recognitionRef.current?.stop();
       setIsRecording(false);
     }
 
+    const lang = detectLanguage(text);
+    const modeInstruction = lang === 'id' 
+      ? "\n(Note: User speaks Indonesian. Explain/help using Indonesian Tutor persona.)"
+      : "\n(Note: User speaks English. Practice conversation using English Tutor persona.)";
+
     const newUserMsg = { role: 'user', content: text, isHidden: isSystemInitiated && hideInputAtStart };
     const updatedMessages = [...messages, newUserMsg];
     
-    if (!isSystemInitiated) {
-      setMessages(updatedMessages);
-      setInputValue('');
-    } else if (!hideInputAtStart) {
-      setMessages(updatedMessages);
-    }
-    
+    setMessages(updatedMessages);
+    setInputValue('');
     setIsLoading(true);
 
     try {
-      const contents = updatedMessages.filter(msg => !msg.isHidden && msg.role !== 'system').map(msg => ({
+      const contents = updatedMessages.filter(msg => !msg.isHidden).map(msg => ({
         role: msg.role === 'user' ? 'user' : 'model',
         parts: [{ text: msg.content }]
       }));
 
-      if (contents.length === 0) {
-        contents.push({ role: 'user', parts: [{ text: startMessage }] });
-      }
-
       const payload = {
         contents: contents,
-        systemInstruction: { parts: [{ text: basePrompt }] },
+        systemInstruction: { parts: [{ text: basePrompt + modeInstruction }] },
         generationConfig: { temperature: 0.7 }
       };
 
-      const url = `http://localhost:3000/api/gemini`;
-      
-      const res = await fetchWithRetry(url, {
+      const res = await fetch('http://localhost:3000/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
       const data = await res.json();
-      
-      if (data.candidates && data.candidates[0].content.parts[0].text) {
-        const aiText = data.candidates[0].content.parts[0].text;
-        setMessages(prev => [...prev, { role: 'ai', content: aiText }]);
-        // Auto speak AI response for Stimuler-like experience
-        handleTTS(aiText); 
-      } else {
-        throw new Error("Invalid response format");
-      }
+      const aiText = data.candidates[0].content.parts[0].text;
+      setMessages(prev => [...prev, { role: 'ai', content: aiText }]);
+      handleTTS(aiText);
     } catch (err) {
-      console.error(err);
-      setMessages(prev => [...prev, { 
-        role: 'system', 
-        content: '⚠️ Gagal terhubung ke AI Tutor. Periksa koneksi internet atau ketersediaan API Key.' 
-      }]);
+      setMessages(prev => [...prev, { role: 'system', content: '⚠️ Connection failed.' }]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Parser Text & Table
   const renderFormattedText = (text) => {
     if (!text) return null;
-    const lines = text.split('\n');
-    let inTable = false;
-    let tableRows = [];
-    const elements = [];
-
-    const flushTable = (keyIndex) => {
-      if (tableRows.length > 0) {
-        elements.push(
-          <div key={`table-${keyIndex}`} className="overflow-x-auto my-4 rounded-xl border border-slate-200 shadow-sm w-full">
-            <table className="min-w-full text-sm text-left whitespace-nowrap md:whitespace-normal">
-              <tbody>
-                {tableRows.map((row, idx) => {
-                  const cols = row.split('|').map(c => c.trim()).filter(c => c);
-                  if (row.includes('---')) return null;
-                  
-                  return (
-                    <tr key={idx} className={`${idx === 0 ? 'bg-indigo-50 font-bold text-indigo-900 border-b-2 border-indigo-100' : 'border-t border-slate-100 bg-white'}`}>
-                      {cols.map((col, cidx) => (
-                        <td key={cidx} className="px-4 py-3 border-r last:border-r-0 border-slate-100 align-top" dangerouslySetInnerHTML={{__html: parseInline(col)}} />
-                      ))}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        );
-        tableRows = [];
-        inTable = false;
-      }
-    };
-
-    const parseInline = (str) => {
-      return str
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/`(.*?)`/g, '<code class="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-md text-xs font-mono font-bold">$1</code>')
-        .replace(/__(.*?)__/g, '<u>$1</u>');
-    };
-
-    lines.forEach((line, i) => {
-      if (line.trim().startsWith('|') || (line.includes('|') && line.length > 10)) {
-        inTable = true;
-        tableRows.push(line);
-      } else {
-        flushTable(i);
-        if (line.trim() === '') {
-           elements.push(<div key={`br-${i}`} className="h-2"></div>);
-        } else {
-           elements.push(<div key={`text-${i}`} className="mb-1.5 leading-relaxed" dangerouslySetInnerHTML={{__html: parseInline(line)}} />);
-        }
-      }
-    });
-    flushTable('end');
-
-    return elements;
+    return text.split('\n').map((line, i) => (
+      <div key={i} className="mb-1.5 leading-relaxed" dangerouslySetInnerHTML={{
+        __html: line
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+          .replace(/`(.*?)`/g, '<code class="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-md">$1</code>')
+          .replace(/❌ (.*)/g, '<span class="text-rose-600 font-bold">❌ $1</span>')
+          .replace(/✅ (.*)/g, '<span class="text-emerald-600 font-bold">✅ $1</span>')
+      }} />
+    ));
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50/50 relative">
-      {/* Top Banner with Back Button */}
-      <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 py-3 px-4 md:px-6 flex justify-between items-center absolute top-0 w-full z-10 shadow-sm">
+    <div className="flex flex-col h-full bg-slate-50 relative overflow-hidden">
+      {/* Call Mode Overlay */}
+      {callMode && (
+        <div className="absolute inset-0 z-50 bg-[#0f172a] flex flex-col items-center justify-center p-6 text-white animate-in fade-in duration-500">
+          <button onClick={() => setCallMode(false)} className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all">
+            <X size={24} />
+          </button>
+          
+          <div className="flex flex-col items-center gap-8 mb-12">
+            <div className={`w-32 h-32 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center shadow-2xl ${isSpeaking || isRecording ? 'ring-8 ring-blue-500/30 animate-pulse' : ''}`}>
+              <Bot size={64} />
+            </div>
+            <div className="text-center">
+              <h2 className="text-2xl font-black mb-2">RichardMeha AI</h2>
+              <p className="text-blue-400 font-bold tracking-widest uppercase text-xs">
+                {isSpeaking ? 'Speaking...' : isRecording ? 'Listening...' : 'Ready'}
+              </p>
+            </div>
+          </div>
+
+          <div className="max-w-xl w-full bg-white/5 backdrop-blur-md border border-white/10 p-8 rounded-[2.5rem] text-center min-h-[150px] flex items-center justify-center">
+             <p className="text-xl md:text-2xl font-medium leading-relaxed italic text-slate-200">
+               {subtitle || "Silakan bicara, saya mendengarkan..."}
+             </p>
+          </div>
+
+          <div className="mt-12 flex gap-6">
+            <button 
+              onClick={toggleRecording}
+              className={`w-20 h-20 rounded-full flex items-center justify-center shadow-xl transition-all active:scale-90 ${isRecording ? 'bg-rose-500 text-white' : 'bg-white text-slate-900'}`}
+            >
+              {isRecording ? <MicOff size={32} /> : <Mic size={32} />}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Header UI */}
+      <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 py-3 px-4 md:px-6 flex justify-between items-center z-10 shadow-sm shrink-0">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {onBack && (
-            <button
-              onClick={onBack}
-              className="shrink-0 flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-2.5 py-1.5 rounded-xl transition-colors active:scale-95 border border-slate-200"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-              <span className="hidden sm:inline">Ganti Topik</span>
+            <button onClick={onBack} className="shrink-0 flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 bg-slate-100 px-2.5 py-1.5 rounded-xl transition-all active:scale-95 border border-slate-200">
+              <ChevronRight size={14} className="rotate-180" /> <span className="hidden sm:inline">Kembali</span>
             </button>
           )}
           <div className="flex flex-col min-w-0">
@@ -1298,200 +1124,55 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
             {topic && <p className="text-xs text-slate-500 truncate">Topik: <span className="font-medium text-blue-600">{topic}</span></p>}
           </div>
         </div>
-        <div className="flex items-center gap-1.5 text-[10px] md:text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 md:py-1.5 rounded-full border border-emerald-100 shrink-0">
-          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-          RichardMeha AI Online
-        </div>
-      </div>
-
-      {/* Chat Messages Area */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-6 pt-20 pb-40 scroll-smooth">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {messages.map((msg, idx) => {
-            if (msg.isHidden) return null;
-
-            if (msg.role === 'user') {
-              return (
-                <div key={idx} className="flex justify-end items-end gap-2 animate-in slide-in-from-right-2 duration-300">
-                  <div className="bg-blue-600 text-white px-4 md:px-5 py-3 md:py-3.5 rounded-3xl rounded-br-sm shadow-md max-w-[85%] md:max-w-[75%] text-sm md:text-base">
-                    {msg.content}
-                  </div>
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold shrink-0 text-xs shadow-inner">
-                    <User size={16} />
-                  </div>
-                </div>
-              );
-            }
-
-            if (msg.role === 'system') {
-              return (
-                <div key={idx} className="flex justify-center my-4">
-                  <div className="bg-red-50 border border-red-100 text-red-600 text-xs px-4 py-2 rounded-full font-medium shadow-sm text-center">
-                    {msg.content}
-                  </div>
-                </div>
-              );
-            }
-
-            // AI Response
-            return (
-              <div key={idx} className="flex items-start gap-2 md:gap-3 animate-in slide-in-from-left-2 duration-300">
-                <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center shrink-0 shadow-md">
-                  <Bot size={18} className="md:w-5 md:h-5" />
-                </div>
-                <div className="flex flex-col gap-1 max-w-[90%] md:max-w-[85%]">
-                  <div className="bg-white border border-slate-200 text-slate-700 px-4 md:px-5 py-4 rounded-3xl rounded-tl-sm shadow-sm text-sm md:text-base w-full overflow-hidden leading-relaxed">
-                    {renderFormattedText(msg.content)}
-                  </div>
-                  {/* TTS & Translate Action Buttons for AI Message */}
-                  <div className="flex justify-start gap-2 ml-2">
-                    <button 
-                      onClick={() => handleTTS(msg.content)}
-                      className="text-[10px] text-slate-400 hover:text-blue-600 flex items-center gap-1 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm transition-colors"
-                    >
-                      <Volume2 size={12} /> Dengar
-                    </button>
-                    <button 
-                      onClick={() => translateMessage(idx, msg.content)}
-                      className={`text-[10px] flex items-center gap-1 px-3 py-1.5 rounded-full border transition-colors shadow-sm
-                        ${msg.showTranslation 
-                          ? 'bg-blue-50 border-blue-200 text-blue-600' 
-                          : 'bg-white border-slate-200 text-slate-400 hover:text-blue-600'}
-                      `}
-                    >
-                      <Languages size={12} /> {msg.showTranslation ? 'Sembunyikan' : 'Terjemahkan'}
-                    </button>
-                  </div>
-                  {msg.showTranslation && msg.translation && (
-                    <div className="mx-2 mt-2 p-3 bg-blue-50/50 rounded-2xl border border-blue-100 text-sm text-blue-800 animate-in fade-in slide-in-from-top-1 duration-300 italic">
-                       {msg.translation}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-
-          {isLoading && (
-            <div className="flex items-start gap-2 md:gap-3">
-              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center shrink-0">
-                <Bot size={18} />
-              </div>
-              <div className="bg-white border border-slate-200 text-slate-500 px-5 py-4 rounded-3xl rounded-tl-sm shadow-sm flex items-center gap-3">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
-                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
-                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
-                </div>
-                <span className="text-sm font-medium text-slate-400">Mengetik...</span>
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </div>
-
-      
-      {translationPopover && (
-        <div 
-          className="absolute z-50 bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 w-72 translation-popover animate-in fade-in zoom-in duration-200"
-          style={{ top: translationPopover.y + 10, left: Math.min(translationPopover.x, window.innerWidth - 300) }}
+        <button 
+          onClick={() => setCallMode(true)}
+          className="flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-full border border-blue-100 hover:bg-blue-100 transition-all active:scale-95"
         >
-          <div className="flex justify-between items-center mb-3 border-b pb-2">
-            <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1"><Languages size={14}/> Terjemahkan ke:</span>
-            <button onClick={() => setTranslationPopover(null)} className="text-slate-400 hover:text-slate-700">&times;</button>
-          </div>
-          
-          {!inlineTranslation && (
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              <button onClick={() => handleInlineTranslate('Indonesia')} className="text-xs bg-red-50 text-red-700 hover:bg-red-100 py-1.5 rounded-lg font-bold border border-red-100">🇮🇩 Indonesia</button>
-              <button onClick={() => handleInlineTranslate('Spanyol')} className="text-xs bg-yellow-50 text-yellow-700 hover:bg-yellow-100 py-1.5 rounded-lg font-bold border border-yellow-100">🇪🇸 Spanyol</button>
-              <button onClick={() => handleInlineTranslate('Jepang')} className="text-xs bg-slate-50 text-slate-700 hover:bg-slate-200 py-1.5 rounded-lg font-bold border border-slate-200">🇯🇵 Jepang</button>
-              <button onClick={() => handleInlineTranslate('Korea')} className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 py-1.5 rounded-lg font-bold border border-blue-100">🇰🇷 Korea</button>
-            </div>
-          )}
-
-          {inlineTranslation && (
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-sm text-slate-800">
-              {inlineTranslation.loading ? (
-                <div className="flex items-center gap-2 text-slate-500"><Loader2 size={14} className="animate-spin" /> Menerjemahkan...</div>
-              ) : (
-                <p className="font-medium">{inlineTranslation.text}</p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Input Area */}
-      <div className="absolute bottom-0 w-full bg-gradient-to-t from-slate-100 via-slate-50 to-transparent pt-6 pb-4 px-3 md:px-6">
-        <div className="max-w-4xl mx-auto relative">
-          
-          {/* Quick Shortcuts */}
-          <div className="flex gap-2 mb-3 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
-            <button onClick={() => setInputValue("I'm ready to practice")} className="shrink-0 text-xs bg-white border border-slate-200 text-slate-700 hover:text-blue-600 hover:border-blue-300 px-4 py-2 rounded-full transition-all font-semibold shadow-sm hover:shadow active:scale-95">
-              🚀 I'm ready to practice
-            </button>
-            <button onClick={() => setInputValue("How to say ")} className="shrink-0 text-xs bg-white border border-slate-200 text-slate-700 hover:text-blue-600 hover:border-blue-300 px-4 py-2 rounded-full transition-all font-semibold shadow-sm hover:shadow active:scale-95">
-              🤔 How to say ... ?
-            </button>
-            <button onClick={() => setInputValue("Tolong koreksi jawabanku")} className="shrink-0 text-xs bg-white border border-slate-200 text-slate-700 hover:text-blue-600 hover:border-blue-300 px-4 py-2 rounded-full transition-all font-semibold shadow-sm hover:shadow active:scale-95">
-              📝 Tolong koreksi
-            </button>
-          </div>
-
-          {/* Form Input */}
-          <form 
-            onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue); }}
-            className={`flex items-end gap-2 bg-white rounded-3xl border-2 shadow-lg transition-all p-2
-              ${isRecording ? 'border-rose-400 shadow-rose-100' : 'border-slate-200 shadow-slate-200/50 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-50'}
-            `}
-          >
-            {/* STT Button */}
-            <button
-              type="button"
-              onClick={toggleRecording}
-              className={`p-3 shrink-0 rounded-full transition-all flex items-center justify-center h-10 w-10 md:h-12 md:w-12 self-center ${
-                isRecording 
-                  ? 'bg-rose-100 text-rose-600 animate-pulse' 
-                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'
-              }`}
-              title="Bicara sekarang"
-            >
-              {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
-            </button>
-
-            {/* Text Area */}
-            <textarea
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  sendMessage(inputValue);
-                }
-              }}
-              placeholder={isRecording ? "Mendengarkan suara Anda..." : "Ketik jawaban atau bicara..."}
-              className="flex-1 max-h-32 min-h-[44px] md:min-h-[48px] bg-transparent resize-none outline-none py-3 px-2 text-sm md:text-base text-slate-700 self-center"
-              rows={1}
-            />
-
-            {/* Send Button */}
-            <button
-              type="submit"
-              disabled={!inputValue.trim() || isLoading}
-              className="p-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-2xl transition-all shrink-0 flex items-center justify-center h-10 w-10 md:h-12 md:w-12 self-center active:scale-90"
-            >
-              <Send size={18} className={inputValue.trim() && !isLoading ? "ml-1" : ""} />
-            </button>
-          </form>
-          
-          <div className="text-center mt-2 hidden md:block">
-            <span className="text-[10px] text-slate-400 font-medium">Tekan <kbd className="bg-slate-100 px-1 py-0.5 rounded border border-slate-200 shadow-sm">Enter</kbd> untuk mengirim, <kbd className="bg-slate-100 px-1 py-0.5 rounded border border-slate-200 shadow-sm">Shift + Enter</kbd> untuk baris baru.</span>
-          </div>
-        </div>
+          <Headphones size={16} /> Mode Telepon
+        </button>
       </div>
-      
+
+      {/* Chat Messages */}
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-32 space-y-6">
+        {messages.map((msg, idx) => (
+          !msg.isHidden && (
+            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} items-end gap-2 animate-in slide-in-from-bottom-2 duration-300`}>
+              {msg.role !== 'user' && (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <Bot size={16} />
+                </div>
+              )}
+              <div className={`max-w-[85%] px-4 py-3 rounded-2xl shadow-sm text-sm md:text-base ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none'}`}>
+                {renderFormattedText(msg.content)}
+              </div>
+            </div>
+          )
+        ))}
+        {isLoading && (
+          <div className="flex items-center gap-2 text-slate-400 text-xs font-medium pl-10">
+            <Loader2 size={14} className="animate-spin" /> RichardMeha AI sedang berpikir...
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input Form */}
+      <div className="p-4 md:p-6 bg-white border-t border-slate-200 shrink-0">
+        <form onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue); }} className="max-w-4xl mx-auto flex gap-2">
+          <input 
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder={isRecording ? "Mendengarkan..." : "Ketik pesan atau tanya RichardMeha AI..."}
+            className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 outline-none focus:border-blue-500 transition-all"
+          />
+          <button type="button" onClick={toggleRecording} className={`p-3 rounded-2xl transition-all ${isRecording ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-500'}`}>
+            {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
+          </button>
+          <button disabled={!inputValue.trim() || isLoading} className="p-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 disabled:bg-slate-200 active:scale-90 transition-all">
+            <Send size={20} />
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
