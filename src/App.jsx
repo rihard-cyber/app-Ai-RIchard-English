@@ -47,6 +47,7 @@ import ProgressDashboard from './ProgressDashboard';
 import WritingAnalyzer from './WritingAnalyzer';
 import PronunciationCoach from './PronunciationCoach';
 import PaymentModal from './PaymentModal';
+import AdminDashboard from './AdminDashboard';
 import { supabase } from './supabaseClient';
 import { CURRICULUM } from './data/curriculum';
 import { VOCABULARY_TOPICS as VOCAB_RAW, GRAMMAR_TOPICS as GRAMMAR_RAW, SPEAKING_TOPICS as SPEAKING_RAW, LISTENING_TOPICS as LISTENING_RAW, CONVERSATION_CHARACTERS as CHARS_RAW } from './data/topics';
@@ -66,39 +67,35 @@ const DEFAULT_PROFILE = {
 
 // --- MASTER PROMPT (RICHARDMEHA AI v5.0) ---
 const RICHARD_MASTER_PROMPT = (userProfile, currentTopic) => `
-SYSTEM: RichardMeha AI – Real Human Conversation Mode (ULTIMATE)
+SYSTEM: RichardMeha AI – Ultimate Native & Natural Tutor Mode
 
-You are a friendly English tutor who speaks BOTH Indonesian and English naturally. 
-You are NOT an AI assistant. You are a real human tutor having a casual conversation with ${userProfile.name}.
+You are Richard, a highly professional yet incredibly friendly English tutor. You speak both Indonesian and English with perfect, native-level fluency. You are not a bot; you are a real human tutor having an engaging, dynamic conversation with ${userProfile.name}.
 
-== 🧠 LANGUAGE RULES (STRICT) ==
-- You MUST understand Indonesian perfectly.
-- You MUST reply in Indonesian when user uses Indonesian.
-- If user speaks Indonesian → reply in Indonesian + natural English examples.
-- If user speaks English → reply in English + light Indonesian support for difficult terms.
-- NEVER explain like a textbook. Talk like a friend helping another friend.
+== 🧠 LANGUAGE & FLUENCY RULES ==
+- Seamlessly understand Indonesian and English.
+- If user speaks Indonesian → reply in highly natural, conversational Indonesian (Bahasa gaul/santai tapi sopan, e.g., pakai "aku", "kamu", "sih", "dong", "loh") + give natural English examples.
+- If user speaks English → reply in fluent, idiomatic English + light Indonesian support if they seem stuck.
+- NEVER sound robotic, textbook-like, or overly formal unless requested.
 
-== 💬 STYLE & TONE (ANTI-KAKU) ==
-- Speak naturally and casually (use "santai" tone).
-- Use short sentences.
-- Use natural fillers: "hmm...", "oh interesting!", "nah gitu dong", "okay wait", "actually...".
-- React to what the user said with empathy, humor, or a light joke.
-- Like chatting, NOT teaching.
+== 💬 STYLE & TONE ==
+- Vibe: Professional but like a supportive best friend. Extremely engaging.
+- Use natural conversation fillers appropriately: "Hmm...", "Oh, I see!", "Nah, bener banget!", "Wait, let me think...", "Actually...".
+- Be expressive! React with empathy, encouragement, and light humor.
+- Keep responses concise and conversational. Do not monologue.
 
-== 🚫 FORBIDDEN ==
-- NO labels like "CORRECTION:", "EXPLANATION:", "SCORE:".
-- NO numbered lists or formal structure.
-- NO robotic or formal tone.
+== 🚫 STRICTLY FORBIDDEN ==
+- NO robotic labels like "CORRECTION:", "EXPLANATION:", "SCORE:".
+- NO bullet points or long numbered lists in casual chat.
+- NO repetitive or rigid phrasing.
 
-== ✅ HOW TO CORRECT ==
-- Correct naturally within the flow of conversation.
-- Use: "hampir bener nih, tapi biasanya kita bilang gini..." or "lebih natural kalau bilangnya..."
+== ✅ NATURAL CORRECTION METHOD ==
+- Correct mistakes smoothly within the flow: "Kalimatmu udah bagus, tapi biasanya native speaker bilangnya gini nih..." or "Almost perfect! A more natural way to say it is..."
 
 == 🧑‍🏫 TEACHING FLOW ==
-1. React to the user naturally.
-2. Improve their sentence/thought naturally.
-3. Give 1 simple English example.
-4. Ask 1 follow-up question.
+1. React warmly to the user's message.
+2. Provide a smooth correction or enhancement if needed.
+3. Give an easy-to-understand example.
+4. End with an engaging follow-up question to keep the chat going.
 
 == 🆘 IF USER IS STUCK ==
 - Give a gentle suggestion: "Kalau bingung, kamu bisa jawab kayak gini: [Suggestion]"
@@ -136,12 +133,12 @@ const getPrompts = (userProfile) => {
 };
 
 export default function App() {
-  const [authState, setAuthState] = useState('login'); // 'login', 'subscription', 'assessment', 'app'
+  const [authState, setAuthState] = useState('login'); // 'login', 'subscription', 'assessment', 'app', 'admin'
   const [userProfile, setUserProfile] = useState(DEFAULT_PROFILE);
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('richard_active_tab') || 'home');
   const [activeGoalId, setActiveGoalId] = useState(() => localStorage.getItem('richard_active_goal') || null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
+
   useEffect(() => {
     localStorage.setItem('richard_active_tab', activeTab);
   }, [activeTab]);
@@ -225,8 +222,13 @@ export default function App() {
           is_pro: data.is_pro || false,
           subscription_plan: data.subscription_plan || 'Free'
         });
-        if (!data.has_completed_initial_test) setAuthState('assessment');
-        else setAuthState('app');
+        if (data.is_admin) {
+          setAuthState('admin');
+        } else if (!data.has_completed_initial_test) {
+          setAuthState('assessment');
+        } else {
+          setAuthState('app');
+        }
       } else {
         if (metaName) setUserProfile(prev => ({ ...prev, name: metaName }));
         setAuthState('app');
@@ -238,7 +240,13 @@ export default function App() {
     }
   };
 
-  const handleLogin = () => checkUser();
+  const handleLogin = (role) => {
+    if (role === 'admin') {
+      setAuthState('admin');
+    } else {
+      checkUser();
+    }
+  };
 
   const handleSelectPlan = (plan) => {
     if (plan === 'free') { setAuthState('app'); } else {
@@ -249,6 +257,11 @@ export default function App() {
       setSelectedPlan(planDetails);
       setIsPaymentModalOpen(true);
     }
+  };
+
+  const triggerUpgrade = (name = 'Pro Bulanan', price = '199.000') => {
+    setSelectedPlan({ name, price });
+    setIsPaymentModalOpen(true);
   };
 
   const handlePaymentSuccess = async () => {
@@ -284,16 +297,16 @@ export default function App() {
     const prompts = getPrompts(userProfile);
     switch (activeTab) {
       case 'home':
-        return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} recommendation={recommendation} onStartGoal={(id) => { setActiveGoalId(id); setActiveTab('goal_session'); }} onUpgrade={() => setIsPaymentModalOpen(true)} />;
+        return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} recommendation={recommendation} onStartGoal={(id) => { setActiveGoalId(id); setActiveTab('goal_session'); }} onUpgrade={() => triggerUpgrade()} />;
       case 'progress': return <ProgressDashboard userProfile={userProfile} />;
       case 'assessment': return <LevelTest onComplete={handleAssessmentComplete} />;
-      case 'vocabulary': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Vocabulary" basePrompt={prompts.vocabulary} icon={<BookA size={24} />} color="text-indigo-600" bg="bg-indigo-100" onComplete={(score) => saveProgress('vocabulary', score)} isPro={userProfile.is_pro} topicsList={VOCABULARY_TOPICS} onUpgrade={() => setIsPaymentModalOpen(true)} />;
-      case 'speaking': return <PronunciationCoach userProfile={userProfile} isPro={userProfile.is_pro} onComplete={(score) => saveProgress('speaking', score)} onUpgrade={() => setIsPaymentModalOpen(true)} />;
-      case 'grammar': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Grammar for Speaking" basePrompt={prompts.grammar} icon={<LayoutDashboard size={24} />} color="text-emerald-600" bg="bg-emerald-100" onComplete={(score) => saveProgress('grammar', score)} isPro={userProfile.is_pro} topicsList={GRAMMAR_TOPICS} onUpgrade={() => setIsPaymentModalOpen(true)} />;
-      case 'listening': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Listening & Talking" basePrompt={prompts.listening} icon={<Headphones size={24} />} color="text-amber-600" bg="bg-amber-100" onComplete={(score) => saveProgress('listening', score)} isPro={userProfile.is_pro} topicsList={LISTENING_TOPICS} onUpgrade={() => setIsPaymentModalOpen(true)} />;
-      case 'writing_analyzer': return <WritingAnalyzer userProfile={userProfile} onUpgrade={() => setIsPaymentModalOpen(true)} />;
+      case 'vocabulary': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Vocabulary" basePrompt={prompts.vocabulary} icon={<BookA size={24} />} color="text-indigo-600" bg="bg-indigo-100" onComplete={(score) => saveProgress('vocabulary', score)} isPro={userProfile.is_pro} topicsList={VOCABULARY_TOPICS} onUpgrade={() => triggerUpgrade()} />;
+      case 'speaking': return <PronunciationCoach userProfile={userProfile} isPro={userProfile.is_pro} onComplete={(score) => saveProgress('speaking', score)} onUpgrade={() => triggerUpgrade()} />;
+      case 'grammar': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Grammar for Speaking" basePrompt={prompts.grammar} icon={<LayoutDashboard size={24} />} color="text-emerald-600" bg="bg-emerald-100" onComplete={(score) => saveProgress('grammar', score)} isPro={userProfile.is_pro} topicsList={GRAMMAR_TOPICS} onUpgrade={() => triggerUpgrade()} />;
+      case 'listening': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Listening & Talking" basePrompt={prompts.listening} icon={<Headphones size={24} />} color="text-amber-600" bg="bg-amber-100" onComplete={(score) => saveProgress('listening', score)} isPro={userProfile.is_pro} topicsList={LISTENING_TOPICS} onUpgrade={() => triggerUpgrade()} />;
+      case 'writing_analyzer': return <WritingAnalyzer userProfile={userProfile} onUpgrade={() => triggerUpgrade()} />;
       case 'call_tutor': return <ChatModule userProfile={userProfile} setUserProfile={setUserProfile} module="🎧 Call Tutor" basePrompt={prompts.call_tutor} initialCallMode={true} topic="Daily Practice" onBack={() => handleTabChange('home')} />;
-      case 'conversation': return <ConversationModule userProfile={userProfile} setUserProfile={setUserProfile} basePrompt={prompts.conversation} isPro={userProfile.is_pro} charactersList={CONVERSATION_CHARACTERS} onUpgrade={() => setIsPaymentModalOpen(true)} />;
+      case 'conversation': return <ConversationModule userProfile={userProfile} setUserProfile={setUserProfile} basePrompt={prompts.conversation} isPro={userProfile.is_pro} charactersList={CONVERSATION_CHARACTERS} onUpgrade={() => triggerUpgrade()} />;
       case 'goal_session':
         const safeLevel = userProfile?.level || "Beginner (A1)";
         const goalData = (safeLevel.includes('A1') || safeLevel.includes('Beginner'))
@@ -347,7 +360,7 @@ export default function App() {
             </div>
           </div>
         );
-      default: return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} recommendation={recommendation} onStartGoal={(id) => { setActiveGoalId(id); setActiveTab('goal_session'); }} />;
+      default: return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} recommendation={recommendation} onStartGoal={(id) => { setActiveGoalId(id); setActiveTab('goal_session'); }} onUpgrade={() => triggerUpgrade()} />;
     }
   };
 
@@ -355,6 +368,7 @@ export default function App() {
   if (authState === 'login') return <LoginPage onLogin={handleLogin} />;
   if (authState === 'assessment') return <LevelTest onComplete={handleAssessmentComplete} />;
   if (authState === 'subscription') return <SubscriptionPage onSelectPlan={handleSelectPlan} />;
+  if (authState === 'admin') return <AdminDashboard onLogout={handleLogout} />;
 
   return (
     <div className={`flex h-[100dvh] font-sans overflow-hidden transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b1121] text-slate-200 dark-mode' : 'bg-slate-50 text-slate-800'}`}>
@@ -464,15 +478,15 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, o
               return goals.map((goal, i) => {
                 const isLocked = i >= freeCount && !userProfile.is_pro;
                 return (
-                  <div 
-                    key={i} 
+                  <div
+                    key={i}
                     onClick={() => {
                       if (isLocked) {
                         onUpgrade();
                       } else if (goal.id) {
                         onStartGoal(goal.id);
                       }
-                    }} 
+                    }}
                     className={`flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden ${isLocked ? 'bg-slate-50 border-slate-100 opacity-70 grayscale-[0.5]' : 'bg-slate-50 border-slate-100 hover:border-blue-500 hover:bg-blue-50/30 hover:shadow-lg hover:-translate-y-1 group'}`}
                   >
                     <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 mt-0.5 shadow-sm transition-colors ${isLocked ? 'bg-slate-200 text-slate-400' : 'bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'}`}>
@@ -704,11 +718,13 @@ function ChatModule({
   };
 
   const detectLanguage = (text) => {
-    const indoWords = ["saya", "kamu", "apa", "kenapa", "bangun", "makan", "bingung", "ngerti", "tau"];
+    const indoWords = ["saya", "kamu", "apa", "kenapa", "bangun", "makan", "bingung", "ngerti", "tau", "halo", "bisa", "iya", "tidak", "gak", "udah", "belum", "gimana", "dong", "deh"];
     const lower = text.toLowerCase();
     let score = 0;
     indoWords.forEach(word => {
-      if (lower.includes(word)) score++;
+      // match whole words to avoid false positives
+      const regex = new RegExp('\\b' + word + '\\b', 'i');
+      if (regex.test(lower)) score++;
     });
     return score >= 1 ? "id" : "en";
   };
@@ -718,7 +734,7 @@ function ChatModule({
     setIsSpeaking(true);
     try {
       const cleanText = text.replace(/❌[\s\S]*?✅/g, '').replace(/[✅❌*#]/g, '').substring(0, 600);
-      
+
       // Try backend TTS first (Gemini natural voice)
       const res = await fetch('http://localhost:3000/api/tts', {
         method: 'POST',
@@ -748,11 +764,17 @@ function ChatModule({
 
   const fallbackTTS = (text) => {
     const cleanText = text.replace(/❌[\s\S]*?✅/g, '').replace(/[✅❌*#]/g, '');
+    const lang = detectLanguage(cleanText);
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'en-US';
-    utterance.rate = 0.9;
+    utterance.lang = lang === 'id' ? 'id-ID' : 'en-US';
+    utterance.rate = 0.95; // Slightly faster for more natural pacing
     const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google')) || voices.find(v => v.lang.startsWith('en'));
+    let preferredVoice;
+    if (lang === 'id') {
+      preferredVoice = voices.find(v => v.lang === 'id-ID' && v.name.includes('Google')) || voices.find(v => v.lang.startsWith('id'));
+    } else {
+      preferredVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google')) || voices.find(v => v.lang.startsWith('en'));
+    }
     if (preferredVoice) utterance.voice = preferredVoice;
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
@@ -852,11 +874,11 @@ function ChatModule({
     const lowerText = text.toLowerCase();
     const isConfused = confusionKeywords.some(kw => lowerText.includes(kw));
     const isConfident = confidenceKeywords.some(kw => lowerText.includes(kw));
-    const emotionState = isConfused 
+    const emotionState = isConfused
       ? 'CONFUSED — ACTIVATE EMOTIONAL AI: Start with empathy ("Heyy, tenang dulu ya..."), simplify your explanation drastically, ask a much easier question to help them win.'
       : isConfident
-      ? 'CONFIDENT — CELEBRATE their win loudly! Then raise difficulty slightly.'
-      : 'NORMAL';
+        ? 'CONFIDENT — CELEBRATE their win loudly! Then raise difficulty slightly.'
+        : 'NORMAL';
 
     // === PERSONALITY RULES ===
     const personalityMap = {
@@ -878,7 +900,7 @@ function ChatModule({
           text: `${basePrompt}\n\n[CURRENT STATUS: ${emotionState}]\n[VIBE: ${personalityInstruction}]\n${modeInstruction}`
         }]
       },
-      generationConfig: { 
+      generationConfig: {
         temperature: 0.9,
         topP: 0.95,
         maxOutputTokens: 512
@@ -912,16 +934,16 @@ function ChatModule({
           const scoreObj = JSON.parse(jsonPart);
           setLastScore(scoreObj);
           updateXP(15);
-          
+
           // Clean text for UI: remove everything from --- onwards
           aiText = parts.slice(0, -1).join('---').trim();
-          
+
           // Memory tracking: if mistake detected
           if (aiText.includes('❌')) {
             const mistake = aiText.match(/❌ (.*)/)?.[1];
             if (mistake) setMemory(prev => ({ ...prev, mistakes: [...new Set([...prev.mistakes, mistake])].slice(-5) }));
           }
-        } catch (e) { 
+        } catch (e) {
           // Fallback regex if split fails
           const match = aiText.match(/---[\s\S]*(\{[\s\S]*\})/);
           if (match) {
@@ -930,7 +952,7 @@ function ChatModule({
               setLastScore(obj);
               updateXP(15);
               aiText = aiText.replace(/---[\s\S]*/, '').trim();
-            } catch(ee) { console.warn("JSON Parse failed", ee); }
+            } catch (ee) { console.warn("JSON Parse failed", ee); }
           }
         }
       }
@@ -1076,26 +1098,26 @@ function ChatModule({
             </div>
             {(isSpeaking || isTypingEffect) && <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest animate-bounce">AI is speaking...</div>}
           </div>
-          
+
           <h2 className="text-2xl font-black text-white mb-2">RichardMeha <span className="text-blue-500">Call</span></h2>
-          
+
           <div className="max-w-md w-full px-6 mb-8">
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-md">
               <p className="text-slate-200 font-medium italic mb-2">"{subtitle || "Silakan bicara, saya mendengarkan..."}"</p>
-              
+
               {/* Translation Feature in Call Mode */}
-              {messages.length > 0 && messages[messages.length-1].role === 'ai' && (
-                <button 
+              {messages.length > 0 && messages[messages.length - 1].role === 'ai' && (
+                <button
                   onClick={() => handleTranslate(messages.length - 1)}
                   className="flex items-center gap-2 text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors"
                 >
-                  <Languages size={14} /> {translations[messages.length-1] ? "Sembunyikan Terjemahan" : "Klik untuk Terjemahan Indonesia"}
+                  <Languages size={14} /> {translations[messages.length - 1] ? "Sembunyikan Terjemahan" : "Klik untuk Terjemahan Indonesia"}
                 </button>
               )}
-              
-              {translations[messages.length-1] && (
+
+              {translations[messages.length - 1] && (
                 <div className="mt-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl animate-in slide-in-from-top-1">
-                  <p className="text-xs text-emerald-400 font-medium leading-relaxed">{translations[messages.length-1]}</p>
+                  <p className="text-xs text-emerald-400 font-medium leading-relaxed">{translations[messages.length - 1]}</p>
                 </div>
               )}
             </div>

@@ -6,7 +6,8 @@ export function LoginPage({ onLogin }) {
   const [mode, setMode] = useState('signin'); // 'signin', 'signup', 'verify'
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  
+
+  const [logoClicks, setLogoClicks] = useState(0);
   // Sign In State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,12 +20,21 @@ export function LoginPage({ onLogin }) {
   const [otp, setOtp] = useState(['', '', '', '', '', '', '', '']);
   const otpRefs = [useRef(), useRef(), useRef(), useRef(), useRef(), useRef(), useRef(), useRef()];
 
+  const handleLogoClick = () => {
+    const newCount = logoClicks + 1;
+    setLogoClicks(newCount);
+    if (newCount >= 3) {
+      setMode('admin_login');
+      setLogoClicks(0);
+    }
+  };
+
   const handleSignIn = async (e) => {
     e.preventDefault();
     if (!email || !password) return;
     setIsLoading(true);
     setErrorMsg('');
-    
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -34,14 +44,20 @@ export function LoginPage({ onLogin }) {
 
     if (error) {
       if (error.message === 'Invalid login credentials') {
-         setErrorMsg('Email atau password salah.');
+        setErrorMsg('Email atau password salah.');
       } else if (error.message.includes('Email not confirmed')) {
-         setErrorMsg('Email belum diverifikasi. Silakan cek inbox Anda.');
+        setErrorMsg('Email belum diverifikasi. Silakan cek inbox Anda.');
       } else {
-         setErrorMsg(error.message);
+        setErrorMsg(error.message);
       }
     } else {
-      onLogin(); 
+      // Check if admin
+      const { data: profile } = await supabase.from('user_profiles').select('is_admin').eq('id', data.user.id).single();
+      if (profile?.is_admin && mode === 'admin_login') {
+        onLogin('admin');
+      } else {
+        onLogin('user');
+      }
     }
   };
 
@@ -77,7 +93,7 @@ export function LoginPage({ onLogin }) {
     e.preventDefault();
     const enteredCode = otp.join('');
     if (enteredCode.length < 8) return;
-    
+
     setIsLoading(true);
     setErrorMsg('');
 
@@ -127,9 +143,9 @@ export function LoginPage({ onLogin }) {
 
       <div className="w-full max-w-md running-border rounded-3xl p-[3px] animate-in zoom-in-95 duration-500">
         <div className="running-border-inner rounded-[22px] bg-[#0f172a]/90 backdrop-blur-xl p-8 flex flex-col relative z-10 overflow-hidden min-h-[480px]">
-          
+
           <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <div onClick={handleLogoClick} className="cursor-pointer select-none w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20 transition-transform active:scale-95">
               <Sparkles className="text-white w-8 h-8" />
             </div>
           </div>
@@ -145,13 +161,13 @@ export function LoginPage({ onLogin }) {
             <div className={`transition-all duration-500 transform ${mode === 'signin' ? 'translate-x-0 opacity-100 relative' : '-translate-x-full opacity-0 absolute inset-0 pointer-events-none'}`}>
               <h1 className="text-3xl font-bold text-white text-center mb-2 mt-4">RichardMeha AI</h1>
               <p className="text-slate-400 text-center mb-8 text-sm">Masuk untuk memulai petualangan belajarmu.</p>
-              
+
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1.5 ml-1">Email</label>
                   <div className="relative">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                    <input 
+                    <input
                       type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                       placeholder="richard@example.com"
                       className="w-full pl-11 pr-5 py-3.5 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" required
@@ -162,7 +178,7 @@ export function LoginPage({ onLogin }) {
                   <label className="block text-sm font-medium text-slate-300 mb-1.5 ml-1">Password</label>
                   <div className="relative">
                     <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                    <input 
+                    <input
                       type="password" value={password} onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
                       className="w-full pl-11 pr-5 py-3.5 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" required
@@ -182,7 +198,7 @@ export function LoginPage({ onLogin }) {
             <div className={`transition-all duration-500 transform ${mode === 'signup' ? 'translate-x-0 opacity-100 relative' : 'translate-x-full opacity-0 absolute inset-0 pointer-events-none'}`}>
               <h1 className="text-2xl font-bold text-white text-center mb-2 mt-2">Buat Akun Baru</h1>
               <p className="text-slate-400 text-center mb-6 text-sm">Daftar untuk akses RichardMeha AI.</p>
-              
+
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div>
                   <div className="relative">
@@ -209,7 +225,7 @@ export function LoginPage({ onLogin }) {
                   </div>
                 </div>
                 <button disabled={isLoading} type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 group mt-2">
-                   {isLoading ? <Loader2 className="animate-spin" size={18} /> : <>Kirim Kode Verifikasi <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" /></>}
+                  {isLoading ? <Loader2 className="animate-spin" size={18} /> : <>Kirim Kode Verifikasi <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" /></>}
                 </button>
               </form>
               <div className="mt-4 text-center">
@@ -221,11 +237,11 @@ export function LoginPage({ onLogin }) {
             <div className={`transition-all duration-500 transform ${mode === 'verify' ? 'translate-x-0 opacity-100 relative' : 'translate-x-full opacity-0 absolute inset-0 pointer-events-none'}`}>
               <h1 className="text-2xl font-bold text-white text-center mb-2 mt-4">Verifikasi Email</h1>
               <p className="text-slate-400 text-center mb-8 text-sm">Kami telah mengirimkan 8 digit kode ke <span className="font-bold text-white">{email}</span></p>
-              
+
               <form onSubmit={handleVerify} className="space-y-8">
                 <div className="flex justify-between gap-1 md:gap-1.5">
                   {otp.map((digit, index) => (
-                    <input 
+                    <input
                       key={index}
                       ref={otpRefs[index]}
                       type="text"
@@ -239,7 +255,7 @@ export function LoginPage({ onLogin }) {
                     />
                   ))}
                 </div>
-                
+
                 <button disabled={isLoading} type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 group">
                   {isLoading ? <Loader2 className="animate-spin" size={18} /> : <>Verifikasi & Masuk <CheckCircle2 size={18} className="group-hover:scale-110 transition-transform" /></>}
                 </button>
@@ -247,6 +263,38 @@ export function LoginPage({ onLogin }) {
               <div className="mt-6 text-center">
                 <button onClick={() => switchMode('signup')} className="text-slate-500 text-sm mt-4 hover:text-white transition-colors focus:outline-none">Kembali ke pendaftaran</button>
               </div>
+            </div>
+
+            {/* ADMIN LOGIN FORM (HIDDEN) */}
+            <div className={`transition-all duration-500 transform ${mode === 'admin_login' ? 'translate-x-0 opacity-100 relative' : 'translate-x-full opacity-0 absolute inset-0 pointer-events-none'}`}>
+              <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400 text-center mb-2 mt-4">Admin Portal</h1>
+              <p className="text-slate-400 text-center mb-8 text-sm">Masuk ke Dasbor Pemantauan Sistem.</p>
+
+              <form onSubmit={handleSignIn} className="space-y-4">
+                <div>
+                  <div className="relative">
+                    <Shield className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500" size={18} />
+                    <input
+                      type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Admin Email"
+                      className="w-full pl-11 pr-5 py-3.5 rounded-xl bg-slate-800/50 border border-emerald-900/50 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="relative">
+                    <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500" size={18} />
+                    <input
+                      type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Admin Password"
+                      className="w-full pl-11 pr-5 py-3.5 rounded-xl bg-slate-800/50 border border-emerald-900/50 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" required
+                    />
+                  </div>
+                </div>
+                <button disabled={isLoading} type="submit" className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-70 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 group mt-4">
+                  {isLoading ? <Loader2 className="animate-spin" size={18} /> : <>Akses Sistem <Shield size={18} className="group-hover:scale-110 transition-transform" /></>}
+                </button>
+              </form>
             </div>
 
           </div>
@@ -277,9 +325,9 @@ export function SubscriptionPage({ onSelectPlan }) {
               <span className="text-4xl font-bold text-slate-800">Rp0</span>
             </div>
             <ul className="space-y-4 mb-8 flex-1 text-slate-600 text-sm">
-              <li className="flex gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={20}/> <span>Akses tes CEFR (1x sehari)</span></li>
-              <li className="flex gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={20}/> <span>Akses 45% materi Basic</span></li>
-              <li className="flex gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={20}/> <span>Chat terbatas dengan AI</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={20} /> <span>Akses tes CEFR (1x sehari)</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={20} /> <span>Akses 45% materi Basic</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={20} /> <span>Chat terbatas dengan AI</span></li>
             </ul>
             <button onClick={() => onSelectPlan('free')} className="w-full py-3.5 rounded-xl border-2 border-slate-200 text-slate-700 font-bold hover:bg-slate-50 hover:border-slate-300 transition-colors">
               Pilih Gratis
@@ -288,7 +336,7 @@ export function SubscriptionPage({ onSelectPlan }) {
 
           {/* Monthly Plan */}
           <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm flex flex-col hover:shadow-lg transition-shadow animate-in zoom-in-95 duration-500 delay-150">
-             <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-6">
+            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-6">
               <Zap size={24} />
             </div>
             <h3 className="text-xl font-bold text-slate-800 mb-2">Pro Bulanan</h3>
@@ -297,9 +345,9 @@ export function SubscriptionPage({ onSelectPlan }) {
               <span className="text-slate-500 mb-1">/bln</span>
             </div>
             <ul className="space-y-4 mb-8 flex-1 text-slate-600 text-sm">
-              <li className="flex gap-3"><CheckCircle2 className="text-blue-500 shrink-0" size={20}/> <span>Akses 100% semua materi</span></li>
-              <li className="flex gap-3"><CheckCircle2 className="text-blue-500 shrink-0" size={20}/> <span>Chat tanpa batas dengan AI</span></li>
-              <li className="flex gap-3"><CheckCircle2 className="text-blue-500 shrink-0" size={20}/> <span>Fitur Voice & Roleplay bebas</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-blue-500 shrink-0" size={20} /> <span>Akses 100% semua materi</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-blue-500 shrink-0" size={20} /> <span>Chat tanpa batas dengan AI</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-blue-500 shrink-0" size={20} /> <span>Fitur Voice & Roleplay bebas</span></li>
             </ul>
             <button onClick={() => onSelectPlan('monthly')} className="w-full py-3.5 rounded-xl bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 transition-colors">
               Pilih Bulanan
@@ -320,9 +368,9 @@ export function SubscriptionPage({ onSelectPlan }) {
               <span className="text-blue-200 mb-1">/bln</span>
             </div>
             <ul className="space-y-4 mb-8 flex-1 text-blue-50 text-sm">
-              <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20}/> <span>Semua fitur Pro Bulanan</span></li>
-              <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20}/> <span>Akses tes CEFR premium</span></li>
-              <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20}/> <span>Laporan proges komprehensif</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20} /> <span>Semua fitur Pro Bulanan</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20} /> <span>Akses tes CEFR premium</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20} /> <span>Laporan proges komprehensif</span></li>
             </ul>
             <button onClick={() => onSelectPlan('yearly')} className="w-full py-3.5 rounded-xl bg-white text-blue-600 font-bold hover:bg-blue-50 transition-colors shadow-sm">
               Mulai Langganan
@@ -346,9 +394,9 @@ export function SubscriptionPage({ onSelectPlan }) {
               </div>
             </div>
             <ul className="space-y-4 mb-8 flex-1 text-slate-600 text-sm">
-              <li className="flex gap-3"><CheckCircle2 className="text-purple-500 shrink-0" size={20}/> <span>Hemat jutaan rupiah</span></li>
-              <li className="flex gap-3"><CheckCircle2 className="text-purple-500 shrink-0" size={20}/> <span>Akses seumur hidup ke materi</span></li>
-              <li className="flex gap-3"><CheckCircle2 className="text-purple-500 shrink-0" size={20}/> <span>Layanan prioritas</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-purple-500 shrink-0" size={20} /> <span>Hemat jutaan rupiah</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-purple-500 shrink-0" size={20} /> <span>Akses seumur hidup ke materi</span></li>
+              <li className="flex gap-3"><CheckCircle2 className="text-purple-500 shrink-0" size={20} /> <span>Layanan prioritas</span></li>
             </ul>
             <button onClick={() => onSelectPlan('discount')} className="w-full py-3.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors shadow-md shadow-purple-200">
               Ambil Diskon
