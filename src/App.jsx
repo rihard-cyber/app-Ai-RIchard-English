@@ -316,8 +316,8 @@ export default function App() {
         return <SetupModule module="Listening & Talking" basePrompt={prompts.listening} icon={<Headphones size={24}/>} color="text-amber-600" bg="bg-amber-100" onComplete={(score) => saveProgress('listening', score)} isPro={userProfile.is_pro} topicsList={LISTENING_TOPICS} />;
       case 'writing_analyzer':
         return <WritingAnalyzer isPro={userProfile.is_pro} />;
-      case 'vocabulary':
-        return <SetupModule module="📚 Belajar (Vocab)" basePrompt={prompts.vocabulary} icon={<BookA />} color="text-emerald-600" bg="bg-emerald-100" isPro={userProfile.is_pro} topicsList={VOCABULARY_TOPICS} />;
+
+
       case 'call_tutor':
         return <ChatModule module="🎧 Call Tutor" basePrompt={prompts.call_tutor} initialCallMode={true} topic="Daily Practice" onBack={() => handleTabChange('home')} />;
       case 'conversation':
@@ -1061,17 +1061,75 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
 
   const renderFormattedText = (text) => {
     if (!text) return null;
-    return text.split('\n').map((line, i) => (
-      <div key={i} className="mb-1.5 leading-relaxed" dangerouslySetInnerHTML={{
-        __html: line
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\*(.*?)\*/g, '<em>$1</em>')
-          .replace(/`(.*?)`/g, '<code class="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-md">$1</code>')
-          .replace(/❌ (.*)/g, '<span class="text-rose-600 font-bold">❌ $1</span>')
-          .replace(/✅ (.*)/g, '<span class="text-emerald-600 font-bold">✅ $1</span>')
-      }} />
-    ));
+    const lines = text.split('\n');
+    let inTable = false;
+    let tableRows = [];
+    const elements = [];
+    const flushTable = (keyIndex) => {
+      if (tableRows.length > 0) {
+        elements.push(
+          <div key={`table-${keyIndex}`} className="overflow-x-auto my-4 rounded-xl border border-slate-200 shadow-sm w-full">
+            <table className="min-w-full text-sm text-left whitespace-nowrap md:whitespace-normal">
+              <tbody>
+                {tableRows.map((row, idx) => {
+                  const cols = row.split('|').map(c => c.trim()).filter(c => c);
+                  if (row.includes('---')) return null;
+                  
+                  return (
+                    <tr key={idx} className={`${idx === 0 ? 'bg-indigo-50 font-bold text-indigo-900 border-b-2 border-indigo-100' : 'border-t border-slate-100 bg-white'}`}>
+                      {cols.map((col, cidx) => (
+                        <td key={cidx} className="px-4 py-3 border-r last:border-r-0 border-slate-100 align-top" dangerouslySetInnerHTML={{__html: parseInline(col)}} />
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        );
+        tableRows = [];
+        inTable = false;
+      }
+    };
+
+    const parseInline = (str) => {
+      return str
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`(.*?)`/g, '<code class="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-md text-xs font-mono font-bold">$1</code>')
+        .replace(/__(.*?)__/g, '<u>$1</u>')
+        .replace(/❌ (.*)/g, '<span class="text-rose-600 font-bold">❌ $1</span>')
+        .replace(/✅ (.*)/g, '<span class="text-emerald-600 font-bold">✅ $1</span>');
+    };
+
+    lines.forEach((line, i) => {
+      if (line.trim().startsWith('|') || (line.includes('|') && line.length > 10)) {
+        inTable = true;
+        tableRows.push(line);
+      } else {
+        flushTable(i);
+        if (line.trim() === '') {
+           elements.push(<div key={`br-${i}`} className="h-2"></div>);
+        } else {
+           elements.push(<div key={`text-${i}`} className="mb-1.5 leading-relaxed" dangerouslySetInnerHTML={{__html: parseInline(line)}} />);
+        }
+      }
+    });
+    flushTable('end');
+
+    return elements;
   };
+
+
+
+
+
+
+
+
+
+
+
 
   return (
     <div className="flex flex-col h-full bg-slate-50 relative overflow-hidden">
