@@ -1,6 +1,6 @@
 const dotenv = require('dotenv');
-const fs = require('fs');
-const https = require('https');
+const fs = require('node:fs');
+const https = require('node:https');
 
 // Parse .env file manually or require 'dotenv' if installed
 const envConfig = dotenv.parse(fs.readFileSync('.env'))

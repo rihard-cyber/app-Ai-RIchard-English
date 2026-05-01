@@ -848,10 +848,11 @@ function ChatModule({
       generationConfig: { temperature: 0.7 }
     };
 
-    const res = await fetch('http://localhost:3000/api/gemini', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+    try {
+      const res = await fetch('http://localhost:3000/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
 
       const data = await res.json();
@@ -984,7 +985,8 @@ function ChatModule({
   }, [messages]);
 
   return (
-       {callMode && (
+    <>
+      {callMode && (
         <div className="absolute inset-0 bg-[#0f172a] z-50 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
           <div className="absolute top-6 left-6 flex items-center gap-2">
             <div className="flex bg-white/5 rounded-xl p-1 border border-white/10">
@@ -1018,10 +1020,6 @@ function ChatModule({
               className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-xl active:scale-90 ${isRecording ? 'bg-rose-500 animate-pulse' : 'bg-blue-600 hover:bg-blue-700'}`}
             >
               {isRecording ? <MicOff size={32} /> : <Mic size={32} />}
-            </button>
-          </div>
-        </div>
-      )}ding ? <MicOff size={32} /> : <Mic size={32} />}
             </button>
           </div>
         </div>
