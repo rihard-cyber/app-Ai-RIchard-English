@@ -947,63 +947,80 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
     }
   }, []);
 
-  // --- TEXT TO SPEECH (TTS) ---
-  // --- TEXT TO SPEECH (TTS) with Bilingual Support ---
-  const handleTTS = (text) => {
-    if (!('speechSynthesis' in window)) {
-      alert("Browser Anda tidak mendukung fitur suara.");
-      return;
+  // --- TTS: Gemini 2.5 Flash Neural Voice (Natural Human Sound) ---
+  const audioRef = useRef(null); // Track current playing audio
+
+  const handleTTS = async (text) => {
+    // Stop any previous audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
     }
-    window.speechSynthesis.cancel();
+    window.speechSynthesis?.cancel();
 
-    const cleanText = text
-      .replace(/<[^>]*>/g, '')
-      .replace(/\*\*(.*?)\*\*/g, '$1')
-      .replace(/\*(.*?)\*/g, '$1')
-      .replace(/#{1,6}\s/g, '')
-      .replace(/`{1,3}/g, '')
-      .replace(/\|/g, ', ')
-      .replace(/[-_]{2,}/g, '')
-      .trim();
+    if (!text?.trim()) return;
+    setIsSpeaking(true);
 
-    if (!cleanText) return;
-
-    const isEnglish = (str) => {
-      const enWords = /\b(the|is|are|was|were|you|your|this|that|have|has|will|can|do|does|not|with|for|and|but|in|on|at|to|a|an|it|its|he|she|we|they|my|his|her|our)\b/i;
-      return enWords.test(str);
-    };
-
-    const doSpeak = () => {
-      const voices = window.speechSynthesis.getVoices();
-      const enVoice = voices.find(v => v.name.includes('Google') && v.lang.startsWith('en'))
-        || voices.find(v => v.lang === 'en-US')
-        || voices.find(v => v.lang.startsWith('en'));
-      const idVoice = voices.find(v => v.lang === 'id-ID')
-        || voices.find(v => v.lang.startsWith('id'))
-        || enVoice;
-
-      const sentences = cleanText.match(/[^.!?\n]+[.!?\n]?/g) || [cleanText];
-      const queue = sentences.map(s => s.trim()).filter(Boolean).map(s => {
-        const u = new SpeechSynthesisUtterance(s);
-        u.rate = 0.9;
-        u.pitch = 1.05;
-        if (isEnglish(s)) { u.lang = 'en-US'; if (enVoice) u.voice = enVoice; }
-        else { u.lang = 'id-ID'; if (idVoice) u.voice = idVoice; }
-        return u;
+    try {
+      const res = await fetch('http://localhost:3000/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          voiceName: 'Kore', // Kore = warm natural female voice (bilingual EN+ID)
+        })
       });
 
-      if (!queue.length) return;
-      queue[0].onstart = () => setIsSpeaking(true);
-      queue[queue.length - 1].onend = () => setIsSpeaking(false);
-      queue[queue.length - 1].onerror = () => setIsSpeaking(false);
-      queue.forEach(u => window.speechSynthesis.speak(u));
-    };
+      if (!res.ok) throw new Error('TTS API failed');
 
-    if (window.speechSynthesis.getVoices().length > 0) {
-      doSpeak();
-    } else {
-      window.speechSynthesis.onvoiceschanged = doSpeak;
+      const data = await res.json();
+      if (!data.audioData) throw new Error('No audio returned');
+
+      // Decode base64 audio and play it
+      const audioBytes = atob(data.audioData);
+      const audioArray = new Uint8Array(audioBytes.length);
+      for (let i = 0; i < audioBytes.length; i++) {
+        audioArray[i] = audioBytes.charCodeAt(i);
+      }
+      const blob = new Blob([audioArray], { type: data.mimeType || 'audio/wav' });
+      const audioUrl = URL.createObjectURL(blob);
+
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      audio.onended = () => {
+        setIsSpeaking(false);
+        URL.revokeObjectURL(audioUrl);
+        audioRef.current = null;
+      };
+      audio.onerror = () => {
+        setIsSpeaking(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+      audio.play();
+
+    } catch (err) {
+      console.warn('Gemini TTS failed, falling back to browser voice:', err.message);
+      // Fallback to browser Web Speech API
+      setIsSpeaking(false);
+      const cleanText = text.replace(/<[^>]*>/g, '').replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1').replace(/#{1,6}\s/g, '').replace(/`{1,3}/g, '').trim();
+      if (cleanText && 'speechSynthesis' in window) {
+        const u = new SpeechSynthesisUtterance(cleanText);
+        u.rate = 0.9; u.lang = 'id-ID';
+        u.onstart = () => setIsSpeaking(true);
+        u.onend = () => setIsSpeaking(false);
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+      }
     }
+  };
+
+  const stopTTS = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    window.speechSynthesis?.cancel();
+    setIsSpeaking(false);
   };
 
   // --- SPEECH TO TEXT (STT) --- Bilingual EN + ID
