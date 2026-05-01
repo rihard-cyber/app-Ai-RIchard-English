@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowUpRight, ArrowDownRight, LogOut, Loader2, Plus, Trash2 } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowUpRight, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 export default function AdminDashboard({ onLogout }) {
