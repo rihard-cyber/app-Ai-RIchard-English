@@ -751,8 +751,8 @@ function ChatModule({
         body: JSON.stringify({ text: cleanText, voice: 'Kore' })
       });
       const data = await res.json();
-      if (data.audioContent) {
-        const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+      if (data.audioData) {
+        const audio = new Audio(`data:${data.mimeType || 'audio/wav'};base64,${data.audioData}`);
         audioRef.current = audio;
         audio.play();
         audio.onended = () => setIsSpeaking(false);
@@ -1170,8 +1170,7 @@ function ChatModule({
           </button>
         </form>
       </div>
-    </div>
+    </>
   );
-}
 
-// Ensure the App closing brace is present if we replaced until end of file
+}
