@@ -276,7 +276,7 @@ export default function App() {
     const prompts = getPrompts(userProfile);
     switch (activeTab) {
       case 'home':
-        return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} recommendation={recommendation} onStartGoal={(id) => { setActiveGoalId(id); setActiveTab('goal_session'); }} />;
+        return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} recommendation={recommendation} onStartGoal={(id) => { setActiveGoalId(id); setActiveTab('goal_session'); }} onUpgrade={() => setIsPaymentModalOpen(true)} />;
       case 'progress': return <ProgressDashboard userProfile={userProfile} />;
       case 'assessment': return <LevelTest onComplete={handleAssessmentComplete} />;
       case 'vocabulary': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Vocabulary" basePrompt={prompts.vocabulary} icon={<BookA size={24} />} color="text-indigo-600" bg="bg-indigo-100" onComplete={(score) => saveProgress('vocabulary', score)} isPro={userProfile.is_pro} topicsList={VOCABULARY_TOPICS} onUpgrade={() => setIsPaymentModalOpen(true)} />;
@@ -405,7 +405,7 @@ const CONVERSATION_CHARACTERS = CHARS_RAW.map(c => ({
 // ==========================================
 // HOME DASHBOARD
 // ==========================================
-function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal }) {
+function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, onUpgrade }) {
   const safeLevel = userProfile?.level || 'Pemula Dasar (A1)';
   const levelData = CURRICULUM[safeLevel] || CURRICULUM['Pemula Dasar (A1)'];
 
@@ -450,13 +450,39 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal })
         <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-xl flex flex-col">
           <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2"><Trophy size={24} className="text-yellow-500" /> Goals Level {userProfile.level.split(' ')[0]}</h3>
           <div className="space-y-4 flex-1">
-            {(levelData?.lessons || levelData?.goals || []).map((goal, i) => (
-              <div key={i} onClick={() => goal.id ? onStartGoal(goal.id) : null} className={`flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 group transition-all cursor-pointer ${goal.id ? 'hover:border-blue-500 hover:bg-blue-50/30 hover:shadow-lg hover:-translate-y-1' : ''}`}>
-                <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-black shrink-0 mt-0.5 shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors">{i + 1}</div>
-                <div className="flex-1"><p className="text-sm font-black text-slate-700 group-hover:text-blue-700 transition-colors">{goal.title || goal.name || goal}</p>{goal.id && <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{goal.topic || 'Klik untuk mulai latihan'}</p>}</div>
-                {goal.id && <ArrowUpRight size={18} className="text-slate-300 group-hover:text-blue-500 transition-colors" />}
-              </div>
-            ))}
+            {(() => {
+              const goals = levelData?.lessons || levelData?.goals || [];
+              const freeCount = Math.ceil(goals.length * 0.4);
+              return goals.map((goal, i) => {
+                const isLocked = i >= freeCount && !userProfile.is_pro;
+                return (
+                  <div 
+                    key={i} 
+                    onClick={() => {
+                      if (isLocked) {
+                        onUpgrade();
+                      } else if (goal.id) {
+                        onStartGoal(goal.id);
+                      }
+                    }} 
+                    className={`flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden ${isLocked ? 'bg-slate-50 border-slate-100 opacity-70 grayscale-[0.5]' : 'bg-slate-50 border-slate-100 hover:border-blue-500 hover:bg-blue-50/30 hover:shadow-lg hover:-translate-y-1 group'}`}
+                  >
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 mt-0.5 shadow-sm transition-colors ${isLocked ? 'bg-slate-200 text-slate-400' : 'bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'}`}>
+                      {isLocked ? <Lock size={12} /> : i + 1}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`text-sm font-black transition-colors ${isLocked ? 'text-slate-500' : 'text-slate-700 group-hover:text-blue-700'}`}>{goal.title || goal.name || goal}</p>
+                      {goal.id && <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{isLocked ? 'PRO FEATURE' : (goal.topic || 'Klik untuk mulai latihan')}</p>}
+                    </div>
+                    {isLocked ? (
+                      <Crown size={16} className="text-amber-500 fill-amber-500" />
+                    ) : (
+                      goal.id && <ArrowUpRight size={18} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
+                    )}
+                  </div>
+                );
+              });
+            })()}
           </div>
           <button onClick={() => onNavigate('assessment')} className="mt-8 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 mx-auto">Cek level lagi? Ulangi Tes <ArrowUpRight size={14} /></button>
         </div>
