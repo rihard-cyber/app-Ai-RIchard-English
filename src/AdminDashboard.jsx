@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowUpRight, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowUpRight, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 export default function AdminDashboard({ onLogout }) {
@@ -15,7 +15,7 @@ export default function AdminDashboard({ onLogout }) {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [activeTab]); // Refetch every time tab changes
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -131,7 +131,19 @@ export default function AdminDashboard({ onLogout }) {
 
             {/* Main Content */}
             <main className="flex-1 overflow-y-auto p-8">
-                <h2 className="text-3xl font-black text-slate-800 mb-8 capitalize">{activeTab} Dashboard</h2>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h1 className="text-3xl font-black text-slate-800 tracking-tight capitalize">{activeTab.replace('transactions', 'Transaksi Pro').replace('banks', 'Data Rekening').replace('users', 'Data Pengguna')} Dashboard</h1>
+                        <p className="text-slate-500 font-medium">Selamat datang kembali di pusat kendali RichardMeha AI.</p>
+                    </div>
+                    <button 
+                        onClick={fetchData}
+                        disabled={isLoading}
+                        className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-xs font-black text-slate-600 hover:bg-slate-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                    >
+                        <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} /> REFRESH DATA
+                    </button>
+                </div>
 
                 {activeTab === 'overview' && (
                     <div className="space-y-8 animate-in fade-in">
