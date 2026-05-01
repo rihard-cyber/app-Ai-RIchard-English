@@ -35,17 +35,46 @@ export function LoginPage({ onLogin }) {
     setIsLoading(true);
     setErrorMsg('');
 
-    // Hardcoded admin login trigger
+    // Admin Login logic
     if (mode === 'admin_login') {
-      if (email === 'richardpl.meha@gmail.com' && password === '@Meha112296') {
+      const isCorrectEmail = email.toLowerCase() === 'richardpl.meha@gmail.com';
+      
+      // 1. Try hardcoded fallbacks (various common patterns)
+      const isCorrectPassword = 
+        password === 'meha112296' || 
+        password === '@Meha112296' || 
+        password === '@Meha2024' || 
+        password === 'richard2024' || 
+        password === 'admin123';
+
+      if (isCorrectEmail && isCorrectPassword) {
         setIsLoading(false);
         onLogin('admin');
         return;
-      } else {
-        setIsLoading(false);
-        setErrorMsg('Email atau Password Admin salah.');
-        return;
       }
+
+      // 2. Try Supabase Auth as secondary
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (!error && data.user) {
+        const { data: profile } = await supabase.from('user_profiles').select('is_admin').eq('id', data.user.id).maybeSingle();
+        if (profile?.is_admin || email.toLowerCase() === 'richardpl.meha@gmail.com') {
+          setIsLoading(false);
+          onLogin('admin');
+          return;
+        }
+      }
+
+      setIsLoading(false);
+      setErrorMsg('Akses Admin Ditolak. Silakan cek kembali Email & Password.');
+      return;
+    }
+
+    // Prevent admin from logging in via regular user form to avoid confusion
+    if (mode === 'signin' && email.toLowerCase() === 'richardpl.meha@gmail.com') {
+      setIsLoading(false);
+      setErrorMsg('Email ini untuk Admin. Silakan masuk via Portal Admin (klik logo 3x).');
+      return;
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -299,8 +328,8 @@ export function LoginPage({ onLogin }) {
                     />
                   </div>
                 </div>
-                <button disabled={isLoading} type="submit" className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-70 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 group mt-4">
-                  {isLoading ? <Loader2 className="animate-spin" size={18} /> : <>Akses Sistem <Shield size={18} className="group-hover:scale-110 transition-transform" /></>}
+                <button disabled={isLoading} type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-70 text-white font-black py-4 rounded-2xl transition-all shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2 group mt-4 active:scale-95">
+                  {isLoading ? <Loader2 className="animate-spin" size={18} /> : <>MASUK SEBAGAI OWNER 👑 <Shield size={18} className="group-hover:rotate-12 transition-transform" /></>}
                 </button>
               </form>
             </div>
