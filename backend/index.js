@@ -127,6 +127,39 @@ app.post('/api/tts', async (req, res) => {
   }
 });
 
+// ============================================================
+// ENDPOINT 3: PAYMENT NOTIFICATION (Webhook for Midtrans/Xendit)
+// ============================================================
+// In real life, this is where Midtrans/Xendit sends a POST after user pays.
+app.post('/api/payments/notification', async (req, res) => {
+  try {
+    const { order_id, transaction_status, userId } = req.body;
+    
+    console.log(`💰 Payment Notification Received: ${order_id} - ${transaction_status}`);
+
+    // If payment is successful (settlement or capture)
+    if (transaction_status === 'settlement' || transaction_status === 'capture') {
+       // logic to update Supabase would go here in a real production environment
+       // For now, we simulate success for this ID
+       console.log(`✅ User ${userId} is now PRO!`);
+    }
+
+    res.status(200).json({ status: 'OK' });
+  } catch (error) {
+    console.error("Payment Webhook Error:", error);
+    res.status(500).json({ error: "Webhook Error" });
+  }
+});
+
+// ============================================================
+// ENDPOINT 4: CHECK PAYMENT STATUS
+// ============================================================
+app.get('/api/payments/status/:userId', async (req, res) => {
+   // Simulating an automated database check
+   // In real app: return data from Supabase 'user_profiles'
+   res.json({ is_pro: true, status: 'Active' }); 
+});
+
 app.listen(PORT, () => {
   console.log(`✅ Backend running on http://localhost:${PORT}`);
   console.log(`⚡ Chat: Gemini 1.5 Flash (Reliable & Smart)`);

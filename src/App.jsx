@@ -137,9 +137,18 @@ const getPrompts = (userProfile) => {
 export default function App() {
   const [authState, setAuthState] = useState('login'); // 'login', 'subscription', 'assessment', 'app'
   const [userProfile, setUserProfile] = useState(DEFAULT_PROFILE);
-  const [activeTab, setActiveTab] = useState('home');
-  const [activeGoalId, setActiveGoalId] = useState(null);
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('richard_active_tab') || 'home');
+  const [activeGoalId, setActiveGoalId] = useState(() => localStorage.getItem('richard_active_goal') || null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
+  useEffect(() => {
+    localStorage.setItem('richard_active_tab', activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeGoalId) localStorage.setItem('richard_active_goal', activeGoalId);
+    else localStorage.removeItem('richard_active_goal');
+  }, [activeGoalId]);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState({ name: '', price: 0 });
   const [userStats, setUserStats] = useState({ speaking: 0, writing: 0, grammar: 0, vocabulary: 0 });

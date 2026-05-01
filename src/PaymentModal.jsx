@@ -26,7 +26,13 @@ export default function PaymentModal({ isOpen, onClose, onPaymentSuccess, planNa
     { id: 'wallet', name: 'E-Wallet (Dana/LinkAja)', icon: <Wallet className="text-orange-500" />, color: 'bg-orange-50' },
   ];
 
-  const simulatePayment = () => {
+  const simulatePayment = async () => {
+    // In real app, this would be: 
+    // const res = await fetch(`http://localhost:3000/api/payments/status/${userId}`);
+    // const data = await res.json();
+    // if (data.is_pro) setStep('success');
+    
+    // For now, we simulate a 3-second automated check:
     setTimeout(() => {
       setStep('success');
     }, 3000);
