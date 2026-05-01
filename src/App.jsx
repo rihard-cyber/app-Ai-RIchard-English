@@ -114,7 +114,8 @@ After the user answers, you MUST provide:
 
 == SMART FEATURES ==
 - If the user is silent or says "I don't know", suggest 3 options immediately.
-- If the user is confused, give a "HINT".
+- [EMOTIONAL AI]: If the user is confused, give a "HINT" and start with warm encouragement.
+- [TOPIC SWITCH]: If the user answers 3-4 questions correctly or seems bored, proactively suggest a new related topic (e.g., "You're doing great! Wanna talk about [New Topic] instead?").
 - Keep the conversation ALIVE. Never be passive.
 `;
 
@@ -621,7 +622,7 @@ function ChatModule({
         contents: [{ role: 'user', parts: [{ text: textToTranslate }] }],
         systemInstruction: { parts: [{ text: "Translate this English sentence to natural, casual, friendly Indonesian (Kampung Inggris style). ONLY return the translation." }] }
       };
-      const res = await fetch('http://localhost:3000/api/gemini', {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -643,7 +644,7 @@ function ChatModule({
         contents: [{ role: 'user', parts: [{ text: `Conversation history:\n${history}\n\nSuggest 3–4 very short, natural English response options for the user based on the last AI message. Format: Just the options separated by | character. No numbering.` }] }],
         systemInstruction: { parts: [{ text: "You are a helpful assistant providing English conversation suggestions." }] }
       };
-      const res = await fetch('http://localhost:3000/api/gemini', {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -668,18 +669,24 @@ function ChatModule({
     setIsSpeaking(true);
     try {
       const cleanText = text.replace(/❌[\s\S]*?✅/g, '').replace(/[✅❌*#]/g, '');
-      const res = await fetch('http://localhost:3000/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleanText, voice: 'Kore' })
-      });
-      const data = await res.json();
-      if (data.audioData) {
-        const audio = new Audio(`data:${data.mimeType || 'audio/wav'};base64,${data.audioData}`);
-        audioRef.current = audio;
-        audio.play();
-        audio.onended = () => setIsSpeaking(false);
-      }
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.lang = 'en-US';
+      utterance.rate = 0.9;
+      
+      // Try to get a good English voice
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google')) || voices.find(v => v.lang.startsWith('en'));
+      if (preferredVoice) utterance.voice = preferredVoice;
+
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = (e) => {
+        console.error("TTS error", e);
+        setIsSpeaking(false);
+      };
+      
+      // Cancel any ongoing speech before speaking new one
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
     } catch (err) {
       console.error("TTS error", err);
       setIsSpeaking(false);
@@ -755,7 +762,8 @@ function ChatModule({
     setInputValue('');
     setIsLoading(true);
 
-    const isConfused = text.toLowerCase().includes("don't know") || text.toLowerCase().includes("bingung") || text.toLowerCase().includes("help");
+    const confusionKeywords = ["don't know", "bingung", "help", "susah", "gak ngerti", "sulit", "hard", "what", "kurang paham", "paham", "gak tau"];
+    const isConfused = confusionKeywords.some(keyword => text.toLowerCase().includes(keyword));
     const contents = updatedMessages.filter(msg => !msg.isHidden).map(msg => ({
       role: msg.role === 'user' ? 'user' : 'model',
       parts: [{ text: msg.content }]
@@ -765,14 +773,14 @@ function ChatModule({
       contents: contents,
       systemInstruction: { 
         parts: [{ 
-          text: `${basePrompt}\n\n[USER EMOTION: ${isConfused ? 'CONFUSED' : 'NORMAL'}]\n[PERSONALITY: ${voicePersonality}]\n[MEMORY: Weak areas: ${memory.mistakes.join(', ')}]\n${modeInstruction}` 
+          text: `${basePrompt}\n\n[USER EMOTION: ${isConfused ? 'CONFUSED (Activate Emotional AI: Provide deep empathy, encouragement & simpler explanation)' : 'NORMAL'}]\n[PERSONALITY: ${voicePersonality === 'strict' ? 'Strict Teacher (Direct, professional, focus strictly on grammar correction, no slang)' : voicePersonality === 'buddy' ? 'Fun Buddy (Super casual, uses slang, acts like a peer or close friend)' : 'Friendly Tutor (Warm, encouraging, patient, praises the user)'}]\n[MEMORY: Weak areas: ${memory.mistakes.join(', ')}]\n${modeInstruction}` 
         }] 
       },
       generationConfig: { temperature: 0.7 }
     };
 
     try {
-      const res = await fetch('http://localhost:3000/api/gemini', {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -963,6 +971,17 @@ function ChatModule({
         </div>
         
         <div className="flex items-center gap-2">
+          <div className="hidden sm:flex bg-slate-50 rounded-lg p-1 border border-slate-100 mr-2">
+            {['friendly', 'strict', 'buddy'].map(p => (
+              <button 
+                key={p} 
+                onClick={() => setVoicePersonality(p)}
+                className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${voicePersonality === p ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
           <div className="px-3 py-1.5 bg-blue-50 rounded-full flex items-center gap-2 border border-blue-100 shadow-sm">
             <Zap size={14} className="text-blue-600 fill-blue-600" />
             <span className="text-xs font-black text-blue-700">{userProfile.xp || 0} XP</span>
