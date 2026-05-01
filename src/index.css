@@ -88,6 +88,37 @@ body {
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Prevent text size adjust on orientation change (Android) */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Smooth scrolling */
+  scroll-behavior: smooth;
+  /* Prevent horizontal overflow on mobile */
+  overflow-x: hidden;
+}
+
+/* Safe area insets for notched Android/iOS phones */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Touch targets minimum 44px for Android accessibility */
+button, a, input, textarea {
+  touch-action: manipulation;
+}
+
+/* Prevent text selection while tapping buttons on mobile */
+button {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Better chat bubble text on small screens */
+@media (max-width: 640px) {
+  .chat-bubble-text {
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
 }
 
 @keyframes border-spin {

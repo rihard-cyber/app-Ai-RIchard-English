@@ -937,19 +937,55 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
   // --- TEXT TO SPEECH (TTS) ---
   const handleTTS = (text) => {
     if ('speechSynthesis' in window) {
-      // Clean markdown tags for better reading
-      const cleanText = text.replace(/[*_#|]/g, '').replace(/`/g, '');
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      // Try to find a good English voice for English parts, but AI mixes ID and EN.
-      // We will default to a standard voice.
-      utterance.rate = 0.9; 
-      
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
+      // Strip markdown and HTML tags before reading
+      const cleanText = text
+        .replace(/<[^>]*>/g, '')        // Remove HTML tags
+        .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold markdown
+        .replace(/\*(.*?)\*/g, '$1')     // Remove italic markdown  
+        .replace(/#{1,6}\s/g, '')        // Remove heading markers
+        .replace(/`{1,3}/g, '')          // Remove code backticks
+        .replace(/\|/g, ', ')            // Replace table pipes with comma
+        .replace(/[-_]{2,}/g, '')        // Remove horizontal rules
+        .trim();
 
-      window.speechSynthesis.cancel(); // Stop any ongoing speech
-      window.speechSynthesis.speak(utterance);
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.rate = 0.92;
+      utterance.pitch = 1.05;
+
+      // Pick the most natural voice available
+      const pickBestVoice = () => {
+        const voices = window.speechSynthesis.getVoices();
+        // Priority: Google voices > Microsoft voices > any English voice
+        const preferred = [
+          v => v.name.includes('Google') && v.lang.startsWith('en'),
+          v => v.name.includes('Microsoft') && v.lang.startsWith('en') && v.name.includes('Natural'),
+          v => v.name.includes('Microsoft') && v.lang.startsWith('en'),
+          v => v.lang === 'en-US',
+          v => v.lang.startsWith('en'),
+        ];
+        for (const test of preferred) {
+          const found = voices.find(test);
+          if (found) return found;
+        }
+        return null;
+      };
+
+      const setAndSpeak = () => {
+        const best = pickBestVoice();
+        if (best) utterance.voice = best;
+        utterance.onstart = () => setIsSpeaking(true);
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = () => setIsSpeaking(false);
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+      };
+
+      // Voices may not be loaded yet — wait if needed
+      if (window.speechSynthesis.getVoices().length > 0) {
+        setAndSpeak();
+      } else {
+        window.speechSynthesis.onvoiceschanged = setAndSpeak;
+      }
     } else {
       alert("Browser Anda tidak mendukung fitur suara.");
     }
@@ -1166,9 +1202,10 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
 
     const parseInline = (str) => {
       return str
-        .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
-        .replace(/\\*(.*?)\\*/g, '<em>$1</em>')
-        .replace(/\`(.*?)\`/g, '<code class="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-md text-xs font-mono font-bold">$1</code>');
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`(.*?)`/g, '<code class="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-md text-xs font-mono font-bold">$1</code>')
+        .replace(/__(.*?)__/g, '<u>$1</u>');
     };
 
     lines.forEach((line, i) => {
