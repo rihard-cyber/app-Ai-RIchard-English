@@ -36,9 +36,9 @@ import {
   Crown,
   Moon,
   Sun,
-  LogOut
+  LogOut,
+  Lightbulb
 } from 'lucide-react';
-import { Lightbulb } from 'lucide-react';
 import { LoginPage, SubscriptionPage } from './Auth';
 import AchievementSystem from './AchievementSystem';
 import LevelTest from './LevelTest';
@@ -50,20 +50,7 @@ import { supabase } from './supabaseClient';
 import { CURRICULUM } from './data/curriculum';
 import { VOCABULARY_TOPICS as VOCAB_RAW, GRAMMAR_TOPICS as GRAMMAR_RAW, SPEAKING_TOPICS as SPEAKING_RAW, LISTENING_TOPICS as LISTENING_RAW, CONVERSATION_CHARACTERS as CHARS_RAW } from './data/topics';
 
-const apiKey = (() => {
-  try {
-    const b64 = import.meta.env.VITE_GEMINI_API_KEY_B64 || "";
-    if (b64) {
-      // Handle potential Base64Url characters
-      const standardB64 = b64.replace(/-/g, '+').replace(/_/g, '/');
-      return atob(standardB64);
-    }
-    return import.meta.env.VITE_GEMINI_API_KEY || "";
-  } catch (e) {
-    console.error("Failed to decode API key", e);
-    return "";
-  }
-})();
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 // --- DATA PROFIL DEFAULT ---
 const DEFAULT_PROFILE = {
   name: "User",
