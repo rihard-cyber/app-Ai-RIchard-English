@@ -185,7 +185,6 @@ export default function App() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         await fetchProfile(user);
-        setAuthState('app');
       } else {
         setAuthState('login');
       }
