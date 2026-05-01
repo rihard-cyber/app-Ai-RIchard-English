@@ -79,13 +79,22 @@ export default function AdminDashboard({ onLogout }) {
         if (!newBank.account_number || !newBank.account_name) return;
         
         try {
-            // Kita paksa is_active: true supaya langsung muncul di user
-            await supabase.from('payment_methods').insert([{ ...newBank, is_active: true }]);
+            console.log("Mencoba simpan rekening:", newBank);
+            const { data, error } = await supabase.from('payment_methods').insert([{ 
+                provider: newBank.provider,
+                account_number: newBank.account_number,
+                account_name: newBank.account_name,
+                is_active: true 
+            }]);
+
+            if (error) throw error;
+
             setNewBank({ provider: 'BCA', account_number: '', account_name: '' });
-            alert("Rekening berhasil disimpan!");
+            alert("✅ Berhasil! Rekening " + newBank.provider + " sudah tersimpan dan aktif.");
             fetchData();
         } catch (error) {
-            alert("Gagal menyimpan rekening: " + error.message);
+            console.error("Gagal simpan:", error);
+            alert("❌ Gagal Simpan: " + (error.message || "Masalah koneksi database"));
         }
     };
 
