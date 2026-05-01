@@ -79,21 +79,23 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
     setTranscript('');
     
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const payload = {
+        contents: [{ role: 'user', parts: [{ text: `Berikan saya 1 kalimat latihan pengucapan untuk level ${userProfile.level}. Berikan kalimatnya saja tanpa teks lain.` }] }],
+        systemInstruction: { parts: [{ text: "You are a helpful English teacher. ONLY return 1 short, clear practice sentence. No extra text." }] }
+      };
 
-      const response = await fetch(url, {
+      const response = await fetch('http://localhost:3000/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: `Berikan saya 1 kalimat latihan pengucapan untuk level ${userProfile.level}. Berikan kalimatnya saja tanpa teks lain.` }] }]
-        })
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
-      setTargetSentence(data.candidates[0].content.parts[0].text.trim());
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "Hello, how are you today?";
+      setTargetSentence(text.trim().replace(/"/g, ''));
     } catch (error) {
       console.error(error);
+      setTargetSentence("I want to improve my English skills.");
     } finally {
       setIsLoading(false);
     }
@@ -124,20 +126,19 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
   const analyzePronunciation = async (text) => {
     setIsLoading(true);
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const payload = {
+        contents: [{ role: 'user', parts: [{ text: `Kalimat target: "${targetSentence}"\nUser mengucapkan: "${text}"\n\nTolong berikan skor dan analisa pengucapannya.` }] }],
+        systemInstruction: { parts: [{ text: PRONUNCIATION_PROMPT }] }
+      };
 
-      const response = await fetch(url, {
+      const response = await fetch('http://localhost:3000/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: `Kalimat target: "${targetSentence}"\nUser mengucapkan: "${text}"\n\nTolong berikan skor dan analisa pengucapannya.` }] }],
-          systemInstruction: { parts: [{ text: PRONUNCIATION_PROMPT }] }
-        })
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
-      const aiResponse = data.candidates[0].content.parts[0].text;
+      const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Error analyzing pronunciation.";
       setAnalysis(aiResponse);
       setUsageCount(prev => prev + 1);
       
@@ -148,6 +149,7 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
       }
     } catch (error) {
       console.error(error);
+      setAnalysis("Maaf, koneksi ke RichardMeha terputus. Coba lagi ya!");
     } finally {
       setIsLoading(false);
     }

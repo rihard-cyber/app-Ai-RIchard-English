@@ -50,20 +50,19 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
     setIsLoading(true);
 
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const payload = {
+        contents: [{ role: 'user', parts: [{ text: `Analyze this text:\n\n${text}` }] }],
+        systemInstruction: { parts: [{ text: WRITING_SYSTEM_PROMPT(isPro) }] }
+      };
 
-      const response = await fetch(url, {
+      const response = await fetch('http://localhost:3000/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: `Analyze this text:\n\n${text}` }] }],
-          systemInstruction: { parts: [{ text: WRITING_SYSTEM_PROMPT(isPro) }] }
-        })
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
-      const aiResponse = data.candidates[0].content.parts[0].text;
+      const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Maaf, Richard sedang sibuk. Coba sebentar lagi ya!";
       setAnalysis(aiResponse);
       setUsageCount(prev => {
         const next = prev + 1;
@@ -72,6 +71,7 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
       });
     } catch (error) {
       console.error(error);
+      setAnalysis("Koneksi bermasalah. Pastikan internetmu stabil ya!");
     } finally {
       setIsLoading(false);
     }
