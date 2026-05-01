@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, CheckCircle2, XCircle, ArrowRight, GraduationCap, Sparkles, Loader2, Volume2 } from 'lucide-react';
-import { supabase } from './supabase';
+import { supabase } from './supabaseClient';
 import { VOCABULARY_QUESTIONS } from './data/vocabularyTest';
 
 export default function LevelTest({ onComplete }) {
