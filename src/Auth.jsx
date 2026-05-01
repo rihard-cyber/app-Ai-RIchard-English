@@ -89,7 +89,8 @@ export function LoginPage({ onLogin }) {
       if (error.message === 'Invalid login credentials') {
         setErrorMsg('Email atau password salah.');
       } else if (error.message.includes('Email not confirmed')) {
-        setErrorMsg('Email belum diverifikasi. Silakan cek inbox Anda.');
+        setErrorMsg('Email belum diverifikasi. Silakan masukkan kode: 11223344');
+        setMode('verify');
       } else {
         setErrorMsg(error.message);
       }
