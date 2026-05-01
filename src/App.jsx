@@ -718,7 +718,15 @@ function ChatModule({
   };
 
   const detectLanguage = (text) => {
-    const indoWords = ["saya", "kamu", "apa", "kenapa", "bangun", "makan", "bingung", "ngerti", "tau", "halo", "bisa", "iya", "tidak", "gak", "udah", "belum", "gimana", "dong", "deh"];
+    const indoWords = [
+      "saya", "kamu", "dia", "mereka", "kita", "kami", "apa", "kenapa", "bagaimana", "kapan", "siapa", "dimana",
+      "makan", "minum", "tidur", "bingung", "ngerti", "paham", "tau", "tahu", "halo", "hai", "bisa", "iya",
+      "tidak", "bukan", "gak", "nggak", "udah", "sudah", "belum", "gimana", "dong", "deh", "nih", "tuh", "sih",
+      "kok", "banget", "kalau", "kalo", "buat", "biar", "lagi", "aja", "saja", "bagus", "benar", "bener",
+      "salah", "coba", "ini", "itu", "dan", "tapi", "karena", "untuk", "dari", "ke", "di", "sama", "dengan",
+      "kasih", "beri", "oke", "hari", "orang", "lebih", "sangat", "paling", "sekali", "kalimat", "kata",
+      "bilang", "ngomong", "dengar", "denger", "lihat", "liat", "kayak", "seperti", "mantap", "keren", "yakin"
+    ];
     const lower = text.toLowerCase();
     let score = 0;
     indoWords.forEach(word => {
@@ -733,13 +741,14 @@ function ChatModule({
     if (!text) return;
     setIsSpeaking(true);
     try {
-      const cleanText = text.replace(/❌[\s\S]*?✅/g, '').replace(/[✅❌*#]/g, '').substring(0, 600);
+      const cleanText = text.replace(/❌[\s\S]*?✅/g, '').replace(/[✅❌*#_]/g, '').substring(0, 600);
+      const lang = detectLanguage(cleanText);
 
       // Try backend TTS first (Gemini natural voice)
       const res = await fetch('http://localhost:3000/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleanText, voiceName: 'Kore' })
+        body: JSON.stringify({ text: cleanText, voiceName: lang === 'id' ? 'id-ID' : 'en-US', lang: lang })
       });
 
       if (res.ok) {
@@ -763,17 +772,22 @@ function ChatModule({
   };
 
   const fallbackTTS = (text) => {
-    const cleanText = text.replace(/❌[\s\S]*?✅/g, '').replace(/[✅❌*#]/g, '');
+    const cleanText = text.replace(/❌[\s\S]*?✅/g, '').replace(/[✅❌*#_]/g, '').trim();
+    if (!cleanText) {
+      setIsSpeaking(false);
+      return;
+    }
     const lang = detectLanguage(cleanText);
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = lang === 'id' ? 'id-ID' : 'en-US';
-    utterance.rate = 0.95; // Slightly faster for more natural pacing
+    utterance.rate = 1.0; // Kecepatan normal 1.0 agar tidak terdengar kaku/diseret
+    utterance.pitch = 1.0;
     const voices = window.speechSynthesis.getVoices();
     let preferredVoice;
     if (lang === 'id') {
-      preferredVoice = voices.find(v => v.lang === 'id-ID' && v.name.includes('Google')) || voices.find(v => v.lang.startsWith('id'));
+      preferredVoice = voices.find(v => v.lang === 'id-ID' && v.name.toLowerCase().includes('google')) || voices.find(v => v.lang.startsWith('id'));
     } else {
-      preferredVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google')) || voices.find(v => v.lang.startsWith('en'));
+      preferredVoice = voices.find(v => v.lang === 'en-US' && v.name.toLowerCase().includes('google')) || voices.find(v => v.lang.startsWith('en'));
     }
     if (preferredVoice) utterance.voice = preferredVoice;
     utterance.onend = () => setIsSpeaking(false);
