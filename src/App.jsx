@@ -701,6 +701,12 @@ function SetupModule({ module, basePrompt, icon, color, bg, onComplete, isPro, t
     setIsStarted(true);
   };
 
+  const handleBackToTopics = () => {
+    window.speechSynthesis?.cancel();
+    setIsStarted(false);
+    setTopic('');
+  };
+
   if (showProWarning) {
     return (
       <div className="h-full flex items-center justify-center p-6 bg-slate-50">
@@ -725,11 +731,13 @@ function SetupModule({ module, basePrompt, icon, color, bg, onComplete, isPro, t
   }
 
   if (isStarted) {
+    // IMPORTANT: Inject topic explicitly into both system prompt and first message
     const dynamicPrompt = `${basePrompt}
 
-Topik yang ingin dipelajari murid hari ini adalah: ${topic}`;
-    // key={topic} forces a FRESH ChatModule mount whenever topic changes
-    return <ChatModule key={topic} module={module} basePrompt={dynamicPrompt} topic={topic} onComplete={onComplete} />;
+== INSTRUKSI TOPIK WAJIB ==
+Topik pembelajaran SAAT INI yang HARUS kamu bahas adalah: "${topic}"
+JANGAN membahas topik lain. Mulai sesi dengan memperkenalkan topik "${topic}" secara langsung.`;
+    return <ChatModule key={topic} module={module} basePrompt={dynamicPrompt} topic={topic} onBack={handleBackToTopics} onComplete={onComplete} />;
   }
 
   return (
@@ -868,7 +876,7 @@ Topik obrolannya adalah: ${topic}`;
   );
 }
 
-function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pelajaran hari ini RichardMeha AI!', hideInputAtStart = false, onComplete }) {
+function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pelajaran hari ini RichardMeha AI!', hideInputAtStart = false, onComplete, onBack }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -934,7 +942,8 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
     if (messages.length === 0 && hideInputAtStart) {
       sendMessage(startMessage, true);
     } else if (messages.length === 0 && topic) {
-      sendMessage(`Topik pilihan saya: ${topic}. Ayo kita mulai sesuai prosedurmu RichardMeha AI!`, true);
+      // Send topic name explicitly and prominently so AI knows the exact topic
+      sendMessage(`TOPIK HARI INI: ${topic}. Mulai sesi pembelajaran tentang "${topic}" sekarang!`, true);
     }
   }, []);
 
@@ -997,7 +1006,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
     }
   };
 
-  // --- SPEECH TO TEXT (STT) ---
+  // --- SPEECH TO TEXT (STT) --- Bilingual EN + ID
   const toggleRecording = () => {
     if (isRecording) {
       recognitionRef.current?.stop();
@@ -1006,33 +1015,48 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
+    if (!SpeechRecognition) {
+      alert("Browser Anda tidak mendukung Microphone. Gunakan Chrome di HP atau PC.");
+      return;
+    }
+
+    // Stop TTS if it's speaking before recording
+    window.speechSynthesis?.cancel();
+    setIsSpeaking(false);
+
+    try {
       recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
+      recognitionRef.current.continuous = false; // Single utterance mode - more reliable on mobile
       recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'en-US'; // Set to english for pronunciation practice
+      recognitionRef.current.maxAlternatives = 1;
+      // Use id-ID for better bilingual support in Indonesian context
+      recognitionRef.current.lang = 'id-ID';
 
       recognitionRef.current.onresult = (event) => {
-        let currentTranscript = '';
+        let finalTranscript = '';
+        let interimTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            setInputValue(prev => prev + transcript + ' ');
+            finalTranscript += transcript;
           } else {
-            currentTranscript += transcript;
+            interimTranscript += transcript;
           }
+        }
+        if (finalTranscript) {
+          setInputValue(prev => prev + finalTranscript + ' ');
         }
       };
 
       recognitionRef.current.onerror = (event) => {
-        console.error("Speech recognition error", event.error);
+        console.error("STT Error:", event.error);
         setIsRecording(false);
         if (event.error === 'not-allowed') {
-          alert("Izin Microphone ditolak. Silakan aktifkan izin microphone di pengaturan browser Anda.");
-        } else if (event.error === 'no-speech') {
-          // Silent error, just stop recording
-        } else {
-          alert(`Kesalahan Microphone: ${event.error}. Pastikan Anda menggunakan Chrome.`);
+          alert("⚠️ Izin Microphone ditolak!\n\nCara mengaktifkan:\n1. Klik ikon gembok/info di address bar browser\n2. Ubah izin Microphone menjadi 'Izinkan'\n3. Refresh halaman dan coba lagi.");
+        } else if (event.error === 'network') {
+          alert("Error jaringan saat merekam. Pastikan koneksi internet stabil.");
+        } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          alert(`Microphone error: ${event.error}`);
         }
       };
 
@@ -1042,8 +1066,10 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
 
       recognitionRef.current.start();
       setIsRecording(true);
-    } else {
-      alert("Browser Anda tidak mendukung fitur input suara (Microphone). Coba gunakan Chrome.");
+    } catch (err) {
+      console.error("STT start error:", err);
+      setIsRecording(false);
+      alert("Gagal mengaktifkan microphone. Coba refresh dan ulangi.");
     }
   };
 
@@ -1234,11 +1260,22 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
 
   return (
     <div className="flex flex-col h-full bg-slate-50/50 relative">
-      {/* Top Banner */}
+      {/* Top Banner with Back Button */}
       <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 py-3 px-4 md:px-6 flex justify-between items-center absolute top-0 w-full z-10 shadow-sm">
-        <div className="flex-1 truncate pr-4">
-          <h3 className="font-bold text-slate-800 text-sm md:text-base truncate">{module}</h3>
-          {topic && <p className="text-xs text-slate-500 truncate">Topik: <span className="font-medium text-blue-600">{topic}</span></p>}
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="shrink-0 flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 px-2.5 py-1.5 rounded-xl transition-colors active:scale-95 border border-slate-200"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+              <span className="hidden sm:inline">Ganti Topik</span>
+            </button>
+          )}
+          <div className="flex flex-col min-w-0">
+            <h3 className="font-bold text-slate-800 text-sm md:text-base truncate">{module}</h3>
+            {topic && <p className="text-xs text-slate-500 truncate">Topik: <span className="font-medium text-blue-600">{topic}</span></p>}
+          </div>
         </div>
         <div className="flex items-center gap-1.5 text-[10px] md:text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 md:py-1.5 rounded-full border border-emerald-100 shrink-0">
           <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
