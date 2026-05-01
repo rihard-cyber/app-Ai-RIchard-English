@@ -695,6 +695,8 @@ function SetupModule({ module, basePrompt, icon, color, bg, onComplete, isPro, t
       setShowProWarning(true);
       return;
     }
+    // Stop any TTS when switching topics
+    window.speechSynthesis?.cancel();
     setTopic(selectedTopic);
     setIsStarted(true);
   };
@@ -726,7 +728,8 @@ function SetupModule({ module, basePrompt, icon, color, bg, onComplete, isPro, t
     const dynamicPrompt = `${basePrompt}
 
 Topik yang ingin dipelajari murid hari ini adalah: ${topic}`;
-    return <ChatModule module={module} basePrompt={dynamicPrompt} topic={topic} onComplete={onComplete} />;
+    // key={topic} forces a FRESH ChatModule mount whenever topic changes
+    return <ChatModule key={topic} module={module} basePrompt={dynamicPrompt} topic={topic} onComplete={onComplete} />;
   }
 
   return (
@@ -741,29 +744,30 @@ Topik yang ingin dipelajari murid hari ini adalah: ${topic}`;
         </div>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto pb-20 custom-scrollbar pr-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 overflow-y-auto pb-20 custom-scrollbar pr-2">
         {topicsList.map((t, i) => {
           const isLocked = i >= freeCount && !isPro;
           return (
             <button 
               key={i}
               onClick={() => handleSelectTopic(t.name || t, i)}
-              className={`p-5 rounded-2xl border-2 text-left transition-all group relative overflow-hidden flex flex-col min-h-[100px] justify-center
+              // Instant response - no hover translate animation on mobile
+              className={`p-4 rounded-2xl border-2 text-left group relative overflow-hidden flex flex-col min-h-[80px] justify-center active:scale-95
                 ${isLocked 
                   ? 'bg-slate-50 border-slate-200 hover:border-amber-300 cursor-pointer' 
-                  : 'bg-white border-blue-100 hover:border-blue-500 hover:shadow-lg hover:-translate-y-1'
+                  : 'bg-white border-blue-100 hover:border-blue-500 hover:shadow-md'
                 }
               `}
             >
               {isLocked && (
-                <div className="absolute top-3 right-3 text-amber-500 bg-amber-100 p-1.5 rounded-lg opacity-80 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-3 right-3 text-amber-500 bg-amber-100 p-1.5 rounded-lg opacity-80">
                   <Lock size={16} />
                 </div>
               )}
-              <span className={`font-bold text-sm md:text-base leading-snug pr-6 ${isLocked ? 'text-slate-500 group-hover:text-amber-700' : 'text-slate-700 group-hover:text-blue-700'}`}>
+              <span className={`font-bold text-sm md:text-base leading-snug pr-6 ${isLocked ? 'text-slate-500' : 'text-slate-700 group-hover:text-blue-700'}`}>
                 {t.name || t}
               </span>
-              {t.topic && <span className="text-xs text-slate-400 mt-2 block opacity-80">{t.topic}</span>}
+              {t.topic && <span className="text-xs text-slate-400 mt-1 block opacity-80">{t.topic}</span>}
             </button>
           )
         })}
@@ -935,59 +939,61 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
   }, []);
 
   // --- TEXT TO SPEECH (TTS) ---
+  // --- TEXT TO SPEECH (TTS) with Bilingual Support ---
   const handleTTS = (text) => {
-    if ('speechSynthesis' in window) {
-      // Strip markdown and HTML tags before reading
-      const cleanText = text
-        .replace(/<[^>]*>/g, '')        // Remove HTML tags
-        .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold markdown
-        .replace(/\*(.*?)\*/g, '$1')     // Remove italic markdown  
-        .replace(/#{1,6}\s/g, '')        // Remove heading markers
-        .replace(/`{1,3}/g, '')          // Remove code backticks
-        .replace(/\|/g, ', ')            // Replace table pipes with comma
-        .replace(/[-_]{2,}/g, '')        // Remove horizontal rules
-        .trim();
-
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.rate = 0.92;
-      utterance.pitch = 1.05;
-
-      // Pick the most natural voice available
-      const pickBestVoice = () => {
-        const voices = window.speechSynthesis.getVoices();
-        // Priority: Google voices > Microsoft voices > any English voice
-        const preferred = [
-          v => v.name.includes('Google') && v.lang.startsWith('en'),
-          v => v.name.includes('Microsoft') && v.lang.startsWith('en') && v.name.includes('Natural'),
-          v => v.name.includes('Microsoft') && v.lang.startsWith('en'),
-          v => v.lang === 'en-US',
-          v => v.lang.startsWith('en'),
-        ];
-        for (const test of preferred) {
-          const found = voices.find(test);
-          if (found) return found;
-        }
-        return null;
-      };
-
-      const setAndSpeak = () => {
-        const best = pickBestVoice();
-        if (best) utterance.voice = best;
-        utterance.onstart = () => setIsSpeaking(true);
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(utterance);
-      };
-
-      // Voices may not be loaded yet — wait if needed
-      if (window.speechSynthesis.getVoices().length > 0) {
-        setAndSpeak();
-      } else {
-        window.speechSynthesis.onvoiceschanged = setAndSpeak;
-      }
-    } else {
+    if (!('speechSynthesis' in window)) {
       alert("Browser Anda tidak mendukung fitur suara.");
+      return;
+    }
+    window.speechSynthesis.cancel();
+
+    const cleanText = text
+      .replace(/<[^>]*>/g, '')
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/#{1,6}\s/g, '')
+      .replace(/`{1,3}/g, '')
+      .replace(/\|/g, ', ')
+      .replace(/[-_]{2,}/g, '')
+      .trim();
+
+    if (!cleanText) return;
+
+    const isEnglish = (str) => {
+      const enWords = /\b(the|is|are|was|were|you|your|this|that|have|has|will|can|do|does|not|with|for|and|but|in|on|at|to|a|an|it|its|he|she|we|they|my|his|her|our)\b/i;
+      return enWords.test(str);
+    };
+
+    const doSpeak = () => {
+      const voices = window.speechSynthesis.getVoices();
+      const enVoice = voices.find(v => v.name.includes('Google') && v.lang.startsWith('en'))
+        || voices.find(v => v.lang === 'en-US')
+        || voices.find(v => v.lang.startsWith('en'));
+      const idVoice = voices.find(v => v.lang === 'id-ID')
+        || voices.find(v => v.lang.startsWith('id'))
+        || enVoice;
+
+      const sentences = cleanText.match(/[^.!?\n]+[.!?\n]?/g) || [cleanText];
+      const queue = sentences.map(s => s.trim()).filter(Boolean).map(s => {
+        const u = new SpeechSynthesisUtterance(s);
+        u.rate = 0.9;
+        u.pitch = 1.05;
+        if (isEnglish(s)) { u.lang = 'en-US'; if (enVoice) u.voice = enVoice; }
+        else { u.lang = 'id-ID'; if (idVoice) u.voice = idVoice; }
+        return u;
+      });
+
+      if (!queue.length) return;
+      queue[0].onstart = () => setIsSpeaking(true);
+      queue[queue.length - 1].onend = () => setIsSpeaking(false);
+      queue[queue.length - 1].onerror = () => setIsSpeaking(false);
+      queue.forEach(u => window.speechSynthesis.speak(u));
+    };
+
+    if (window.speechSynthesis.getVoices().length > 0) {
+      doSpeak();
+    } else {
+      window.speechSynthesis.onvoiceschanged = doSpeak;
     }
   };
 
