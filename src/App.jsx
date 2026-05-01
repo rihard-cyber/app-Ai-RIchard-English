@@ -209,7 +209,7 @@ export default function App() {
     setIsInitializing(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await fetchProfile(user.id);
+      await fetchProfile(user);
       setAuthState('app');
     } else {
       setAuthState('login');
@@ -217,7 +217,11 @@ export default function App() {
     setIsInitializing(false);
   };
 
-  const fetchProfile = async (userId) => {
+  const fetchProfile = async (userObj) => {
+    // userObj can be a full Supabase user object or just an ID string
+    const userId = typeof userObj === 'string' ? userObj : userObj.id;
+    const metaName = typeof userObj === 'object' ? (userObj.user_metadata?.full_name || '') : '';
+
     const { data, error } = await supabase
       .from('user_profiles')
       .select('*')
@@ -226,7 +230,7 @@ export default function App() {
 
     if (data) {
       setUserProfile({
-        name: data.full_name || "User",
+        name: data.full_name || metaName || 'User',
         gender: data.gender || "male",
         level: data.level || "Pemula Dasar (A1)",
         xp: data.xp || 0,
@@ -242,7 +246,8 @@ export default function App() {
         setAuthState('app');
       }
     } else {
-      // Create profile if not exists (failsafe)
+      // Create profile if not exists (failsafe), still load name from auth metadata
+      if (metaName) setUserProfile(prev => ({ ...prev, name: metaName }));
       setAuthState('app');
     }
   };
