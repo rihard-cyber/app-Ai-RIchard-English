@@ -887,6 +887,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const recognitionRef = useRef(null);
+  const hasInitialized = useRef(false);
   
   const messagesEndRef = useRef(null);
 
@@ -939,6 +940,9 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
 
 
   useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
     if (messages.length === 0 && hideInputAtStart) {
       sendMessage(startMessage, true);
     } else if (messages.length === 0 && topic) {
@@ -967,7 +971,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text,
-          voiceName: 'Kore', // Kore = warm natural female voice (bilingual EN+ID)
+          voiceName: 'Puck', // Puck = Very natural energetic male voice, good for tutors
         })
       });
 
