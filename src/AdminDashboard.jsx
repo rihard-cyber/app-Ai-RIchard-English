@@ -296,14 +296,21 @@ export default function AdminDashboard({ onLogout }) {
                                         </tbody>
                                     </table>
                                 </div>
-                            </div>
-                        </div>
+                            </>
+                        )}
                     </div>
                 )}
                 {activeTab === 'users' && (
                     <div className="space-y-8 animate-in fade-in">
-                        {/* User Distribution Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {isLoading ? (
+                            <div className="flex flex-col items-center justify-center p-20 text-slate-400">
+                                <Loader2 className="animate-spin mb-4" size={48} />
+                                <p className="font-bold tracking-widest text-[10px] uppercase">Mengambil data murid...</p>
+                            </div>
+                        ) : (
+                            <>
+                                {/* User Distribution Cards */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
                                 <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
                                     <Users size={28} />

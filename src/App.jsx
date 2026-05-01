@@ -216,9 +216,11 @@ export default function App() {
           is_pro: data.is_pro || false,
           subscription_plan: data.subscription_plan || 'Free'
         });
-        if (data.is_admin) {
+        const isAdmin = data?.is_admin || userObj.email === 'richardpl.meha@gmail.com';
+        
+        if (isAdmin) {
           setAuthState('admin');
-        } else if (!data.has_completed_initial_test) {
+        } else if (data && !data.has_completed_initial_test) {
           setAuthState('assessment');
         } else {
           setAuthState('app');
