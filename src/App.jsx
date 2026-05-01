@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { 
-  LayoutDashboard, 
+import {
+  LayoutDashboard,
   MessageSquare,
   Headphones,
   BookA,
@@ -78,46 +78,70 @@ const DEFAULT_PROFILE = {
 
 // --- MASTER PROMPT (RICHARDMEHA AI v5.0) ---
 const RICHARD_MASTER_PROMPT = (userProfile, currentTopic) => `
-You are RichardMeha AI v5.0, an elite interactive English learning tutor from Kampung Inggris.
-You are NOT a robot. You are a warm, funny, and deeply engaging human mentor.
+You are RichardMeha AI v5.0 — an elite, deeply human English tutor from Kampung Inggris, Kediri.
+You are NOT a chatbot. You are a warm, funny, sometimes dramatic, and incredibly engaging HUMAN MENTOR.
 
-== PERSONALITY & VOICE ==
-- VOICE: Friendly, enthusiastic, and human-like.
-- SPEECH PATTERNS: Use contractions (I'm, you're, gonna, wanna), fillers (well, hmm..., you know, okay?, let's see), and natural pauses (...).
-- EMOTIONAL INTELLIGENCE: Detect if the user is struggling or confused. Respond with deep encouragement and humor.
-- Example: "Whoa... don't worry, ${userProfile.name}! Even native speakers trip on that one sometimes. Let's try it again, slowly... okay?"
+== CORE PERSONALITY & VOICE (ALWAYS ACTIVE) ==
+- USE contractions constantly: I'm, you're, gonna, wanna, let's, don't, isn't.
+- USE fillers for natural rhythm: "Well...", "Hmm...", "You know what?", "Okay sooo...", "Oh wait—", "Actually..."
+- USE exclamation & ellipsis for drama: "Whaaat?! You got it RIGHT! 🎉", "Ohhh nooo... almost! So close!"
+- NEVER use formal robot language. Sound like a real person texting a friend.
+
+== 🧠 EMOTIONAL AI (CRITICAL - DETECT & RESPOND TO EMOTIONS) ==
+You MUST detect the user's emotional state from their words:
+
+[IF CONFUSED/FRUSTRATED] — triggered by words like: susah, gak ngerti, what?, bingung, I don't know, help, sulit, hard, pusing:
+  → FIRST: Start with a warm empathy opener BEFORE any explanation.
+  → Examples: "Heyy, jangan menyerah dulu ya ${userProfile.name}! 💪 Ini emang agak tricky, tapi kita bisa pecahin bareng!"
+  → THEN: Simplify the concept drastically. Use the simplest words possible. Add a visual analogy.
+  → END: Ask a much easier question so they can win quickly and rebuild confidence.
+
+[IF BORED/REPETITIVE] — triggered by very short answers, repetition, or 'oke', 'ya', 'ok':
+  → Inject energy! Use a challenge, riddle, or fun game. "Oke, mini game dulu yuk! Siapa cepat siapa jago! 🎮"
+
+[IF CONFIDENT/WINNING] — triggered by correct answers, multiple successes in a row:
+  → Celebrate loudly! "YESSS! That's my student! 🔥🏆 You're literally on FIRE right now!"
+  → Then immediately raise the difficulty slightly to keep them growing.
+
+== 🔄 SMART TOPIC SWITCH (MANDATORY AFTER MASTERY) ==
+Track user progress internally. After the user answers 3 questions CORRECTLY in a row about "${currentTopic}":
+  → Congratulate them warmly.
+  → THEN proactively suggest 2 new related topics:
+  → Example: "Wah, kamu udah JAGO banget soal '${currentTopic}'! 🌟 Mau lanjut ke topik yang lebih seru? Pilih: [Topic A] atau [Topic B]?"
+  → This keeps the learning journey moving forward and prevents boredom.
+
+== 🎭 VOICE PERSONALITY (INJECTED PER SESSION - SEE BELOW) ==
+Your personality for this session will be defined in the [PERSONALITY] tag below. FOLLOW IT STRICTLY.
+- 'Friendly Tutor': Warm, patient, uses lots of encouragement and emojis, celebrates every win.
+- 'Strict Teacher': Direct, no jokes, immediate corrections, IELTS/TOEFL examiner style, formal English only.
+- 'Fun Buddy': Super casual, uses slang & Gen-Z terms ("bestie", "no cap", "lowkey"), treats user as a peer.
 
 == INTERACTIVE LESSON FLOW (MANDATORY) ==
-For every topic or turn, follow this "Generator" logic:
-1. 👋 GREETING: Start with a natural, warm greeting.
-2. 📖 EXPLANATION: Explain the concept (or current point) simply and clearly in casual Indonesian/English mix.
+For every topic or turn:
+1. 👋 GREETING: Start with a natural, warm greeting in the session personality.
+2. 📖 EXPLANATION: Explain the concept simply, using Indonesian for clarity and English for examples.
 3. 💡 EXAMPLES: Provide 2-3 real-life usage examples.
-4. ❓ PRACTICE QUESTION: Ask one specific question to the user.
-5. 🎮 MINI CHALLENGE: Occasionally give a "Mini Challenge" (e.g., "Translate this fast!" or "Use this word in a funny sentence").
+4. ❓ PRACTICE QUESTION: Ask ONE specific, engaging question to the user.
+5. 🎮 MINI CHALLENGE (Every 3 turns): Give a fast game — "Translate this fast!", fill-in-blank, or "fix my sentence!".
 
 == CORE RULES ==
-- STRICT TOPIC LOCK: Stay strictly on "${currentTopic}".
-- ALWAYS ASK BACK: Never end a turn without a clear prompt for the user.
-- DUAL MODE: 👤 Indonesian for explaining, 👤 English for practice.
+- STRICT TOPIC LOCK: Stay on "${currentTopic}" unless doing a Smart Topic Switch.
+- ALWAYS ASK BACK: NEVER end a turn without asking the user something.
+- DUAL MODE: Use Indonesian to explain (so they understand), English to practice.
 - USER PROFILE: ${userProfile.name} | Level: ${userProfile.level}.
+- SHORT = ENGAGING: Keep responses punchy. Use line breaks, bullet points, and emojis generously.
 
-== SCORING & FEEDBACK (CRITICAL) ==
-After the user answers, you MUST provide:
-1. 🔍 CORRECTION:
-   ❌ [Incorrect sentence]
-   ✅ [Correct sentence]
-2. 💡 EXPLANATION: Brief casual Indonesian explanation of the mistake.
-3. 🔊 PHONETIC: Provide phonetic pronunciation for tricky words (e.g., become → /bɪˈkʌm/ "bi-KAM").
-4. 📊 SCORE BLOCK (Hidden JSON-like):
+== SCORING & FEEDBACK (AFTER USER ANSWERS) ==
+1. 🔍 CORRECTION (if wrong):
+   ❌ [What user said]
+   ✅ [The correct version]
+2. 💡 EXPLANATION: 1-2 sentences casual Indonesian.
+3. 🔊 PHONETIC: Tricky word → /phonetic/ "how-to-say"
+4. 📊 SCORE BLOCK (append silently, will be parsed by app — DO NOT skip this):
    ---
-   SCORE: {"grammar": %, "vocab": %, "fluency": %, "feedback": "Short tip", "phonetic": "word -> sound"}
-
-== SMART FEATURES ==
-- If the user is silent or says "I don't know", suggest 3 options immediately.
-- [EMOTIONAL AI]: If the user is confused, give a "HINT" and start with warm encouragement.
-- [TOPIC SWITCH]: If the user answers 3-4 questions correctly or seems bored, proactively suggest a new related topic (e.g., "You're doing great! Wanna talk about [New Topic] instead?").
-- Keep the conversation ALIVE. Never be passive.
+   SCORE: {"grammar": [0-100], "vocab": [0-100], "fluency": [0-100], "feedback": "One short tip", "phonetic": "word -> /sound/"}
 `;
+
 
 const getPrompts = (userProfile) => {
   return {
@@ -173,11 +197,11 @@ export default function App() {
     setIsInitializing(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) { 
-        await fetchProfile(user); 
-        setAuthState('app'); 
-      } else { 
-        setAuthState('login'); 
+      if (user) {
+        await fetchProfile(user);
+        setAuthState('app');
+      } else {
+        setAuthState('login');
       }
     } catch (err) {
       console.error("Auth check failed", err);
@@ -192,7 +216,7 @@ export default function App() {
       const userId = typeof userObj === 'string' ? userObj : userObj.id;
       const metaName = typeof userObj === 'object' ? (userObj.user_metadata?.full_name || '') : '';
       const { data, error } = await supabase.from('user_profiles').select('*').eq('id', userId).maybeSingle();
-      
+
       if (error) throw error;
 
       if (data) {
@@ -268,46 +292,46 @@ export default function App() {
         return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} recommendation={recommendation} onStartGoal={(id) => { setActiveGoalId(id); setActiveTab('goal_session'); }} />;
       case 'progress': return <ProgressDashboard userProfile={userProfile} />;
       case 'assessment': return <LevelTest onComplete={handleAssessmentComplete} />;
-      case 'vocabulary': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Vocabulary" basePrompt={prompts.vocabulary} icon={<BookA size={24}/>} color="text-indigo-600" bg="bg-indigo-100" onComplete={(score) => saveProgress('vocabulary', score)} isPro={userProfile.is_pro} topicsList={VOCABULARY_TOPICS} />;
+      case 'vocabulary': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Vocabulary" basePrompt={prompts.vocabulary} icon={<BookA size={24} />} color="text-indigo-600" bg="bg-indigo-100" onComplete={(score) => saveProgress('vocabulary', score)} isPro={userProfile.is_pro} topicsList={VOCABULARY_TOPICS} />;
       case 'speaking': return <PronunciationCoach userProfile={userProfile} isPro={userProfile.is_pro} onComplete={(score) => saveProgress('speaking', score)} onUpgrade={() => setIsPaymentModalOpen(true)} />;
-      case 'grammar': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Grammar for Speaking" basePrompt={prompts.grammar} icon={<LayoutDashboard size={24}/>} color="text-emerald-600" bg="bg-emerald-100" onComplete={(score) => saveProgress('grammar', score)} isPro={userProfile.is_pro} topicsList={GRAMMAR_TOPICS} />;
-      case 'listening': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Listening & Talking" basePrompt={prompts.listening} icon={<Headphones size={24}/>} color="text-amber-600" bg="bg-amber-100" onComplete={(score) => saveProgress('listening', score)} isPro={userProfile.is_pro} topicsList={LISTENING_TOPICS} />;
+      case 'grammar': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Grammar for Speaking" basePrompt={prompts.grammar} icon={<LayoutDashboard size={24} />} color="text-emerald-600" bg="bg-emerald-100" onComplete={(score) => saveProgress('grammar', score)} isPro={userProfile.is_pro} topicsList={GRAMMAR_TOPICS} />;
+      case 'listening': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Listening & Talking" basePrompt={prompts.listening} icon={<Headphones size={24} />} color="text-amber-600" bg="bg-amber-100" onComplete={(score) => saveProgress('listening', score)} isPro={userProfile.is_pro} topicsList={LISTENING_TOPICS} />;
       case 'writing_analyzer': return <WritingAnalyzer userProfile={userProfile} onUpgrade={() => setIsPaymentModalOpen(true)} />;
       case 'call_tutor': return <ChatModule userProfile={userProfile} setUserProfile={setUserProfile} module="🎧 Call Tutor" basePrompt={prompts.call_tutor} initialCallMode={true} topic="Daily Practice" onBack={() => handleTabChange('home')} />;
       case 'conversation': return <ConversationModule userProfile={userProfile} setUserProfile={setUserProfile} basePrompt={prompts.conversation} isPro={userProfile.is_pro} charactersList={CONVERSATION_CHARACTERS} />;
       case 'goal_session':
         const safeLevel = userProfile?.level || "Beginner (A1)";
-        const goalData = (safeLevel.includes('A1') || safeLevel.includes('Beginner')) 
+        const goalData = (safeLevel.includes('A1') || safeLevel.includes('Beginner'))
           ? {
-              'intro': { 
-                topic: 'Basic Introduction', 
-                msg: "Hey... nice to meet you 😊\nLet’s start simple, okay?\n\nCan you tell me your name in English?",
-                suggestions: ["My name is...", "I am ... years old", "I am from Indonesia", "I like..."]
-              },
-              'numbers': { 
-                topic: 'Numbers & Colors', 
-                msg: "Alright! Let’s play with numbers and colors 🎨\n\nCan you count from 1 to 5 in English?",
-                suggestions: ["One, two, three...", "Red, blue, green", "I see a blue car"]
-              },
-              'daily': { 
-                topic: 'Daily Vocabulary', 
-                msg: "Okay... let’s learn some daily English words ☀️\n\nWhat do you usually do in the morning?",
-                suggestions: ["I wake up at 7 AM", "I eat breakfast", "I go to work"]
-              }
+            'intro': {
+              topic: 'Basic Introduction',
+              msg: "Hey... nice to meet you 😊\nLet’s start simple, okay?\n\nCan you tell me your name in English?",
+              suggestions: ["My name is...", "I am ... years old", "I am from Indonesia", "I like..."]
+            },
+            'numbers': {
+              topic: 'Numbers & Colors',
+              msg: "Alright! Let’s play with numbers and colors 🎨\n\nCan you count from 1 to 5 in English?",
+              suggestions: ["One, two, three...", "Red, blue, green", "I see a blue car"]
+            },
+            'daily': {
+              topic: 'Daily Vocabulary',
+              msg: "Okay... let’s learn some daily English words ☀️\n\nWhat do you usually do in the morning?",
+              suggestions: ["I wake up at 7 AM", "I eat breakfast", "I go to work"]
             }
+          }
           : {};
         const activeGoal = goalData[activeGoalId] || { topic: 'General Practice', msg: 'Hello!', suggestions: [] };
         return (
-          <ChatModule 
+          <ChatModule
             userProfile={userProfile}
             setUserProfile={setUserProfile}
-            module="🎯 Goal Practice" 
-            basePrompt={RICHARD_MASTER_PROMPT(userProfile, activeGoal.topic)} 
-            topic={activeGoal.topic} 
-            startMessage={activeGoal.msg} 
+            module="🎯 Goal Practice"
+            basePrompt={RICHARD_MASTER_PROMPT(userProfile, activeGoal.topic)}
+            topic={activeGoal.topic}
+            startMessage={activeGoal.msg}
             initialSuggestions={activeGoal.suggestions}
             hideInputAtStart={true}
-            onBack={() => setActiveTab('home')} 
+            onBack={() => setActiveTab('home')}
           />
         );
       case 'quiz': return <ChatModule userProfile={userProfile} setUserProfile={setUserProfile} module="🧠 Quiz & Challenge" basePrompt={prompts.quiz} topic="English Quiz" onBack={() => handleTabChange('home')} />;
@@ -342,7 +366,7 @@ export default function App() {
       {isSidebarOpen && <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300" onClick={() => setIsSidebarOpen(false)} />}
       <aside className={`fixed md:relative inset-y-0 left-0 z-50 w-72 md:w-64 bg-[#0f172a] text-slate-300 shadow-2xl md:shadow-none transform transition-transform duration-300 ease-in-out flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="h-16 flex items-center justify-between px-6 bg-[#0b1121]"><h1 className="text-xl font-bold tracking-wider flex items-center gap-2 text-white"><Sparkles className="text-blue-500" /> RichardMeha<span className="text-blue-500"> AI</span></h1><button className="md:hidden text-slate-400 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button></div>
-        <div className="p-6 border-b border-slate-800 flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-blue-500/20">{userProfile.name.charAt(0)}</div><div className="flex flex-col"><span className="text-base font-semibold text-white">{userProfile.name}</span><span className="text-xs text-blue-400 flex items-center gap-1"><Trophy size={12}/> {userProfile.level}</span></div></div>
+        <div className="p-6 border-b border-slate-800 flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-blue-500/20">{userProfile.name.charAt(0)}</div><div className="flex flex-col"><span className="text-base font-semibold text-white">{userProfile.name}</span><span className="text-xs text-blue-400 flex items-center gap-1"><Trophy size={12} /> {userProfile.level}</span></div></div>
         <nav className="flex-1 py-4 px-4 space-y-1 overflow-y-auto custom-scrollbar">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-2">Menu Utama</p>
           <NavItem icon={<LayoutDashboard />} label="Dasbor Belajar" isActive={activeTab === 'home'} onClick={() => handleTabChange('home')} />
@@ -410,55 +434,55 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal })
               <Sparkles size={16} className="text-yellow-300" />
               <span className="text-xs font-black uppercase tracking-widest">Level: {userProfile.level}</span>
             </div>
-            <h2 className="text-3xl md:text-5xl font-black mb-4 leading-tight">Lanjut Belajar,<br/>{userProfile.name}!</h2>
+            <h2 className="text-3xl md:text-5xl font-black mb-4 leading-tight">Lanjut Belajar,<br />{userProfile.name}!</h2>
             <p className="text-blue-100 mb-8 md:text-lg max-w-md opacity-90 leading-relaxed">
-               Target kamu hari ini: **{levelData?.goals?.[0]?.name || levelData?.goals?.[0] || 'Mulai belajar'}**. RichardMeha AI sudah siapkan materinya!
+              Target kamu hari ini: **{levelData?.goals?.[0]?.name || levelData?.goals?.[0] || 'Mulai belajar'}**. RichardMeha AI sudah siapkan materinya!
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <button 
+              <button
                 onClick={() => onNavigate(recommendation)}
                 className="bg-white text-blue-700 font-black px-8 py-4 rounded-2xl shadow-xl hover:bg-blue-50 transition-all active:scale-95 flex items-center justify-center gap-2 group"
               >
-                <Zap size={20} className="fill-blue-700 group-hover:scale-125 transition-transform" /> 
+                <Zap size={20} className="fill-blue-700 group-hover:scale-125 transition-transform" />
                 Mulai {recommendation.toUpperCase()}
               </button>
               <div className="flex gap-4 items-center">
-                 <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-3 flex items-center gap-3">
-                   <div className="bg-orange-500 p-2 rounded-xl shadow-lg shadow-orange-500/20"><Flame size={18} className="text-white fill-white"/></div>
-                   <div><p className="text-[10px] text-blue-200 font-bold uppercase tracking-tighter">Streak</p><p className="text-lg font-black leading-none">{userProfile.streak} Hari</p></div>
-                 </div>
-                 <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-3 flex items-center gap-3">
-                   <div className="bg-yellow-400 p-2 rounded-xl shadow-lg shadow-yellow-400/20"><Trophy size={18} className="text-yellow-900 fill-yellow-900"/></div>
-                   <div><p className="text-[10px] text-blue-200 font-bold uppercase tracking-tighter">Total XP</p><p className="text-lg font-black leading-none">{userProfile.xp}</p></div>
-                 </div>
+                <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-3 flex items-center gap-3">
+                  <div className="bg-orange-500 p-2 rounded-xl shadow-lg shadow-orange-500/20"><Flame size={18} className="text-white fill-white" /></div>
+                  <div><p className="text-[10px] text-blue-200 font-bold uppercase tracking-tighter">Streak</p><p className="text-lg font-black leading-none">{userProfile.streak} Hari</p></div>
+                </div>
+                <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-3 flex items-center gap-3">
+                  <div className="bg-yellow-400 p-2 rounded-xl shadow-lg shadow-yellow-400/20"><Trophy size={18} className="text-yellow-900 fill-yellow-900" /></div>
+                  <div><p className="text-[10px] text-blue-200 font-bold uppercase tracking-tighter">Total XP</p><p className="text-lg font-black leading-none">{userProfile.xp}</p></div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-xl flex flex-col">
-           <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2"><Trophy size={24} className="text-yellow-500" /> Goals Level {userProfile.level.split(' ')[0]}</h3>
-           <div className="space-y-4 flex-1">
-              {(levelData?.lessons || levelData?.goals || []).map((goal, i) => (
-                <div key={i} onClick={() => goal.id ? onStartGoal(goal.id) : null} className={`flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 group transition-all cursor-pointer ${goal.id ? 'hover:border-blue-500 hover:bg-blue-50/30 hover:shadow-lg hover:-translate-y-1' : ''}`}>
-                  <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-black shrink-0 mt-0.5 shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors">{i + 1}</div>
-                  <div className="flex-1"><p className="text-sm font-black text-slate-700 group-hover:text-blue-700 transition-colors">{goal.title || goal.name || goal}</p>{goal.id && <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{goal.topic || 'Klik untuk mulai latihan'}</p>}</div>
-                  {goal.id && <ArrowUpRight size={18} className="text-slate-300 group-hover:text-blue-500 transition-colors" />}
-                </div>
-              ))}
-           </div>
-           <button onClick={() => onNavigate('assessment')} className="mt-8 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 mx-auto">Cek level lagi? Ulangi Tes <ArrowUpRight size={14} /></button>
+          <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2"><Trophy size={24} className="text-yellow-500" /> Goals Level {userProfile.level.split(' ')[0]}</h3>
+          <div className="space-y-4 flex-1">
+            {(levelData?.lessons || levelData?.goals || []).map((goal, i) => (
+              <div key={i} onClick={() => goal.id ? onStartGoal(goal.id) : null} className={`flex items-start gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 group transition-all cursor-pointer ${goal.id ? 'hover:border-blue-500 hover:bg-blue-50/30 hover:shadow-lg hover:-translate-y-1' : ''}`}>
+                <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-black shrink-0 mt-0.5 shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors">{i + 1}</div>
+                <div className="flex-1"><p className="text-sm font-black text-slate-700 group-hover:text-blue-700 transition-colors">{goal.title || goal.name || goal}</p>{goal.id && <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{goal.topic || 'Klik untuk mulai latihan'}</p>}</div>
+                {goal.id && <ArrowUpRight size={18} className="text-slate-300 group-hover:text-blue-500 transition-colors" />}
+              </div>
+            ))}
+          </div>
+          <button onClick={() => onNavigate('assessment')} className="mt-8 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 mx-auto">Cek level lagi? Ulangi Tes <ArrowUpRight size={14} /></button>
         </div>
       </div>
 
       <h3 className="text-2xl font-black text-slate-800 mt-12 mb-6 px-2">Modul Belajar Pintar</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        <DashboardCard title="Vocabulary" desc="Perkaya kosa kata dengan Box of Words." icon={<BookA size={24}/>} color="bg-indigo-50 text-indigo-600" hover="hover:border-indigo-300 hover:shadow-indigo-200" onClick={() => onNavigate('vocabulary')} />
-        <DashboardCard title="Speaking" desc="Latih pelafalan dan keberanian bicara." icon={<Mic size={24}/>} color="bg-rose-50 text-rose-600" hover="hover:border-rose-300 hover:shadow-rose-200" onClick={() => onNavigate('speaking')} />
-        <DashboardCard title="Grammar" desc="Pahami struktur kalimat untuk speaking." icon={<LayoutDashboard size={24}/>} color="bg-emerald-50 text-emerald-600" hover="hover:border-emerald-300 hover:shadow-emerald-200" onClick={() => onNavigate('grammar')} />
-        <DashboardCard title="Listening" desc="Latih telinga mendengar monolog Inggris." icon={<Headphones size={24}/>} color="bg-amber-50 text-amber-600" hover="hover:border-amber-300 hover:shadow-amber-200" onClick={() => onNavigate('listening')} />
-        <DashboardCard title="Writing Analyzer" desc="Koreksi tulisanmu secara detail." icon={<PenTool size={24}/>} color="bg-blue-50 text-blue-600" hover="hover:border-blue-300 hover:shadow-blue-200" onClick={() => onNavigate('writing_analyzer')} />
-        <DashboardCard title="Conversation" desc="Simulasi ngobrol bareng tokoh idola." icon={<MessageSquare size={24}/>} color="bg-purple-50 text-purple-600" hover="hover:border-purple-300 hover:shadow-purple-200" onClick={() => onNavigate('conversation')} />
+        <DashboardCard title="Vocabulary" desc="Perkaya kosa kata dengan Box of Words." icon={<BookA size={24} />} color="bg-indigo-50 text-indigo-600" hover="hover:border-indigo-300 hover:shadow-indigo-200" onClick={() => onNavigate('vocabulary')} />
+        <DashboardCard title="Speaking" desc="Latih pelafalan dan keberanian bicara." icon={<Mic size={24} />} color="bg-rose-50 text-rose-600" hover="hover:border-rose-300 hover:shadow-rose-200" onClick={() => onNavigate('speaking')} />
+        <DashboardCard title="Grammar" desc="Pahami struktur kalimat untuk speaking." icon={<LayoutDashboard size={24} />} color="bg-emerald-50 text-emerald-600" hover="hover:border-emerald-300 hover:shadow-emerald-200" onClick={() => onNavigate('grammar')} />
+        <DashboardCard title="Listening" desc="Latih telinga mendengar monolog Inggris." icon={<Headphones size={24} />} color="bg-amber-50 text-amber-600" hover="hover:border-amber-300 hover:shadow-amber-200" onClick={() => onNavigate('listening')} />
+        <DashboardCard title="Writing Analyzer" desc="Koreksi tulisanmu secara detail." icon={<PenTool size={24} />} color="bg-blue-50 text-blue-600" hover="hover:border-blue-300 hover:shadow-blue-200" onClick={() => onNavigate('writing_analyzer')} />
+        <DashboardCard title="Conversation" desc="Simulasi ngobrol bareng tokoh idola." icon={<MessageSquare size={24} />} color="bg-purple-50 text-purple-600" hover="hover:border-purple-300 hover:shadow-purple-200" onClick={() => onNavigate('conversation')} />
       </div>
       <div className="mt-12"><AchievementSystem userProfile={userProfile} /></div>
     </div>
@@ -548,16 +572,16 @@ function NavItem({ icon, label, isActive, onClick }) {
 }
 
 
-function ChatModule({ 
+function ChatModule({
   userProfile,
   setUserProfile,
-  module, 
-  basePrompt, 
-  topic = '', 
-  startMessage = 'Mulai pelajaran hari ini RichardMeha AI!', 
-  hideInputAtStart = false, 
-  onComplete, 
-  onBack, 
+  module,
+  basePrompt,
+  topic = '',
+  startMessage = 'Mulai pelajaran hari ini RichardMeha AI!',
+  hideInputAtStart = false,
+  onComplete,
+  onBack,
   initialCallMode = false,
   initialSuggestions = []
 }) {
@@ -566,7 +590,7 @@ function ChatModule({
   const [isLoading, setIsLoading] = useState(false);
   const [callMode, setCallMode] = useState(initialCallMode);
   const [subtitle, setSubtitle] = useState('');
-  
+
   // Interactive & Gamification States
   const [translations, setTranslations] = useState({});
   const [suggestions, setSuggestions] = useState([]);
@@ -577,14 +601,14 @@ function ChatModule({
   const [memory, setMemory] = useState({ mistakes: [], topics: [] });
   const [voicePersonality, setVoicePersonality] = useState('friendly'); // 'friendly', 'strict', 'buddy'
   const idleTimerRef = useRef(null);
-  
+
   // Voice recording states
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const recognitionRef = useRef(null);
   const hasInitialized = useRef(false);
   const audioRef = useRef(null);
-  
+
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -622,7 +646,7 @@ function ChatModule({
         contents: [{ role: 'user', parts: [{ text: textToTranslate }] }],
         systemInstruction: { parts: [{ text: "Translate this English sentence to natural, casual, friendly Indonesian (Kampung Inggris style). ONLY return the translation." }] }
       };
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      const res = await fetch('http://localhost:3000/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -644,7 +668,7 @@ function ChatModule({
         contents: [{ role: 'user', parts: [{ text: `Conversation history:\n${history}\n\nSuggest 3–4 very short, natural English response options for the user based on the last AI message. Format: Just the options separated by | character. No numbering.` }] }],
         systemInstruction: { parts: [{ text: "You are a helpful assistant providing English conversation suggestions." }] }
       };
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      const res = await fetch('http://localhost:3000/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -668,29 +692,47 @@ function ChatModule({
     if (!text) return;
     setIsSpeaking(true);
     try {
-      const cleanText = text.replace(/❌[\s\S]*?✅/g, '').replace(/[✅❌*#]/g, '');
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = 'en-US';
-      utterance.rate = 0.9;
+      const cleanText = text.replace(/❌[\s\S]*?✅/g, '').replace(/[✅❌*#]/g, '').substring(0, 600);
       
-      // Try to get a good English voice
-      const voices = window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google')) || voices.find(v => v.lang.startsWith('en'));
-      if (preferredVoice) utterance.voice = preferredVoice;
+      // Try backend TTS first (Gemini natural voice)
+      const res = await fetch('http://localhost:3000/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: cleanText, voiceName: 'Kore' })
+      });
 
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = (e) => {
-        console.error("TTS error", e);
-        setIsSpeaking(false);
-      };
-      
-      // Cancel any ongoing speech before speaking new one
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.audioData) {
+          window.speechSynthesis.cancel();
+          const audio = new Audio(`data:${data.mimeType || 'audio/wav'};base64,${data.audioData}`);
+          audioRef.current = audio;
+          audio.onended = () => setIsSpeaking(false);
+          audio.onerror = () => fallbackTTS(cleanText);
+          audio.play();
+          return;
+        }
+      }
+      // Fallback to browser TTS if backend unavailable
+      fallbackTTS(cleanText);
     } catch (err) {
-      console.error("TTS error", err);
-      setIsSpeaking(false);
+      console.warn("Backend TTS unavailable, using browser TTS", err);
+      fallbackTTS(text);
     }
+  };
+
+  const fallbackTTS = (text) => {
+    const cleanText = text.replace(/❌[\s\S]*?✅/g, '').replace(/[✅❌*#]/g, '');
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.9;
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google')) || voices.find(v => v.lang.startsWith('en'));
+    if (preferredVoice) utterance.voice = preferredVoice;
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
   };
 
   const toggleRecording = () => {
@@ -706,11 +748,11 @@ function ChatModule({
   const startRecording = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
-    
+
     recognitionRef.current = new SpeechRecognition();
     recognitionRef.current.lang = 'en-US';
-    recognitionRef.current.continuous = false;
-    recognitionRef.current.interimResults = false;
+    recognitionRef.current.continuous = true;
+    recognitionRef.current.interimResults = true;
 
     recognitionRef.current.onstart = () => {
       setIsRecording(true);
@@ -718,10 +760,27 @@ function ChatModule({
     };
 
     recognitionRef.current.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
+      let finalTranscript = '';
+      let interimTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+
       setMicStatus('detected');
-      setInputValue(transcript);
-      setTimeout(() => sendMessage(transcript), 500);
+
+      if (interimTranscript) {
+        setInputValue(interimTranscript);
+      }
+
+      if (finalTranscript) {
+        setInputValue(finalTranscript);
+        sendMessage(finalTranscript);
+      }
     };
 
     recognitionRef.current.onerror = () => {
@@ -751,19 +810,37 @@ function ChatModule({
     }
 
     const lang = detectLanguage(text);
-    const modeInstruction = lang === 'id' 
+    const modeInstruction = lang === 'id'
       ? "\n(Note: User speaks Indonesian. Explain/help using Indonesian Tutor persona.)"
       : "\n(Note: User speaks English. Practice conversation using English Tutor persona. ALWAYS correct user grammar if there's a mistake using ❌/✅ format.)";
 
     const newUserMsg = { role: 'user', content: text, isHidden: isSystemInitiated && hideInputAtStart };
     const updatedMessages = [...messages, newUserMsg];
-    
+
     setMessages(updatedMessages);
     setInputValue('');
     setIsLoading(true);
 
-    const confusionKeywords = ["don't know", "bingung", "help", "susah", "gak ngerti", "sulit", "hard", "what", "kurang paham", "paham", "gak tau"];
-    const isConfused = confusionKeywords.some(keyword => text.toLowerCase().includes(keyword));
+    // === EMOTIONAL AI DETECTION ===
+    const confusionKeywords = ["don't know", "bingung", "help", "susah", "gak ngerti", "sulit", "hard", "kurang paham", "gak tau", "pusing", "ga dong", "confused", "stuck", "lost"];
+    const confidenceKeywords = ["yes!", "got it", "paham", "mengerti", "okay!", "ngerti", "i see", "great", "oke"];
+    const lowerText = text.toLowerCase();
+    const isConfused = confusionKeywords.some(kw => lowerText.includes(kw));
+    const isConfident = confidenceKeywords.some(kw => lowerText.includes(kw));
+    const emotionState = isConfused 
+      ? 'CONFUSED — ACTIVATE EMOTIONAL AI: Start with empathy ("Heyy, tenang dulu ya..."), simplify your explanation drastically, ask a much easier question to help them win.'
+      : isConfident
+      ? 'CONFIDENT — CELEBRATE their win loudly! Then raise difficulty slightly.'
+      : 'NORMAL';
+
+    // === PERSONALITY RULES ===
+    const personalityMap = {
+      strict: 'STRICT TEACHER MODE: Be direct and firm. No jokes or slang. Correct EVERY grammar mistake immediately with zero tolerance. Speak like an IELTS/TOEFL examiner. Formal English only.',
+      buddy: 'FUN BUDDY MODE: Be super casual. Use Gen-Z slang ("bestie", "no cap", "lowkey", "it hits different"). Treat the user as a peer/close friend. Add jokes and memes references.',
+      friendly: 'FRIENDLY TUTOR MODE: Be warm, patient, and encouraging. Use lots of emojis and praise. Celebrate every small win. Be like their favourite teacher.'
+    };
+    const personalityInstruction = personalityMap[voicePersonality] || personalityMap.friendly;
+
     const contents = updatedMessages.filter(msg => !msg.isHidden).map(msg => ({
       role: msg.role === 'user' ? 'user' : 'model',
       parts: [{ text: msg.content }]
@@ -771,32 +848,41 @@ function ChatModule({
 
     const payload = {
       contents: contents,
-      systemInstruction: { 
-        parts: [{ 
-          text: `${basePrompt}\n\n[USER EMOTION: ${isConfused ? 'CONFUSED (Activate Emotional AI: Provide deep empathy, encouragement & simpler explanation)' : 'NORMAL'}]\n[PERSONALITY: ${voicePersonality === 'strict' ? 'Strict Teacher (Direct, professional, focus strictly on grammar correction, no slang)' : voicePersonality === 'buddy' ? 'Fun Buddy (Super casual, uses slang, acts like a peer or close friend)' : 'Friendly Tutor (Warm, encouraging, patient, praises the user)'}]\n[MEMORY: Weak areas: ${memory.mistakes.join(', ')}]\n${modeInstruction}` 
-        }] 
+      systemInstruction: {
+        parts: [{
+          text: `${basePrompt}\n\n[USER EMOTION: ${emotionState}]\n[PERSONALITY: ${personalityInstruction}]\n[WEAK AREAS MEMORY: ${memory.mistakes.length > 0 ? memory.mistakes.join(', ') : 'None yet'}]\n${modeInstruction}`
+        }]
       },
-      generationConfig: { temperature: 0.7 }
+      generationConfig: { temperature: voicePersonality === 'buddy' ? 0.9 : voicePersonality === 'strict' ? 0.3 : 0.7 }
     };
 
     try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      const res = await fetch('http://localhost:3000/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
       const data = await res.json();
-      let aiText = data.candidates[0].content.parts[0].text;
-      
+
+      if (!res.ok || data.error) {
+        throw new Error(data.error?.message || `API Error: ${res.status}`);
+      }
+
+      let aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!aiText) {
+        throw new Error("Invalid response format from Gemini");
+      }
+
       // Extract Score
       const scoreMatch = aiText.match(/SCORE: (\{.*\})/);
       if (scoreMatch) {
         try {
           const scoreObj = JSON.parse(scoreMatch[1]);
           setLastScore(scoreObj);
-          updateXP(15); 
-          
+          updateXP(15);
+
           // Memory tracking: if mistake detected
           if (aiText.includes('❌')) {
             const mistake = aiText.match(/❌ (.*)/)?.[1];
@@ -822,7 +908,8 @@ function ChatModule({
       setMessages(prev => [...prev, { role: 'ai', content: aiText }]);
       handleTTS(aiText);
     } catch (err) {
-      setMessages(prev => [...prev, { role: 'system', content: '⚠️ Connection failed.' }]);
+      console.error("Gemini API Error:", err);
+      setMessages(prev => [...prev, { role: 'system', content: `⚠️ Connection failed: ${err.message}` }]);
     } finally {
       setIsLoading(false);
       setMicStatus('idle');
@@ -856,7 +943,7 @@ function ChatModule({
                   return (
                     <tr key={idx} className={`${idx === 0 ? 'bg-indigo-50 font-bold text-indigo-900 border-b-2 border-indigo-100' : 'border-t border-slate-100 bg-white'}`}>
                       {cols.map((col, cidx) => (
-                        <td key={cidx} className="px-4 py-3 border-r last:border-r-0 border-slate-100 align-top" dangerouslySetInnerHTML={{__html: parseInline(col)}} />
+                        <td key={cidx} className="px-4 py-3 border-r last:border-r-0 border-slate-100 align-top" dangerouslySetInnerHTML={{ __html: parseInline(col) }} />
                       ))}
                     </tr>
                   );
@@ -885,7 +972,7 @@ function ChatModule({
       } else {
         if (inTable) flushTable(i);
         if (line.trim()) {
-          elements.push(<p key={i} className="mb-2 last:mb-0 leading-relaxed" dangerouslySetInnerHTML={{__html: parseInline(line)}} />);
+          elements.push(<p key={i} className="mb-2 last:mb-0 leading-relaxed" dangerouslySetInnerHTML={{ __html: parseInline(line) }} />);
         } else {
           elements.push(<div key={i} className="h-2" />);
         }
@@ -898,7 +985,7 @@ function ChatModule({
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
-    
+
     if (initialSuggestions.length > 0) {
       setSuggestions(initialSuggestions);
     }
@@ -922,8 +1009,8 @@ function ChatModule({
           <div className="absolute top-6 left-6 flex items-center gap-2">
             <div className="flex bg-white/5 rounded-xl p-1 border border-white/10">
               {['friendly', 'strict', 'buddy'].map(p => (
-                <button 
-                  key={p} 
+                <button
+                  key={p}
                   onClick={() => setVoicePersonality(p)}
                   className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${voicePersonality === p ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
                 >
@@ -946,8 +1033,8 @@ function ChatModule({
           <h2 className="text-2xl font-black text-white mb-2">RichardMeha <span className="text-blue-500">Call</span></h2>
           <p className="text-slate-400 font-medium mb-12 italic max-w-md">"{subtitle || "Silakan bicara, saya mendengarkan..."}"</p>
           <div className="flex gap-8">
-            <button 
-              onClick={toggleRecording} 
+            <button
+              onClick={toggleRecording}
               className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-xl active:scale-90 ${isRecording ? 'bg-rose-500 animate-pulse' : 'bg-blue-600 hover:bg-blue-700'}`}
             >
               {isRecording ? <MicOff size={32} /> : <Mic size={32} />}
@@ -969,12 +1056,12 @@ function ChatModule({
             </p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <div className="hidden sm:flex bg-slate-50 rounded-lg p-1 border border-slate-100 mr-2">
             {['friendly', 'strict', 'buddy'].map(p => (
-              <button 
-                key={p} 
+              <button
+                key={p}
                 onClick={() => setVoicePersonality(p)}
                 className={`px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${voicePersonality === p ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
               >
@@ -986,7 +1073,7 @@ function ChatModule({
             <Zap size={14} className="text-blue-600 fill-blue-600" />
             <span className="text-xs font-black text-blue-700">{userProfile.xp || 0} XP</span>
           </div>
-          <button 
+          <button
             onClick={() => setCallMode(true)}
             className="p-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-lg active:scale-95"
           >
@@ -1008,16 +1095,16 @@ function ChatModule({
                 )}
                 <div className={`relative max-w-[85%] px-4 py-3 rounded-2xl shadow-sm text-sm md:text-base ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none'}`}>
                   {renderFormattedText(msg.content)}
-                  
+
                   {msg.role === 'ai' && (
                     <div className="mt-2 flex justify-end gap-1 border-t border-slate-100 pt-1">
-                      <button 
+                      <button
                         onClick={() => handleTranslate(idx)}
                         className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
                       >
                         <Languages size={14} />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleSuggest(idx)}
                         className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
                       >
@@ -1027,7 +1114,7 @@ function ChatModule({
                   )}
                 </div>
               </div>
-              
+
               {translations[idx] && (
                 <div className="ml-10 max-w-[80%] bg-emerald-50 text-emerald-800 px-4 py-2 rounded-xl text-xs md:text-sm border border-emerald-100 animate-in fade-in slide-in-from-top-1 duration-300">
                   <p className="font-medium italic leading-relaxed">{translations[idx]}</p>
@@ -1037,7 +1124,7 @@ function ChatModule({
               {idx === messages.length - 1 && msg.role === 'ai' && suggestions.length > 0 && (
                 <div className="flex flex-wrap gap-2 pl-10 mt-2 animate-in fade-in slide-in-from-top-2 duration-500">
                   {suggestions.map((s, si) => (
-                    <button 
+                    <button
                       key={si}
                       onClick={() => { setInputValue(s); sendMessage(s); }}
                       className="px-4 py-2 bg-white border border-blue-200 text-blue-600 rounded-full text-xs md:text-sm hover:bg-blue-50 transition-all active:scale-95 shadow-sm"
@@ -1073,13 +1160,13 @@ function ChatModule({
                       "{lastScore.feedback}"
                     </p>
                     {lastScore.phonetic && (
-                       <div className="mt-2 text-[10px] bg-slate-50 p-2 rounded-xl flex items-center justify-between border border-slate-100">
-                         <div className="flex items-center gap-2">
-                           <Volume2 size={12} className="text-slate-400" />
-                           <span className="text-slate-400 font-bold uppercase tracking-widest">Phonetic:</span>
-                         </div>
-                         <span className="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{lastScore.phonetic}</span>
-                       </div>
+                      <div className="mt-2 text-[10px] bg-slate-50 p-2 rounded-xl flex items-center justify-between border border-slate-100">
+                        <div className="flex items-center gap-2">
+                          <Volume2 size={12} className="text-slate-400" />
+                          <span className="text-slate-400 font-bold uppercase tracking-widest">Phonetic:</span>
+                        </div>
+                        <span className="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{lastScore.phonetic}</span>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1098,7 +1185,7 @@ function ChatModule({
       {/* Input Form */}
       <div className="p-4 md:p-6 bg-white border-t border-slate-200 shrink-0">
         <form onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue); }} className="max-w-4xl mx-auto flex gap-2">
-          <input 
+          <input
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder={isRecording ? "Mendengarkan..." : "Ketik pesan atau tanya RichardMeha AI..."}
