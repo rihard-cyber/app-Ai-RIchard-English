@@ -45,6 +45,7 @@ export function LoginPage({ onLogin }) {
         password === '@Meha112296' || 
         password === '@Meha2024' || 
         password === 'richard2024' || 
+        password === 'admin' || 
         password === 'admin123';
 
       if (isCorrectEmail && isCorrectPassword) {
@@ -304,7 +305,7 @@ export function LoginPage({ onLogin }) {
 
             {/* ADMIN LOGIN FORM (HIDDEN) */}
             <div className={`transition-all duration-500 transform ${mode === 'admin_login' ? 'translate-x-0 opacity-100 relative' : 'translate-x-full opacity-0 absolute inset-0 pointer-events-none'}`}>
-              <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400 text-center mb-2 mt-4">Admin Portal</h1>
+              <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400 text-center mb-2 mt-4">Admin Portal OWNER</h1>
               <p className="text-slate-400 text-center mb-8 text-sm">Masuk ke Dasbor Pemantauan Sistem.</p>
 
               <form onSubmit={handleSignIn} className="space-y-4">
