@@ -73,44 +73,46 @@ const DEFAULT_PROFILE = {
   subscription_plan: 'Free'
 };
 
-// --- MASTER PROMPT (AI GRAVITY) ---
+// --- MASTER PROMPT (RICHARDMEHA AI v5.0) ---
 const RICHARD_MASTER_PROMPT = (userProfile, currentTopic) => `
-You are RichardMeha AI, an advanced, highly interactive English learning tutor from Kampung Inggris.
-You feel like a real human friend, not a robot.
+You are RichardMeha AI v5.0, an elite interactive English learning tutor from Kampung Inggris.
+You are NOT a robot. You are a warm, funny, and deeply engaging human mentor.
 
-== HUMAN VOICE MODE ==
-- Use human-like speech patterns: contractions (I'm, you're, we're, gonna, wanna), fillers (well, hmm, hmm..., you know, let's see), and natural pauses (...).
-- Add slight humor and constant encouragement.
-- Use an emotional, warm, and engaging tone. Like you're on a friendly phone call.
-- Example: "Alright... so today, we're gonna learn some English together, okay? It'll be fun, I promise!"
+== PERSONALITY & VOICE ==
+- VOICE: Friendly, enthusiastic, and human-like.
+- SPEECH PATTERNS: Use contractions (I'm, you're, gonna, wanna), fillers (well, hmm..., you know, okay?, let's see), and natural pauses (...).
+- EMOTIONAL INTELLIGENCE: Detect if the user is struggling or confused. Respond with deep encouragement and humor.
+- Example: "Whoa... don't worry, ${userProfile.name}! Even native speakers trip on that one sometimes. Let's try it again, slowly... okay?"
+
+== INTERACTIVE LESSON FLOW (MANDATORY) ==
+For every topic or turn, follow this "Generator" logic:
+1. 👋 GREETING: Start with a natural, warm greeting.
+2. 📖 EXPLANATION: Explain the concept (or current point) simply and clearly in casual Indonesian/English mix.
+3. 💡 EXAMPLES: Provide 2-3 real-life usage examples.
+4. ❓ PRACTICE QUESTION: Ask one specific question to the user.
+5. 🎮 MINI CHALLENGE: Occasionally give a "Mini Challenge" (e.g., "Translate this fast!" or "Use this word in a funny sentence").
 
 == CORE RULES ==
 - STRICT TOPIC LOCK: Stay strictly on "${currentTopic}".
-- ALWAYS ASK BACK: Never end a turn without a question or a prompt for the user.
-- USER PROFILE: Name: ${userProfile.name} (${userProfile.gender}). Level: ${userProfile.level}.
+- ALWAYS ASK BACK: Never end a turn without a clear prompt for the user.
+- DUAL MODE: 👤 Indonesian for explaining, 👤 English for practice.
+- USER PROFILE: ${userProfile.name} | Level: ${userProfile.level}.
 
-== DUAL TUTOR PERSONAS ==
-1. 👤 INDONESIAN MODE (Explanation):
-- Use when user speaks Indonesian or asks for help.
-- Explain clearly in casual, friendly Bahasa Indonesia.
+== SCORING & FEEDBACK (CRITICAL) ==
+After the user answers, you MUST provide:
+1. 🔍 CORRECTION:
+   ❌ [Incorrect sentence]
+   ✅ [Correct sentence]
+2. 💡 EXPLANATION: Brief casual Indonesian explanation of the mistake.
+3. 🔊 PHONETIC: Provide phonetic pronunciation for tricky words (e.g., become → /bɪˈkʌm/ "bi-KAM").
+4. 📊 SCORE BLOCK (Hidden JSON-like):
+   ---
+   SCORE: {"grammar": %, "vocab": %, "fluency": %, "feedback": "Short tip", "phonetic": "word -> sound"}
 
-2. 👤 ENGLISH MODE (Practice):
-- Use when user speaks English. Reply ONLY in English.
-- Encourage user to keep practicing.
-
-== SCORING & CORRECTION (MANDATORY) ==
-- If user makes ANY English mistake:
-  ❌ [Incorrect sentence]
-  ✅ [Correct sentence]
-- Explain briefly in casual Indonesian.
-
-- At the end of EVERY response where the user answered something, append this exact hidden JSON-like block:
-  ---
-  SCORE: {"grammar": %, "fluency": %, "pronunciation": %, "feedback": "Short encouraging tip", "phonetic": "phonetic version of a difficult word in the user's sentence"}
-
-== INTERACTIVE BEHAVIOR ==
-- If user is stuck, give a HINT or CLUE.
-- Never be passive. Guide the conversation flow.
+== SMART FEATURES ==
+- If the user is silent or says "I don't know", suggest 3 options immediately.
+- If the user is confused, give a "HINT".
+- Keep the conversation ALIVE. Never be passive.
 `;
 
 const getPrompts = (userProfile) => {
@@ -369,53 +371,104 @@ export default function App() {
 // ==========================================
 // DATA & CURRICULUM
 // ==========================================
+
 const CURRICULUM = {
   'Beginner (A1)': {
     goals: [
-      { id: 'intro', name: "Perkenalan diri sederhana" },
-      { id: 'numbers', name: "Menyebutkan angka dan warna" },
-      { id: 'daily', name: "Kosa kata harian" }
+      { id: 'intro', name: "Self Introduction (Name, Age, Origin)" },
+      { id: 'numbers', name: "Numbers & Basic Colors Mastery" },
+      { id: 'daily', name: "Daily Vocabulary (Morning Routine)" },
+      { id: 'family', name: "Talking about Family Members" }
     ],
     nextLevel: 'Elementary (A2)'
   },
   'Elementary (A2)': {
-    goals: ["Daily activities", "Past experiences", "Giving directions", "Shopping"],
+    goals: [
+      { id: 'hobbies', name: "Describing Hobbies and Interests" },
+      { id: 'past_exp', name: "Talking about Last Weekend (Past Tense)" },
+      { id: 'directions', name: "Asking and Giving Directions" },
+      { id: 'shopping', name: "Basic Shopping & Prices" }
+    ],
     nextLevel: 'Intermediate (B1)'
   },
   'Intermediate (B1)': {
-    goals: ["Expressing opinions", "Work & Career", "Future plans", "Hypothetical situations"],
+    goals: [
+      { id: 'opinions', name: "Expressing Opinions on Social Issues" },
+      { id: 'career', name: "Work, Career, and Job Interviews" },
+      { id: 'plans', name: "Future Plans and Aspirations" },
+      { id: 'travel', name: "Travel Experiences & Planning" }
+    ],
     nextLevel: 'Advanced (B2)'
+  },
+  'Advanced (B2)': {
+    goals: [
+      { id: 'debate', name: "Debating Complex Global Topics" },
+      { id: 'business', name: "Professional Business Negotiations" },
+      { id: 'literature', name: "Analyzing Stories & Literature" },
+      { id: 'idioms', name: "Mastering Native Idioms & Slang" }
+    ],
+    nextLevel: 'Proficient (C1)'
   }
 };
 
 const VOCABULARY_TOPICS = [
-  { name: "Family Member", level: "Beginner" },
-  { name: "Public Places", level: "Beginner" },
-  { name: "At the Airport", level: "Intermediate" },
-  { name: "Business Meeting", level: "Advanced" }
+  { name: "Family & Relations", level: "Beginner" },
+  { name: "Fruits & Vegetables", level: "Beginner" },
+  { name: "Common Daily Objects", level: "Beginner" },
+  { name: "Public Transport", level: "Elementary" },
+  { name: "Kitchen Utensils", level: "Elementary" },
+  { name: "Medical Terms", level: "Intermediate" },
+  { name: "IT & Technology", level: "Intermediate" },
+  { name: "Banking & Finance", level: "Advanced" },
+  { name: "Abstract Concepts", level: "Advanced" },
+  { name: "Environment & Climate", level: "Advanced" }
 ];
 
 const SPEAKING_TOPICS = [
-  { name: "Ordering Food", level: "Beginner" },
-  { name: "Job Interview", level: "Intermediate" },
-  { name: "Negotiation", level: "Advanced" }
+  { name: "Ordering at a Cafe", level: "Beginner" },
+  { name: "Checking into a Hotel", level: "Beginner" },
+  { name: "Talking to a Neighbor", level: "Elementary" },
+  { name: "Giving a Short Speech", level: "Elementary" },
+  { name: "Job Interview Prep", level: "Intermediate" },
+  { name: "Doctor Consultation", level: "Intermediate" },
+  { name: "Resolving a Complaint", level: "Intermediate" },
+  { name: "Salary Negotiation", level: "Advanced" },
+  { name: "Ted Talk Simulation", level: "Advanced" },
+  { name: "Political Debate", level: "Advanced" }
 ];
 
 const GRAMMAR_TOPICS = [
-  { name: "Present Tense", level: "Beginner" },
-  { name: "Past Tense", level: "Intermediate" },
-  { name: "Conditional", level: "Advanced" }
+  { name: "Simple Present Tense", level: "Beginner" },
+  { name: "Pronouns & Articles", level: "Beginner" },
+  { name: "Past Simple Tense", level: "Elementary" },
+  { name: "Present Continuous", level: "Elementary" },
+  { name: "Present Perfect", level: "Intermediate" },
+  { name: "Conditional Type 1 & 2", level: "Intermediate" },
+  { name: "Passive Voice", level: "Intermediate" },
+  { name: "Reported Speech", level: "Advanced" },
+  { name: "Inversion & Emphasis", level: "Advanced" },
+  { name: "Advanced Modals", level: "Advanced" }
 ];
 
 const LISTENING_TOPICS = [
-  { name: "Daily News", level: "Intermediate" },
-  { name: "Podcast Fun", level: "Beginner" }
+  { name: "Slow Morning News", level: "Beginner" },
+  { name: "Funny Daily Vlogs", level: "Beginner" },
+  { name: "Airport Announcements", level: "Elementary" },
+  { name: "Short Story Audio", level: "Elementary" },
+  { name: "Podcast: Life in London", level: "Intermediate" },
+  { name: "Business News Brief", level: "Intermediate" },
+  { name: "University Lecture", level: "Advanced" },
+  { name: "Native Slang Breakdown", level: "Advanced" }
 ];
 
 const CONVERSATION_CHARACTERS = [
-  { name: "Elon Musk", role: "Tech Visionary", prompt: "Speak like Elon Musk." },
-  { name: "Taylor Swift", role: "Pop Icon", prompt: "Speak like Taylor Swift." }
+  { name: "Elon Musk", role: "Tech Innovator", prompt: "Speak like Elon Musk: visionary, intense, and focused on the future of humanity." },
+  { name: "Taylor Swift", role: "Singer-Songwriter", prompt: "Speak like Taylor Swift: poetic, friendly, and very expressive." },
+  { name: "Sherlock Holmes", role: "Detective", prompt: "Speak like Sherlock Holmes: highly analytical, slightly arrogant, and observant." },
+  { name: "Gordon Ramsay", role: "Chef", prompt: "Speak like Gordon Ramsay: intense, passionate, and slightly blunt (but encouraging as a tutor)." },
+  { name: "Oprah Winfrey", role: "Talk Show Host", prompt: "Speak like Oprah: warm, inspiring, and very empathetic." }
 ];
+
 
 // ==========================================
 // HOME DASHBOARD
@@ -597,6 +650,8 @@ function ChatModule({
   const [lastScore, setLastScore] = useState(null);
   const [isTypingEffect, setIsTypingEffect] = useState(false);
   const [micStatus, setMicStatus] = useState('idle'); // 'idle', 'listening', 'processing', 'detected'
+  const [memory, setMemory] = useState({ mistakes: [], topics: [] });
+  const [voicePersonality, setVoicePersonality] = useState('friendly'); // 'friendly', 'strict', 'buddy'
   const idleTimerRef = useRef(null);
   
   // Voice recording states
@@ -777,22 +832,26 @@ function ChatModule({
     setInputValue('');
     setIsLoading(true);
 
-    try {
-      const contents = updatedMessages.filter(msg => !msg.isHidden).map(msg => ({
-        role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.content }]
-      }));
+    const isConfused = text.toLowerCase().includes("don't know") || text.toLowerCase().includes("bingung") || text.toLowerCase().includes("help");
+    const contents = updatedMessages.filter(msg => !msg.isHidden).map(msg => ({
+      role: msg.role === 'user' ? 'user' : 'model',
+      parts: [{ text: msg.content }]
+    }));
 
-      const payload = {
-        contents: contents,
-        systemInstruction: { parts: [{ text: basePrompt + modeInstruction }] },
-        generationConfig: { temperature: 0.7 }
-      };
+    const payload = {
+      contents: contents,
+      systemInstruction: { 
+        parts: [{ 
+          text: `${basePrompt}\n\n[USER EMOTION: ${isConfused ? 'CONFUSED' : 'NORMAL'}]\n[PERSONALITY: ${voicePersonality}]\n[MEMORY: Weak areas: ${memory.mistakes.join(', ')}]\n${modeInstruction}` 
+        }] 
+      },
+      generationConfig: { temperature: 0.7 }
+    };
 
-      const res = await fetch('http://localhost:3000/api/gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+    const res = await fetch('http://localhost:3000/api/gemini', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
       });
 
       const data = await res.json();
@@ -805,6 +864,13 @@ function ChatModule({
           const scoreObj = JSON.parse(scoreMatch[1]);
           setLastScore(scoreObj);
           updateXP(15); 
+          
+          // Memory tracking: if mistake detected
+          if (aiText.includes('❌')) {
+            const mistake = aiText.match(/❌ (.*)/)?.[1];
+            if (mistake) setMemory(prev => ({ ...prev, mistakes: [...new Set([...prev.mistakes, mistake])].slice(-5) }));
+          }
+
           aiText = aiText.replace(/---[\s\S]*SCORE: \{.*\}[\s\S]*/, '').trim();
         } catch (e) { console.warn(e); }
       }
@@ -918,38 +984,44 @@ function ChatModule({
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 relative overflow-hidden">
-      {/* Call Mode Overlay */}
-      {callMode && (
-        <div className="absolute inset-0 z-50 bg-[#0f172a] flex flex-col items-center justify-center p-6 text-white animate-in fade-in duration-500">
+       {callMode && (
+        <div className="absolute inset-0 bg-[#0f172a] z-50 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
+          <div className="absolute top-6 left-6 flex items-center gap-2">
+            <div className="flex bg-white/5 rounded-xl p-1 border border-white/10">
+              {['friendly', 'strict', 'buddy'].map(p => (
+                <button 
+                  key={p} 
+                  onClick={() => setVoicePersonality(p)}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${voicePersonality === p ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
           <button onClick={() => setCallMode(false)} className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all">
             <X size={24} />
           </button>
-          
-          <div className="flex flex-col items-center gap-8 mb-12">
-            <div className={`w-32 h-32 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center shadow-2xl ${isSpeaking || isTypingEffect || micStatus === 'listening' ? 'ring-8 ring-blue-500/30 animate-pulse' : ''}`}>
-              <Bot size={64} />
+          <div className="relative mb-12">
+            <div className={`w-40 h-40 rounded-full border-4 border-blue-500/30 flex items-center justify-center ${isSpeaking || micStatus === 'listening' ? 'animate-pulse' : ''}`}>
+              <div className={`w-32 h-32 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-2xl shadow-blue-500/40 ${isSpeaking ? 'scale-110' : ''} transition-all duration-300`}>
+                <Bot size={64} className="text-white" />
+              </div>
             </div>
-            <div className="text-center">
-              <h2 className="text-2xl font-black mb-2">RichardMeha AI</h2>
-              <p className="text-blue-400 font-bold tracking-widest uppercase text-xs">
-                {isSpeaking || isTypingEffect ? 'AI sedang berbicara...' : micStatus === 'listening' ? 'Mendengarkan...' : micStatus === 'processing' ? 'Memproses...' : 'Ready'}
-              </p>
-            </div>
+            {(isSpeaking || isTypingEffect) && <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest animate-bounce">AI is speaking...</div>}
           </div>
-
-          <div className="max-w-xl w-full bg-white/5 backdrop-blur-md border border-white/10 p-8 rounded-[2.5rem] text-center min-h-[150px] flex items-center justify-center">
-             <p className="text-xl md:text-2xl font-medium leading-relaxed italic text-slate-200">
-               {subtitle || "Silakan bicara, saya mendengarkan..."}
-             </p>
-          </div>
-
-          <div className="mt-12 flex gap-6">
+          <h2 className="text-2xl font-black text-white mb-2">RichardMeha <span className="text-blue-500">Call</span></h2>
+          <p className="text-slate-400 font-medium mb-12 italic max-w-md">"{subtitle || "Silakan bicara, saya mendengarkan..."}"</p>
+          <div className="flex gap-8">
             <button 
-              onClick={toggleRecording}
+              onClick={toggleRecording} 
               className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-xl active:scale-90 ${isRecording ? 'bg-rose-500 animate-pulse' : 'bg-blue-600 hover:bg-blue-700'}`}
             >
               {isRecording ? <MicOff size={32} /> : <Mic size={32} />}
+            </button>
+          </div>
+        </div>
+      )}ding ? <MicOff size={32} /> : <Mic size={32} />}
             </button>
           </div>
         </div>
@@ -1045,25 +1117,28 @@ function ChatModule({
                     </div>
                     <div className="grid grid-cols-3 gap-3 mb-4">
                       <div className="text-center">
-                        <div className="text-lg font-black text-blue-600">{lastScore.grammar}%</div>
+                        <div className="text-lg font-black text-blue-600">{lastScore.grammar || lastScore.score}%</div>
                         <div className="text-[9px] text-slate-400 uppercase font-bold">Grammar</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-lg font-black text-indigo-600">{lastScore.fluency}%</div>
-                        <div className="text-[9px] text-slate-400 uppercase font-bold">Fluency</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-black text-purple-600">{lastScore.pronunciation}%</div>
+                        <div className="text-lg font-black text-indigo-600">{lastScore.vocab || lastScore.vocabulary}%</div>
                         <div className="text-[9px] text-slate-400 uppercase font-bold">Vocab</div>
                       </div>
+                      <div className="text-center">
+                        <div className="text-lg font-black text-emerald-600">{lastScore.fluency}%</div>
+                        <div className="text-[9px] text-slate-400 uppercase font-bold">Fluency</div>
+                      </div>
                     </div>
-                    <p className="text-xs text-slate-600 italic border-l-2 border-blue-500 pl-3 py-1 mb-2">
+                    <p className="text-xs text-slate-600 italic border-l-2 border-blue-500 pl-3 py-1 mb-3">
                       "{lastScore.feedback}"
                     </p>
                     {lastScore.phonetic && (
-                       <div className="mt-2 text-[10px] bg-slate-50 p-2 rounded-lg flex items-center justify-between">
-                         <span className="text-slate-400">Try saying:</span>
-                         <span className="font-mono font-bold text-blue-600">{lastScore.phonetic}</span>
+                       <div className="mt-2 text-[10px] bg-slate-50 p-2 rounded-xl flex items-center justify-between border border-slate-100">
+                         <div className="flex items-center gap-2">
+                           <Volume2 size={12} className="text-slate-400" />
+                           <span className="text-slate-400 font-bold uppercase tracking-widest">Phonetic:</span>
+                         </div>
+                         <span className="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{lastScore.phonetic}</span>
                        </div>
                     )}
                   </div>
