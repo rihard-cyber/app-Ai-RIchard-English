@@ -8,7 +8,7 @@ export default function PaymentModal({ isOpen, onClose, onPaymentSuccess, planNa
   const [copied, setCopied] = useState(null);
 
   // Nomor WhatsApp Admin (Gunakan format 62 tanpa + atau 0 di depan)
-  const ADMIN_WA_NUMBER = "6281234567890"; // TODO: Ganti dengan nomor WhatsApp Admin Anda
+  const ADMIN_WA_NUMBER = "6285280545310"; // Nomor WhatsApp Admin Resmi
 
   useEffect(() => {
     if (isOpen) fetchBanks();

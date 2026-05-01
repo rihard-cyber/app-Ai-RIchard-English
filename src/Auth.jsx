@@ -35,6 +35,19 @@ export function LoginPage({ onLogin }) {
     setIsLoading(true);
     setErrorMsg('');
 
+    // Hardcoded admin login trigger
+    if (mode === 'admin_login') {
+      if (email === 'richardpl.meha@gmail.com' && password === '@Meha112296') {
+        setIsLoading(false);
+        onLogin('admin');
+        return;
+      } else {
+        setIsLoading(false);
+        setErrorMsg('Email atau Password Admin salah.');
+        return;
+      }
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -51,13 +64,8 @@ export function LoginPage({ onLogin }) {
         setErrorMsg(error.message);
       }
     } else {
-      // Check if admin
-      const { data: profile } = await supabase.from('user_profiles').select('is_admin').eq('id', data.user.id).single();
-      if (profile?.is_admin && mode === 'admin_login') {
-        onLogin('admin');
-      } else {
-        onLogin('user');
-      }
+      // This part is now only for regular user login
+      onLogin('user');
     }
   };
 
