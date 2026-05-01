@@ -267,13 +267,13 @@ export default function App() {
         return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} recommendation={recommendation} onStartGoal={(id) => { setActiveGoalId(id); setActiveTab('goal_session'); }} />;
       case 'progress': return <ProgressDashboard userProfile={userProfile} />;
       case 'assessment': return <LevelTest onComplete={handleAssessmentComplete} />;
-      case 'vocabulary': return <SetupModule module="Vocabulary" basePrompt={prompts.vocabulary} icon={<BookA size={24}/>} color="text-indigo-600" bg="bg-indigo-100" onComplete={(score) => saveProgress('vocabulary', score)} isPro={userProfile.is_pro} topicsList={VOCABULARY_TOPICS} />;
+      case 'vocabulary': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Vocabulary" basePrompt={prompts.vocabulary} icon={<BookA size={24}/>} color="text-indigo-600" bg="bg-indigo-100" onComplete={(score) => saveProgress('vocabulary', score)} isPro={userProfile.is_pro} topicsList={VOCABULARY_TOPICS} />;
       case 'speaking': return <PronunciationCoach userProfile={userProfile} isPro={userProfile.is_pro} onComplete={(score) => saveProgress('speaking', score)} onUpgrade={() => setIsPaymentModalOpen(true)} />;
-      case 'grammar': return <SetupModule module="Grammar for Speaking" basePrompt={prompts.grammar} icon={<LayoutDashboard size={24}/>} color="text-emerald-600" bg="bg-emerald-100" onComplete={(score) => saveProgress('grammar', score)} isPro={userProfile.is_pro} topicsList={GRAMMAR_TOPICS} />;
-      case 'listening': return <SetupModule module="Listening & Talking" basePrompt={prompts.listening} icon={<Headphones size={24}/>} color="text-amber-600" bg="bg-amber-100" onComplete={(score) => saveProgress('listening', score)} isPro={userProfile.is_pro} topicsList={LISTENING_TOPICS} />;
+      case 'grammar': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Grammar for Speaking" basePrompt={prompts.grammar} icon={<LayoutDashboard size={24}/>} color="text-emerald-600" bg="bg-emerald-100" onComplete={(score) => saveProgress('grammar', score)} isPro={userProfile.is_pro} topicsList={GRAMMAR_TOPICS} />;
+      case 'listening': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Listening & Talking" basePrompt={prompts.listening} icon={<Headphones size={24}/>} color="text-amber-600" bg="bg-amber-100" onComplete={(score) => saveProgress('listening', score)} isPro={userProfile.is_pro} topicsList={LISTENING_TOPICS} />;
       case 'writing_analyzer': return <WritingAnalyzer userProfile={userProfile} onUpgrade={() => setIsPaymentModalOpen(true)} />;
-      case 'call_tutor': return <ChatModule module="🎧 Call Tutor" basePrompt={prompts.call_tutor} initialCallMode={true} topic="Daily Practice" onBack={() => handleTabChange('home')} />;
-      case 'conversation': return <ConversationModule basePrompt={prompts.conversation} isPro={userProfile.is_pro} charactersList={CONVERSATION_CHARACTERS} />;
+      case 'call_tutor': return <ChatModule userProfile={userProfile} setUserProfile={setUserProfile} module="🎧 Call Tutor" basePrompt={prompts.call_tutor} initialCallMode={true} topic="Daily Practice" onBack={() => handleTabChange('home')} />;
+      case 'conversation': return <ConversationModule userProfile={userProfile} setUserProfile={setUserProfile} basePrompt={prompts.conversation} isPro={userProfile.is_pro} charactersList={CONVERSATION_CHARACTERS} />;
       case 'goal_session':
         const safeLevel = userProfile?.level || "Beginner (A1)";
         const goalData = (safeLevel.includes('A1') || safeLevel.includes('Beginner')) 
@@ -298,6 +298,8 @@ export default function App() {
         const activeGoal = goalData[activeGoalId] || { topic: 'General Practice', msg: 'Hello!', suggestions: [] };
         return (
           <ChatModule 
+            userProfile={userProfile}
+            setUserProfile={setUserProfile}
             module="🎯 Goal Practice" 
             basePrompt={RICHARD_MASTER_PROMPT(userProfile, activeGoal.topic)} 
             topic={activeGoal.topic} 
@@ -307,7 +309,7 @@ export default function App() {
             onBack={() => setActiveTab('home')} 
           />
         );
-      case 'quiz': return <ChatModule module="🧠 Quiz & Challenge" basePrompt={prompts.quiz} topic="English Quiz" onBack={() => handleTabChange('home')} />;
+      case 'quiz': return <ChatModule userProfile={userProfile} setUserProfile={setUserProfile} module="🧠 Quiz & Challenge" basePrompt={prompts.quiz} topic="English Quiz" onBack={() => handleTabChange('home')} />;
       case 'settings':
         return (
           <div className="p-6 md:p-10 max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -476,7 +478,7 @@ function DashboardCard({ title, desc, icon, color, hover, onClick }) {
 // ==========================================
 // MODUL SETUP WRAPPERS
 // ==========================================
-function SetupModule({ module, basePrompt, icon, color, bg, onComplete, isPro, topicsList = [] }) {
+function SetupModule({ userProfile, setUserProfile, module, basePrompt, icon, color, bg, onComplete, isPro, topicsList = [] }) {
   const [isStarted, setIsStarted] = useState(false);
   const [topic, setTopic] = useState('');
   const [showProWarning, setShowProWarning] = useState(false);
@@ -487,7 +489,7 @@ function SetupModule({ module, basePrompt, icon, color, bg, onComplete, isPro, t
     setTopic(selectedTopic); setIsStarted(true);
   };
 
-  if (isStarted) return <ChatModule module={module} basePrompt={basePrompt} topic={topic} onComplete={onComplete} onBack={() => setIsStarted(false)} />;
+  if (isStarted) return <ChatModule userProfile={userProfile} setUserProfile={setUserProfile} module={module} basePrompt={basePrompt} topic={topic} onComplete={onComplete} onBack={() => setIsStarted(false)} />;
 
   return (
     <div className="p-4 md:p-10 max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -509,7 +511,7 @@ function SetupModule({ module, basePrompt, icon, color, bg, onComplete, isPro, t
   );
 }
 
-function ConversationModule({ basePrompt, isPro, charactersList = [] }) {
+function ConversationModule({ userProfile, setUserProfile, basePrompt, isPro, charactersList = [] }) {
   const [isStarted, setIsStarted] = useState(false);
   const [character, setCharacter] = useState(null);
   const [showProWarning, setShowProWarning] = useState(false);
@@ -520,7 +522,7 @@ function ConversationModule({ basePrompt, isPro, charactersList = [] }) {
     setCharacter(char); setIsStarted(true);
   };
 
-  if (isStarted) return <ChatModule module={`Chat with ${character.name}`} basePrompt={`${basePrompt}\n${character.prompt}`} topic={`Chat with ${character.name}`} onBack={() => setIsStarted(false)} />;
+  if (isStarted) return <ChatModule userProfile={userProfile} setUserProfile={setUserProfile} module={`Chat with ${character.name}`} basePrompt={`${basePrompt}\n${character.prompt}`} topic={`Chat with ${character.name}`} onBack={() => setIsStarted(false)} />;
 
   return (
     <div className="p-4 md:p-10 max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -546,6 +548,8 @@ function NavItem({ icon, label, isActive, onClick }) {
 
 
 function ChatModule({ 
+  userProfile,
+  setUserProfile,
   module, 
   basePrompt, 
   topic = '', 
