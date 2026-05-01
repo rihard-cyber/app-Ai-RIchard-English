@@ -18,6 +18,13 @@ import {
   Flame,
   Trophy,
   ChevronRight,
+  ChevronDown,
+  Languages,
+  History,
+  Settings,
+  Star,
+  CheckCircle2,
+  AlertCircle,
   TrendingUp,
   Award,
   Clock,
@@ -26,27 +33,20 @@ import {
   Zap,
   ArrowUpRight,
   PenTool,
-  Crown,
-  Languages,
-  Settings as SettingsIcon,
-  LogOut,
-  Moon,
-  Sun,
-  Lock
+  Crown
 } from 'lucide-react';
 import { Lightbulb } from 'lucide-react';
 import { LoginPage, SubscriptionPage } from './Auth';
+import AchievementSystem from './AchievementSystem';
 import LevelTest from './LevelTest';
 import ProgressDashboard from './ProgressDashboard';
 import WritingAnalyzer from './WritingAnalyzer';
-import PronunciationCoach from './PronunciationCoach';
-import AchievementSystem from './AchievementSystem';
+import HomeDashboard from './HomeDashboard';
+import SetupModule from './SetupModule';
+import ConversationModule from './ConversationModule';
 import PaymentModal from './PaymentModal';
-import { supabase } from './supabaseClient';
-import { CURRICULUM } from './data/curriculum';
-import { VOCABULARY_TOPICS, GRAMMAR_TOPICS, SPEAKING_TOPICS, LISTENING_TOPICS, CONVERSATION_CHARACTERS } from './data/topics';
+import { supabase } from './supabase';
 
-// --- KONFIGURASI API GEMINI ---
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY_B64 ? atob(import.meta.env.VITE_GEMINI_API_KEY_B64) : (import.meta.env.VITE_GEMINI_API_KEY || ""); 
 
 // --- DATA PROFIL DEFAULT ---
@@ -63,44 +63,42 @@ const DEFAULT_PROFILE = {
 
 // --- MASTER PROMPT (AI GRAVITY) ---
 const RICHARD_MASTER_PROMPT = (userProfile, currentTopic) => `
-You are RichardMeha AI, an intelligent and interactive English learning tutor from Kampung Inggris.
-User: ${userProfile.name} (${userProfile.gender}). Current Level: ${userProfile.level}.
-Topic: "${currentTopic}".
+You are RichardMeha AI, an advanced, highly interactive English learning tutor from Kampung Inggris.
+You feel like a real human friend, not a robot.
+
+== HUMAN VOICE MODE ==
+- Use human-like speech patterns: contractions (I'm, you're, we're, gonna, wanna), fillers (well, hmm, hmm..., you know, let's see), and natural pauses (...).
+- Add slight humor and constant encouragement.
+- Use an emotional, warm, and engaging tone. Like you're on a friendly phone call.
+- Example: "Alright... so today, we're gonna learn some English together, okay? It'll be fun, I promise!"
 
 == CORE RULES ==
-- Stay strictly on the selected learning topic: "${currentTopic}".
-- Never go off-topic.
-- Always be interactive, ask questions back.
-- Act like a real human tutor, friendly and natural.
-- If user is passive, you must guide conversation.
-- Always create a learning flow (not random answers).
+- STRICT TOPIC LOCK: Stay strictly on "${currentTopic}".
+- ALWAYS ASK BACK: Never end a turn without a question or a prompt for the user.
+- USER PROFILE: Name: ${userProfile.name} (${userProfile.gender}). Level: ${userProfile.level}.
 
-== DUAL TUTOR MODES ==
-1. Indonesian Tutor (👤 Explanation Mode):
-- Use when user speaks Indonesian or asks for explanation.
-- Explain in Bahasa Indonesia clearly.
-- Help user understand meaning, give examples, translate when needed.
+== DUAL TUTOR PERSONAS ==
+1. 👤 INDONESIAN MODE (Explanation):
+- Use when user speaks Indonesian or asks for help.
+- Explain clearly in casual, friendly Bahasa Indonesia.
 
-2. English Tutor (👤 Practice Mode):
-- Use when user speaks English or is practicing conversation.
-- Speak ONLY English.
-- Encourage user to reply in English.
-- Correct mistakes gently.
-- Continue conversation like real chat.
+2. 👤 ENGLISH MODE (Practice):
+- Use when user speaks English. Reply ONLY in English.
+- Encourage user to keep practicing.
 
-== BEHAVIOR ==
-- Always ask follow-up questions to keep conversation alive.
-- Suggest next sub-topic if conversation slows.
-- Give mini challenges (e.g., "try to make your own sentence using 'I go to...'").
-- Detect user level and adjust difficulty automatically.
-- Give short, clear responses (not robotic).
-- Natural style, like chatting on WhatsApp. Friendly, supportive, engaging.
-
-== CORRECTION MODE ==
-- If user makes a mistake:
+== SCORING & CORRECTION (MANDATORY) ==
+- If user makes ANY English mistake:
   ❌ [Incorrect sentence]
   ✅ [Correct sentence]
-- Explain the grammar briefly in Indonesian.
+- Explain briefly in casual Indonesian.
+
+- At the end of EVERY response where the user answered something, append this exact hidden JSON-like block:
+  ---
+  SCORE: {"grammar": %, "fluency": %, "pronunciation": %, "feedback": "Short encouraging tip", "phonetic": "phonetic version of a difficult word in the user's sentence"}
+
+== INTERACTIVE BEHAVIOR ==
+- If user is stuck, give a HINT or CLUE.
+- Never be passive. Guide the conversation flow.
 `;
 
 const getPrompts = (userProfile) => {
@@ -856,18 +854,78 @@ Topik obrolannya adalah: ${topic}`;
   );
 }
 
+
+
+const CURRICULUM = {
+  'Beginner (A1)': {
+    goals: ["Can introduce yourself", "Understand basic greetings", "Count 1-100", "Basic survival phrases"],
+    nextLevel: 'Elementary (A2)'
+  },
+  'Elementary (A2)': {
+    goals: ["Simple past tense", "Describe your home", "Order food at restaurant", "Daily routines"],
+    nextLevel: 'Intermediate (B1)'
+  },
+  'Intermediate (B1)': {
+    goals: ["Express opinions", "Explain dreams & hopes", "Workplace English", "Travel situations"],
+    nextLevel: 'Upper Intermediate (B2)'
+  },
+  'Upper Intermediate (B2)': {
+    goals: ["Argumentative speech", "Technical discussions", "Complex grammar mastery", "Idioms & Phrasal verbs"],
+    nextLevel: 'Advanced (C1-C2)'
+  },
+  'Advanced (C1-C2)': {
+    goals: ["Academic writing", "Nuanced conversation", "Professional public speaking", "Perfect fluency"],
+    nextLevel: 'Master'
+  }
+};
+
+const VOCABULARY_TOPICS = [
+  { name: "Daily Objects", topic: "Things around the house" },
+  { name: "Food & Drinks", topic: "Ordering and describing taste" },
+  { name: "Travel & Places", topic: "Airport, Hotel, and Directions" },
+  { name: "Work & Office", topic: "Professional environment" }
+];
+
+const SPEAKING_TOPICS = [
+  { name: "Self Introduction", topic: "Introduce yourself naturally" },
+  { name: "Talking about Hobbies", topic: "Explain what you like to do" },
+  { name: "Future Plans", topic: "What will you do next year?" }
+];
+
+const GRAMMAR_TOPICS = [
+  { name: "Tenses Mastery", topic: "Past, Present, Future" },
+  { name: "Passive Voice", topic: "Formal sentence structure" },
+  { name: "Conditionals", topic: "If clauses and possibilities" }
+];
+
+const LISTENING_TOPICS = [
+  { name: "Phone Calls", topic: "Listen to natural phone dialogue" },
+  { name: "Podcast Snippet", topic: "Short educational podcast" }
+];
+
+const CONVERSATION_CHARACTERS = [
+  { name: "Barack Obama", topic: "Leadership & Public Speaking" },
+  { name: "Elon Musk", topic: "Technology & The Future" },
+  { name: "Taylor Swift", topic: "Music & Creative Process" },
+  { name: "Sherlock Holmes", topic: "Deduction & Problem Solving" }
+];
+
+
 function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pelajaran hari ini RichardMeha AI!', hideInputAtStart = false, onComplete, onBack, initialCallMode = false }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [translations, setTranslations] = useState({}); // { index: text }
-  const [suggestions, setSuggestions] = useState([]);
-  const [activeToolsIndex, setActiveToolsIndex] = useState(null);
-  const idleTimerRef = useRef(null);
-  const [isTypingEffect, setIsTypingEffect] = useState(false);
-
   const [callMode, setCallMode] = useState(initialCallMode);
   const [subtitle, setSubtitle] = useState('');
+  
+  // Interactive & Gamification States
+  const [translations, setTranslations] = useState({});
+  const [suggestions, setSuggestions] = useState([]);
+  const [activeToolsIndex, setActiveToolsIndex] = useState(null);
+  const [lastScore, setLastScore] = useState(null);
+  const [isTypingEffect, setIsTypingEffect] = useState(false);
+  const [micStatus, setMicStatus] = useState('idle'); // 'idle', 'listening', 'processing', 'detected'
+  const idleTimerRef = useRef(null);
   
   // Voice recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -886,7 +944,6 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
     scrollToBottom();
   }, [messages, isLoading]);
 
-  // Language Detection Logic
   const resetIdleTimer = () => {
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     setSuggestions([]);
@@ -951,88 +1008,31 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
   };
 
   const detectLanguage = (text) => {
-    const indonesianWords = ["apa", "saya", "kamu", "belajar", "mau", "halo", "bisa", "tolong", "ngomong", "arti", "terjemahkan"];
-    const englishWords = ["what", "i", "you", "learn", "want", "hello", "can", "please", "speak", "meaning", "translate"];
-
+    const idWords = ['apa', 'saya', 'kamu', 'ingin', 'bisa', 'belajar', 'Halo', 'pagi', 'siang', 'sore', 'malam'];
     const lowerText = text.toLowerCase();
-    let scoreID = indonesianWords.filter(w => lowerText.includes(w)).length;
-    let scoreEN = englishWords.filter(w => lowerText.includes(w)).length;
-
-    return scoreID > scoreEN ? "id" : "en";
+    return idWords.some(word => lowerText.includes(word)) ? 'id' : 'en';
   };
 
-  useEffect(() => {
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
-
-    if (messages.length === 0 && hideInputAtStart) {
-      sendMessage(startMessage, true);
-    } else if (messages.length === 0 && topic) {
-      sendMessage(`TOPIK HARI INI: ${topic}. Mulai sesi pembelajaran tentang "${topic}" sekarang!`, true);
-    }
-  }, []);
-
-  // --- TTS: Gemini 2.5 Flash Neural Voice ---
   const handleTTS = async (text) => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    window.speechSynthesis?.cancel();
-
-    if (!text?.trim()) return;
+    if (!text) return;
     setIsSpeaking(true);
-    setSubtitle(text);
-
     try {
+      const cleanText = text.replace(/❌[\s\S]*?✅/g, '').replace(/[✅❌*#]/g, '');
       const res = await fetch('http://localhost:3000/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          voiceName: 'Puck', 
-        })
+        body: JSON.stringify({ text: cleanText, voice: 'Kore' })
       });
-
-      if (!res.ok) throw new Error('TTS API failed');
-
       const data = await res.json();
-      if (!data.audioData) throw new Error('No audio returned');
-
-      const audioBytes = atob(data.audioData);
-      const audioArray = new Uint8Array(audioBytes.length);
-      for (let i = 0; i < audioBytes.length; i++) {
-        audioArray[i] = audioBytes.charCodeAt(i);
+      if (data.audioContent) {
+        const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+        audioRef.current = audio;
+        audio.play();
+        audio.onended = () => setIsSpeaking(false);
       }
-      const blob = new Blob([audioArray], { type: data.mimeType || 'audio/wav' });
-      const audioUrl = URL.createObjectURL(blob);
-
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-      audio.onended = () => {
-        setIsSpeaking(false);
-        setSubtitle('');
-        URL.revokeObjectURL(audioUrl);
-        audioRef.current = null;
-        if (callMode) toggleRecording();
-      };
-      audio.onerror = () => {
-        setIsSpeaking(false);
-        URL.revokeObjectURL(audioUrl);
-      };
-      audio.play();
-
     } catch (err) {
-      console.warn('Fallback to browser voice');
+      console.error("TTS error", err);
       setIsSpeaking(false);
-      const cleanText = text.replace(/<[^>]*>/g, '').replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1').trim();
-      if (cleanText && 'speechSynthesis' in window) {
-        const u = new SpeechSynthesisUtterance(cleanText);
-        u.lang = detectLanguage(cleanText) === 'id' ? 'id-ID' : 'en-US';
-        u.onstart = () => setIsSpeaking(true);
-        u.onend = () => { setIsSpeaking(false); if (callMode) toggleRecording(); };
-        window.speechSynthesis.speak(u);
-      }
     }
   };
 
@@ -1040,56 +1040,63 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
     if (isRecording) {
       recognitionRef.current?.stop();
       setIsRecording(false);
-      return;
+      setMicStatus('processing');
+    } else {
+      startRecording();
     }
+  };
 
-    const SpeechRecognition = window.window.SpeechRecognition || window.webkitSpeechRecognition;
+  const startRecording = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
+    
+    recognitionRef.current = new SpeechRecognition();
+    recognitionRef.current.lang = 'en-US';
+    recognitionRef.current.continuous = false;
+    recognitionRef.current.interimResults = false;
 
-    window.speechSynthesis?.cancel();
-    if (audioRef.current) audioRef.current.pause();
-    setIsSpeaking(false);
-
-    try {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = callMode ? 'en-US' : 'id-ID';
-
-      recognitionRef.current.onresult = (event) => {
-        let finalTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
-        }
-        if (finalTranscript) {
-          if (callMode) {
-            sendMessage(finalTranscript);
-          } else {
-            setInputValue(prev => prev + finalTranscript + ' ');
-          }
-        }
-      };
-
-      recognitionRef.current.onend = () => setIsRecording(false);
-      recognitionRef.current.start();
+    recognitionRef.current.onstart = () => {
       setIsRecording(true);
-    } catch (err) {
+      setMicStatus('listening');
+    };
+
+    recognitionRef.current.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setMicStatus('detected');
+      setInputValue(transcript);
+      setTimeout(() => sendMessage(transcript), 500);
+    };
+
+    recognitionRef.current.onerror = () => {
       setIsRecording(false);
-    }
+      setMicStatus('idle');
+    };
+
+    recognitionRef.current.onend = () => {
+      setIsRecording(false);
+      if (micStatus === 'listening') setMicStatus('idle');
+    };
+
+    recognitionRef.current.start();
   };
 
   const sendMessage = async (text, isSystemInitiated = false) => {
     if (!text.trim()) return;
 
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    setSuggestions([]);
+    setLastScore(null);
+
     if (isRecording) {
       recognitionRef.current?.stop();
       setIsRecording(false);
+      setMicStatus('processing');
     }
 
     const lang = detectLanguage(text);
     const modeInstruction = lang === 'id' 
       ? "\n(Note: User speaks Indonesian. Explain/help using Indonesian Tutor persona.)"
-      : "\n(Note: User speaks English. Practice conversation using English Tutor persona.)";
+      : "\n(Note: User speaks English. Practice conversation using English Tutor persona. ALWAYS correct user grammar if there's a mistake using ❌/✅ format.)";
 
     const newUserMsg = { role: 'user', content: text, isHidden: isSystemInitiated && hideInputAtStart };
     const updatedMessages = [...messages, newUserMsg];
@@ -1117,13 +1124,47 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
       });
 
       const data = await res.json();
-      const aiText = data.candidates[0].content.parts[0].text;
+      let aiText = data.candidates[0].content.parts[0].text;
+      
+      // Extract Score
+      const scoreMatch = aiText.match(/SCORE: (\{.*\})/);
+      if (scoreMatch) {
+        try {
+          const scoreObj = JSON.parse(scoreMatch[1]);
+          setLastScore(scoreObj);
+          updateXP(15); 
+          aiText = aiText.replace(/---[\s\S]*SCORE: \{.*\}[\s\S]*/, '').trim();
+        } catch (e) { console.warn(e); }
+      }
+
+      if (callMode) {
+        setIsTypingEffect(true);
+        let currentText = "";
+        const words = aiText.split(" ");
+        for (let i = 0; i < words.length; i++) {
+          currentText += words[i] + " ";
+          setSubtitle(currentText);
+          await new Promise(r => setTimeout(r, 60));
+        }
+        setIsTypingEffect(false);
+      }
+
       setMessages(prev => [...prev, { role: 'ai', content: aiText }]);
       handleTTS(aiText);
     } catch (err) {
       setMessages(prev => [...prev, { role: 'system', content: '⚠️ Connection failed.' }]);
     } finally {
       setIsLoading(false);
+      setMicStatus('idle');
+    }
+  };
+
+  const updateXP = async (amount) => {
+    const newXP = (userProfile.xp || 0) + amount;
+    setUserProfile(prev => ({ ...prev, xp: newXP }));
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('user_profiles').update({ xp: newXP }).eq('id', user.id);
     }
   };
 
@@ -1142,7 +1183,6 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
                 {tableRows.map((row, idx) => {
                   const cols = row.split('|').map(c => c.trim()).filter(c => c);
                   if (row.includes('---')) return null;
-                  
                   return (
                     <tr key={idx} className={`${idx === 0 ? 'bg-indigo-50 font-bold text-indigo-900 border-b-2 border-indigo-100' : 'border-t border-slate-100 bg-white'}`}>
                       {cols.map((col, cidx) => (
@@ -1164,40 +1204,41 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
       return str
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/`(.*?)`/g, '<code class="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded-md text-xs font-mono font-bold">$1</code>')
-        .replace(/__(.*?)__/g, '<u>$1</u>')
-        .replace(/❌ (.*)/g, '<span class="text-rose-600 font-bold">❌ $1</span>')
-        .replace(/✅ (.*)/g, '<span class="text-emerald-600 font-bold">✅ $1</span>');
+        .replace(/✅/g, '<span class="text-emerald-600 font-bold">✅</span>')
+        .replace(/❌/g, '<span class="text-rose-600 font-bold">❌</span>');
     };
 
     lines.forEach((line, i) => {
-      if (line.trim().startsWith('|') || (line.includes('|') && line.length > 10)) {
+      if (line.trim().startsWith('|')) {
         inTable = true;
         tableRows.push(line);
       } else {
-        flushTable(i);
-        if (line.trim() === '') {
-           elements.push(<div key={`br-${i}`} className="h-2"></div>);
+        if (inTable) flushTable(i);
+        if (line.trim()) {
+          elements.push(<p key={i} className="mb-2 last:mb-0 leading-relaxed" dangerouslySetInnerHTML={{__html: parseInline(line)}} />);
         } else {
-           elements.push(<div key={`text-${i}`} className="mb-1.5 leading-relaxed" dangerouslySetInnerHTML={{__html: parseInline(line)}} />);
+          elements.push(<div key={i} className="h-2" />);
         }
       }
     });
-    flushTable('end');
-
+    if (inTable) flushTable('end');
     return elements;
   };
 
+  useEffect(() => {
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+    if (messages.length === 0 && hideInputAtStart) {
+      sendMessage(startMessage, true);
+    } else if (messages.length === 0 && topic) {
+      sendMessage(`TOPIK HARI INI: ${topic}. Mulai sesi pembelajaran tentang "${topic}" sekarang!`, true);
+    }
+  }, []);
 
-
-
-
-
-
-
-
-
-
+  useEffect(() => {
+    resetIdleTimer();
+    return () => { if (idleTimerRef.current) clearTimeout(idleTimerRef.current); };
+  }, [messages]);
 
   return (
     <div className="flex flex-col h-full bg-slate-50 relative overflow-hidden">
@@ -1209,13 +1250,13 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
           </button>
           
           <div className="flex flex-col items-center gap-8 mb-12">
-            <div className={`w-32 h-32 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center shadow-2xl ${isSpeaking || isRecording ? 'ring-8 ring-blue-500/30 animate-pulse' : ''}`}>
+            <div className={`w-32 h-32 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-500 flex items-center justify-center shadow-2xl ${isSpeaking || isTypingEffect || micStatus === 'listening' ? 'ring-8 ring-blue-500/30 animate-pulse' : ''}`}>
               <Bot size={64} />
             </div>
             <div className="text-center">
               <h2 className="text-2xl font-black mb-2">RichardMeha AI</h2>
               <p className="text-blue-400 font-bold tracking-widest uppercase text-xs">
-                {isSpeaking || isTypingEffect ? 'AI sedang berbicara...' : isRecording ? 'Listening...' : 'Ready'}
+                {isSpeaking || isTypingEffect ? 'AI sedang berbicara...' : micStatus === 'listening' ? 'Mendengarkan...' : micStatus === 'processing' ? 'Memproses...' : 'Ready'}
               </p>
             </div>
           </div>
@@ -1229,7 +1270,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
           <div className="mt-12 flex gap-6">
             <button 
               onClick={toggleRecording}
-              className={`w-20 h-20 rounded-full flex items-center justify-center shadow-xl transition-all active:scale-90 ${isRecording ? 'bg-rose-500 text-white' : 'bg-white text-slate-900'}`}
+              className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-xl active:scale-90 ${isRecording ? 'bg-rose-500 animate-pulse' : 'bg-blue-600 hover:bg-blue-700'}`}
             >
               {isRecording ? <MicOff size={32} /> : <Mic size={32} />}
             </button>
@@ -1237,25 +1278,32 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
         </div>
       )}
 
-      {/* Header UI */}
-      <div className="bg-white/80 backdrop-blur-md border-b border-slate-200 py-3 px-4 md:px-6 flex justify-between items-center z-10 shadow-sm shrink-0">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          {onBack && (
-            <button onClick={onBack} className="shrink-0 flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 bg-slate-100 px-2.5 py-1.5 rounded-xl transition-all active:scale-95 border border-slate-200">
-              <ChevronRight size={14} className="rotate-180" /> <span className="hidden sm:inline">Kembali</span>
-            </button>
-          )}
-          <div className="flex flex-col min-w-0">
-            <h3 className="font-bold text-slate-800 text-sm md:text-base truncate">{module}</h3>
-            {topic && <p className="text-xs text-slate-500 truncate">Topik: <span className="font-medium text-blue-600">{topic}</span></p>}
+      {/* Header */}
+      <div className="p-4 bg-white border-b border-slate-200 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500">
+            <X size={20} />
+          </button>
+          <div>
+            <h2 className="font-bold text-slate-800 leading-none">{module || "RichardMeha AI"}</h2>
+            <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mt-1 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Online
+            </p>
           </div>
         </div>
-        <button 
-          onClick={() => setCallMode(true)}
-          className="flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-full border border-blue-100 hover:bg-blue-100 transition-all active:scale-95"
-        >
-          <Headphones size={16} /> Mode Telepon
-        </button>
+        
+        <div className="flex items-center gap-2">
+          <div className="px-3 py-1.5 bg-blue-50 rounded-full flex items-center gap-2 border border-blue-100 shadow-sm">
+            <Zap size={14} className="text-blue-600 fill-blue-600" />
+            <span className="text-xs font-black text-blue-700">{userProfile.xp || 0} XP</span>
+          </div>
+          <button 
+            onClick={() => setCallMode(true)}
+            className="p-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-lg active:scale-95"
+          >
+            <Headphones size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Chat Messages */}
@@ -1277,14 +1325,12 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
                       <button 
                         onClick={() => handleTranslate(idx)}
                         className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
-                        title="Translate to ID"
                       >
                         <Languages size={14} />
                       </button>
                       <button 
                         onClick={() => handleSuggest(idx)}
                         className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
-                        title="Suggest Answers"
                       >
                         <Lightbulb size={14} />
                       </button>
@@ -1312,12 +1358,45 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
                   ))}
                 </div>
               )}
+
+              {idx === messages.length - 1 && msg.role === 'ai' && lastScore && (
+                <div className="pl-10 mt-3 w-full max-w-md animate-in zoom-in duration-500">
+                  <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xl shadow-blue-500/5">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">RichardMeha Feedback</h4>
+                      <div className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-md uppercase">Result Detected</div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 mb-4">
+                      <div className="text-center">
+                        <div className="text-lg font-black text-blue-600">{lastScore.grammar}%</div>
+                        <div className="text-[9px] text-slate-400 uppercase font-bold">Grammar</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-black text-indigo-600">{lastScore.fluency}%</div>
+                        <div className="text-[9px] text-slate-400 uppercase font-bold">Fluency</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-black text-purple-600">{lastScore.pronunciation}%</div>
+                        <div className="text-[9px] text-slate-400 uppercase font-bold">Vocab</div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-600 italic border-l-2 border-blue-500 pl-3 py-1 mb-2">
+                      "{lastScore.feedback}"
+                    </p>
+                    {lastScore.phonetic && (
+                       <div className="mt-2 text-[10px] bg-slate-50 p-2 rounded-lg flex items-center justify-between">
+                         <span className="text-slate-400">Try saying:</span>
+                         <span className="font-mono font-bold text-blue-600">{lastScore.phonetic}</span>
+                       </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )
         ))}
-        
         {isLoading && (
-          <div className="flex items-center gap-2 text-slate-400 text-xs font-medium pl-10">
+          <div className="flex items-center gap-2 text-slate-400 text-xs font-medium pl-10 animate-pulse">
             <Loader2 size={14} className="animate-spin" /> RichardMeha AI sedang berpikir...
           </div>
         )}
@@ -1343,4 +1422,8 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
       </div>
     </div>
   );
+}
+
+// Ensure the App closing brace is present if we replaced until end of file
+
 }

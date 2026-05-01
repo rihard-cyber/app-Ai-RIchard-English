@@ -1,92 +1,17 @@
 export const VOCABULARY_QUESTIONS = [
-  // A1 - Pemula Dasar
-  {
-    id: 1,
-    level: 'A1',
-    question: 'What is the opposite of "Big"?',
-    options: ['Tall', 'Small', 'High', 'Long'],
-    answer: 'Small'
-  },
-  {
-    id: 2,
-    level: 'A1',
-    question: 'Which word is a fruit?',
-    options: ['Carrot', 'Apple', 'Potato', 'Onion'],
-    answer: 'Apple'
-  },
-  // A2 - Pemula Lanjut
-  {
-    id: 3,
-    level: 'A2',
-    question: 'Choose the correct word: "I like to _____ music."',
-    options: ['listen', 'hear', 'listen to', 'hearing'],
-    answer: 'listen to'
-  },
-  {
-    id: 4,
-    level: 'A2',
-    question: 'Which word means "very cold"?',
-    options: ['Freezing', 'Boiling', 'Warm', 'Cool'],
-    answer: 'Freezing'
-  },
-  // B1 - Menengah
-  {
-    id: 5,
-    level: 'B1',
-    question: 'What is a synonym for "Accurate"?',
-    options: ['Quick', 'Correct', 'Smart', 'Simple'],
-    answer: 'Correct'
-  },
-  {
-    id: 6,
-    level: 'B1',
-    question: 'If something is "Mandatory", it means it is...',
-    options: ['Optional', 'Difficult', 'Required', 'Expensive'],
-    answer: 'Required'
-  },
-  // B2 - Menengah Atas
-  {
-    id: 7,
-    level: 'B2',
-    question: 'What does "To postpone" mean?',
-    options: ['To cancel', 'To start', 'To delay', 'To continue'],
-    answer: 'To delay'
-  },
-  {
-    id: 8,
-    level: 'B2',
-    question: 'Choose the best word: "The news was so _____ that she cried."',
-    options: ['depressing', 'depressed', 'depression', 'depress'],
-    answer: 'depressing'
-  },
-  // C1 - Mahir
-  {
-    id: 9,
-    level: 'C1',
-    question: 'What is the meaning of "Ambiguous"?',
-    options: ['Clear', 'Uncertain', 'Ancient', 'Large'],
-    answer: 'Uncertain'
-  },
-  {
-    id: 10,
-    level: 'C1',
-    question: 'Which word means "to improve something or make it better"?',
-    options: ['Enhance', 'Enlarge', 'Enforce', 'Endure'],
-    answer: 'Enhance'
-  },
-  // C2 - Ahli / Native
-  {
-    id: 11,
-    level: 'C2',
-    question: 'What does "Meticulous" mean?',
-    options: ['Very fast', 'Showing great attention to detail', 'Extremely angry', 'Lazily done'],
-    answer: 'Showing great attention to detail'
-  },
-  {
-    id: 12,
-    level: 'C2',
-    question: 'A synonym for "Pinnacle" is...',
-    options: ['Bottom', 'Middle', 'Peak', 'Edge'],
-    answer: 'Peak'
-  }
+  // A1
+  { id: 1, level: 'A1', question: "What is the opposite of 'Big'?", options: ["Small", "High", "Long", "Wide"], answer: "Small" },
+  { id: 2, level: 'A1', question: "Which word is a fruit?", options: ["Carrot", "Apple", "Onion", "Potato"], answer: "Apple" },
+  // A2
+  { id: 3, level: 'A2', question: "I ____ to the gym every morning.", options: ["goes", "go", "going", "gone"], answer: "go" },
+  { id: 4, level: 'A2', question: "She is ____ than her sister.", options: ["tall", "taller", "tallest", "more tall"], answer: "taller" },
+  // B1
+  { id: 5, level: 'B1', question: "If I ____ more money, I would buy a car.", options: ["have", "had", "has", "will have"], answer: "had" },
+  { id: 6, level: 'B1', question: "He has been working here ____ 2010.", options: ["for", "since", "during", "until"], answer: "since" },
+  // B2
+  { id: 7, level: 'B2', question: "Which word means 'to postpone'?", options: ["Put off", "Put on", "Put out", "Put away"], answer: "Put off" },
+  { id: 8, level: 'B2', question: "Despite ____ hard, he failed the exam.", options: ["study", "studied", "studying", "he studied"], answer: "studying" },
+  // C1
+  { id: 9, level: 'C1', question: "The decision was ____ to his career.", options: ["detrimental", "bad", "negative", "opposite"], answer: "detrimental" },
+  { id: 10, level: 'C1', question: "Hardly ____ the office when it started to rain.", options: ["I had left", "had I left", "I left", "did I leave"], answer: "had I left" }
 ];
