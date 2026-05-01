@@ -296,8 +296,8 @@ export default function AdminDashboard({ onLogout }) {
                                         </tbody>
                                     </table>
                                 </div>
-                            </>
-                        )}
+                            </div>
+                        </div>
                     </div>
                 )}
                 {activeTab === 'users' && (
@@ -414,6 +414,8 @@ export default function AdminDashboard({ onLogout }) {
                                 </table>
                             </div>
                         </div>
+                            </>
+                        )}
                     </div>
                 )}
             </main>
