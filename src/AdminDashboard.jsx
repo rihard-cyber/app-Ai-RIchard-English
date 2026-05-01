@@ -7,6 +7,7 @@ export default function AdminDashboard({ onLogout }) {
     const [stats, setStats] = useState({ totalUsers: 0, proUsers: 0, revenue: 0, totalTx: 0 });
     const [transactions, setTransactions] = useState([]);
     const [banks, setBanks] = useState([]);
+    const [users, setUsers] = useState([]); // New User State
     const [isLoading, setIsLoading] = useState(true);
 
     // New Bank State
@@ -40,6 +41,10 @@ export default function AdminDashboard({ onLogout }) {
             const { data: bankData } = await supabase.from('payment_methods').select('*').order('created_at', { ascending: true });
             setBanks(bankData || []);
 
+            // Fetch All Users
+            const { data: userData } = await supabase.from('user_profiles').select('*').order('created_at', { ascending: false });
+            setUsers(userData || []);
+
         } catch (error) {
             console.error("Error fetching admin data:", error);
         }
@@ -72,9 +77,16 @@ export default function AdminDashboard({ onLogout }) {
     const handleAddBank = async (e) => {
         e.preventDefault();
         if (!newBank.account_number || !newBank.account_name) return;
-        await supabase.from('payment_methods').insert([newBank]);
-        setNewBank({ provider: 'BCA', account_number: '', account_name: '' });
-        fetchData();
+        
+        try {
+            // Kita paksa is_active: true supaya langsung muncul di user
+            await supabase.from('payment_methods').insert([{ ...newBank, is_active: true }]);
+            setNewBank({ provider: 'BCA', account_number: '', account_name: '' });
+            alert("Rekening berhasil disimpan!");
+            fetchData();
+        } catch (error) {
+            alert("Gagal menyimpan rekening: " + error.message);
+        }
     };
 
     const handleDeleteBank = async (id) => {
@@ -219,6 +231,37 @@ export default function AdminDashboard({ onLogout }) {
                                 </button>
                             </form>
                         </div>
+                    </div>
+                )}
+                {activeTab === 'users' && (
+                    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider">
+                                <tr>
+                                    <th className="p-4">Nama</th>
+                                    <th className="p-4">Gender</th>
+                                    <th className="p-4">Level</th>
+                                    <th className="p-4">Status</th>
+                                    <th className="p-4">Join Date</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {users.map(u => (
+                                    <tr key={u.id} className="hover:bg-slate-50/50">
+                                        <td className="p-4 font-bold text-slate-800">{u.name}</td>
+                                        <td className="p-4 capitalize">{u.gender}</td>
+                                        <td className="p-4"><span className="px-2 py-1 bg-slate-100 rounded text-xs">{u.level}</span></td>
+                                        <td className="p-4">
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${u.is_pro ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-slate-100 text-slate-500'}`}>
+                                                {u.is_pro ? '👑 PRO' : 'FREE'}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 text-slate-400 text-xs">{new Date(u.created_at).toLocaleDateString('id-ID')}</td>
+                                    </tr>
+                                ))}
+                                {users.length === 0 && <tr><td colSpan="5" className="p-8 text-center text-slate-400">Belum ada data pengguna.</td></tr>}
+                            </tbody>
+                        </table>
                     </div>
                 )}
             </main>
