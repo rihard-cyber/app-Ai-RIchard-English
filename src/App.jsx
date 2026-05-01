@@ -34,6 +34,7 @@ import {
   Sun,
   Lock
 } from 'lucide-react';
+import { Lightbulb } from 'lucide-react';
 import { LoginPage, SubscriptionPage } from './Auth';
 import LevelTest from './LevelTest';
 import ProgressDashboard from './ProgressDashboard';
@@ -859,8 +860,12 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [translationPopover, setTranslationPopover] = useState(null);
-  const [inlineTranslation, setInlineTranslation] = useState(null);
+  const [translations, setTranslations] = useState({}); // { index: text }
+  const [suggestions, setSuggestions] = useState([]);
+  const [activeToolsIndex, setActiveToolsIndex] = useState(null);
+  const idleTimerRef = useRef(null);
+  const [isTypingEffect, setIsTypingEffect] = useState(false);
+
   const [callMode, setCallMode] = useState(initialCallMode);
   const [subtitle, setSubtitle] = useState('');
   
@@ -882,6 +887,69 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
   }, [messages, isLoading]);
 
   // Language Detection Logic
+  const resetIdleTimer = () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    setSuggestions([]);
+    idleTimerRef.current = setTimeout(() => {
+      if (messages.length > 0 && messages[messages.length - 1].role === 'ai') {
+        handleSuggest(messages.length - 1);
+      }
+    }, 5000);
+  };
+
+  const handleTranslate = async (index) => {
+    if (translations[index]) {
+      setTranslations(prev => {
+        const next = { ...prev };
+        delete next[index];
+        return next;
+      });
+      return;
+    }
+
+    const textToTranslate = messages[index].content;
+    setIsLoading(true);
+    try {
+      const payload = {
+        contents: [{ role: 'user', parts: [{ text: textToTranslate }] }],
+        systemInstruction: { parts: [{ text: "Translate this English sentence to natural, casual, friendly Indonesian (Kampung Inggris style). ONLY return the translation." }] }
+      };
+      const res = await fetch('http://localhost:3000/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      const translation = data.candidates[0].content.parts[0].text;
+      setTranslations(prev => ({ ...prev, [index]: translation }));
+    } catch (err) {
+      console.error("Translation failed", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSuggest = async (index) => {
+    const history = messages.slice(0, index + 1).map(m => `${m.role}: ${m.content}`).join('\n');
+    try {
+      const payload = {
+        contents: [{ role: 'user', parts: [{ text: `Conversation history:\n${history}\n\nSuggest 3–4 very short, natural English response options for the user based on the last AI message. Format: Just the options separated by | character. No numbering.` }] }],
+        systemInstruction: { parts: [{ text: "You are a helpful assistant providing English conversation suggestions." }] }
+      };
+      const res = await fetch('http://localhost:3000/api/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      const rawSuggestions = data.candidates[0].content.parts[0].text;
+      const suggestionsList = rawSuggestions.split('|').map(s => s.trim()).filter(s => s);
+      setSuggestions(suggestionsList);
+    } catch (err) {
+      console.error("Suggestions failed", err);
+    }
+  };
+
   const detectLanguage = (text) => {
     const indonesianWords = ["apa", "saya", "kamu", "belajar", "mau", "halo", "bisa", "tolong", "ngomong", "arti", "terjemahkan"];
     const englishWords = ["what", "i", "you", "learn", "want", "hello", "can", "please", "speak", "meaning", "translate"];
@@ -1147,7 +1215,7 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
             <div className="text-center">
               <h2 className="text-2xl font-black mb-2">RichardMeha AI</h2>
               <p className="text-blue-400 font-bold tracking-widest uppercase text-xs">
-                {isSpeaking ? 'Speaking...' : isRecording ? 'Listening...' : 'Ready'}
+                {isSpeaking || isTypingEffect ? 'AI sedang berbicara...' : isRecording ? 'Listening...' : 'Ready'}
               </p>
             </div>
           </div>
@@ -1194,18 +1262,60 @@ function ChatModule({ module, basePrompt, topic = '', startMessage = 'Mulai pela
       <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-32 space-y-6">
         {messages.map((msg, idx) => (
           !msg.isHidden && (
-            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} items-end gap-2 animate-in slide-in-from-bottom-2 duration-300`}>
-              {msg.role !== 'user' && (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                  <Bot size={16} />
+            <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} gap-2 w-full`}>
+              <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} items-end gap-2 w-full animate-in slide-in-from-bottom-2 duration-300`}>
+                {msg.role !== 'user' && (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <Bot size={16} />
+                  </div>
+                )}
+                <div className={`relative max-w-[85%] px-4 py-3 rounded-2xl shadow-sm text-sm md:text-base ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none'}`}>
+                  {renderFormattedText(msg.content)}
+                  
+                  {msg.role === 'ai' && (
+                    <div className="mt-2 flex justify-end gap-1 border-t border-slate-100 pt-1">
+                      <button 
+                        onClick={() => handleTranslate(idx)}
+                        className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
+                        title="Translate to ID"
+                      >
+                        <Languages size={14} />
+                      </button>
+                      <button 
+                        onClick={() => handleSuggest(idx)}
+                        className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
+                        title="Suggest Answers"
+                      >
+                        <Lightbulb size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {translations[idx] && (
+                <div className="ml-10 max-w-[80%] bg-emerald-50 text-emerald-800 px-4 py-2 rounded-xl text-xs md:text-sm border border-emerald-100 animate-in fade-in slide-in-from-top-1 duration-300">
+                  <p className="font-medium italic leading-relaxed">{translations[idx]}</p>
                 </div>
               )}
-              <div className={`max-w-[85%] px-4 py-3 rounded-2xl shadow-sm text-sm md:text-base ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none'}`}>
-                {renderFormattedText(msg.content)}
-              </div>
+
+              {idx === messages.length - 1 && msg.role === 'ai' && suggestions.length > 0 && (
+                <div className="flex flex-wrap gap-2 pl-10 mt-2 animate-in fade-in slide-in-from-top-2 duration-500">
+                  {suggestions.map((s, si) => (
+                    <button 
+                      key={si}
+                      onClick={() => { setInputValue(s); sendMessage(s); }}
+                      className="px-4 py-2 bg-white border border-blue-200 text-blue-600 rounded-full text-xs md:text-sm hover:bg-blue-50 transition-all active:scale-95 shadow-sm"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )
         ))}
+        
         {isLoading && (
           <div className="flex items-center gap-2 text-slate-400 text-xs font-medium pl-10">
             <Loader2 size={14} className="animate-spin" /> RichardMeha AI sedang berpikir...
