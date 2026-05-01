@@ -270,13 +270,13 @@ export default function App() {
         return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} recommendation={recommendation} onStartGoal={(id) => { setActiveGoalId(id); setActiveTab('goal_session'); }} />;
       case 'progress': return <ProgressDashboard userProfile={userProfile} />;
       case 'assessment': return <LevelTest onComplete={handleAssessmentComplete} />;
-      case 'vocabulary': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Vocabulary" basePrompt={prompts.vocabulary} icon={<BookA size={24} />} color="text-indigo-600" bg="bg-indigo-100" onComplete={(score) => saveProgress('vocabulary', score)} isPro={userProfile.is_pro} topicsList={VOCABULARY_TOPICS} />;
+      case 'vocabulary': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Vocabulary" basePrompt={prompts.vocabulary} icon={<BookA size={24} />} color="text-indigo-600" bg="bg-indigo-100" onComplete={(score) => saveProgress('vocabulary', score)} isPro={userProfile.is_pro} topicsList={VOCABULARY_TOPICS} onUpgrade={() => setIsPaymentModalOpen(true)} />;
       case 'speaking': return <PronunciationCoach userProfile={userProfile} isPro={userProfile.is_pro} onComplete={(score) => saveProgress('speaking', score)} onUpgrade={() => setIsPaymentModalOpen(true)} />;
-      case 'grammar': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Grammar for Speaking" basePrompt={prompts.grammar} icon={<LayoutDashboard size={24} />} color="text-emerald-600" bg="bg-emerald-100" onComplete={(score) => saveProgress('grammar', score)} isPro={userProfile.is_pro} topicsList={GRAMMAR_TOPICS} />;
-      case 'listening': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Listening & Talking" basePrompt={prompts.listening} icon={<Headphones size={24} />} color="text-amber-600" bg="bg-amber-100" onComplete={(score) => saveProgress('listening', score)} isPro={userProfile.is_pro} topicsList={LISTENING_TOPICS} />;
+      case 'grammar': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Grammar for Speaking" basePrompt={prompts.grammar} icon={<LayoutDashboard size={24} />} color="text-emerald-600" bg="bg-emerald-100" onComplete={(score) => saveProgress('grammar', score)} isPro={userProfile.is_pro} topicsList={GRAMMAR_TOPICS} onUpgrade={() => setIsPaymentModalOpen(true)} />;
+      case 'listening': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Listening & Talking" basePrompt={prompts.listening} icon={<Headphones size={24} />} color="text-amber-600" bg="bg-amber-100" onComplete={(score) => saveProgress('listening', score)} isPro={userProfile.is_pro} topicsList={LISTENING_TOPICS} onUpgrade={() => setIsPaymentModalOpen(true)} />;
       case 'writing_analyzer': return <WritingAnalyzer userProfile={userProfile} onUpgrade={() => setIsPaymentModalOpen(true)} />;
       case 'call_tutor': return <ChatModule userProfile={userProfile} setUserProfile={setUserProfile} module="🎧 Call Tutor" basePrompt={prompts.call_tutor} initialCallMode={true} topic="Daily Practice" onBack={() => handleTabChange('home')} />;
-      case 'conversation': return <ConversationModule userProfile={userProfile} setUserProfile={setUserProfile} basePrompt={prompts.conversation} isPro={userProfile.is_pro} charactersList={CONVERSATION_CHARACTERS} />;
+      case 'conversation': return <ConversationModule userProfile={userProfile} setUserProfile={setUserProfile} basePrompt={prompts.conversation} isPro={userProfile.is_pro} charactersList={CONVERSATION_CHARACTERS} onUpgrade={() => setIsPaymentModalOpen(true)} />;
       case 'goal_session':
         const safeLevel = userProfile?.level || "Beginner (A1)";
         const goalData = (safeLevel.includes('A1') || safeLevel.includes('Beginner'))
@@ -481,14 +481,14 @@ function DashboardCard({ title, desc, icon, color, hover, onClick }) {
 // ==========================================
 // MODUL SETUP WRAPPERS
 // ==========================================
-function SetupModule({ userProfile, setUserProfile, module, basePrompt, icon, color, bg, onComplete, isPro, topicsList = [] }) {
+function SetupModule({ userProfile, setUserProfile, module, basePrompt, icon, color, bg, onComplete, isPro, topicsList = [], onUpgrade }) {
   const [isStarted, setIsStarted] = useState(false);
   const [topic, setTopic] = useState('');
   const [showProWarning, setShowProWarning] = useState(false);
   const freeCount = Math.ceil(topicsList.length * 0.45);
 
   const handleSelectTopic = (selectedTopic, index) => {
-    if (index >= freeCount && !isPro) { setShowProWarning(true); return; }
+    if (index >= freeCount && !isPro) { onUpgrade(); return; }
     setTopic(selectedTopic); setIsStarted(true);
   };
 
@@ -514,14 +514,14 @@ function SetupModule({ userProfile, setUserProfile, module, basePrompt, icon, co
   );
 }
 
-function ConversationModule({ userProfile, setUserProfile, basePrompt, isPro, charactersList = [] }) {
+function ConversationModule({ userProfile, setUserProfile, basePrompt, isPro, charactersList = [], onUpgrade }) {
   const [isStarted, setIsStarted] = useState(false);
   const [character, setCharacter] = useState(null);
   const [showProWarning, setShowProWarning] = useState(false);
   const freeCount = Math.ceil(charactersList.length * 0.45);
 
   const handleSelectCharacter = (char, index) => {
-    if (index >= freeCount && !isPro) { setShowProWarning(true); return; }
+    if (index >= freeCount && !isPro) { onUpgrade(); return; }
     setCharacter(char); setIsStarted(true);
   };
 
