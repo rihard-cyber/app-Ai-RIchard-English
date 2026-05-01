@@ -30,17 +30,23 @@ app.post('/api/gemini', async (req, res) => {
 
     if (contents && Array.isArray(contents)) {
       contents.forEach(c => {
-        if (c.role === 'user' || c.role === 'assistant') {
+        // Map Gemini roles to OpenAI/Groq roles
+        let role = c.role;
+        if (role === 'model') role = 'assistant';
+        
+        if (role === 'user' || role === 'assistant') {
           const text = c.parts?.map(p => p.text).join('') || '';
-          messages.push({ role: c.role, content: text });
+          messages.push({ role: role, content: text });
         }
       });
     }
 
     const groqPayload = {
-      model: 'llama-3.3-70b-versatile',
+      model: 'mixtral-8x7b-32768',
       messages,
-      temperature: generationConfig?.temperature || 0.7,
+      temperature: generationConfig?.temperature || 0.9,
+      top_p: 0.9,
+      presence_penalty: 0.6,
       max_tokens: 2048,
     };
 

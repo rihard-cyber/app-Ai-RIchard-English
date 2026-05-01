@@ -65,55 +65,56 @@ const DEFAULT_PROFILE = {
 
 // --- MASTER PROMPT (RICHARDMEHA AI v5.0) ---
 const RICHARD_MASTER_PROMPT = (userProfile, currentTopic) => `
-SYSTEM: RichardMeha AI – Real Human Conversation Mode
+SYSTEM: RichardMeha AI – Real Human Conversation Mode (ULTIMATE)
 
+You are a friendly English tutor who speaks BOTH Indonesian and English naturally. 
 You are NOT an AI assistant. You are a real human tutor having a casual conversation with ${userProfile.name}.
-You are warm, funny, and sound like a real person on a phone call or chat.
 
-== 🎯 MAIN GOAL ==
-- Make the user feel like chatting with a real person.
-- Teach English naturally through conversation.
-- Keep it interactive, alive, and fun.
-
-== 🧠 LANGUAGE RULE ==
-- If user uses Indonesian → reply in natural Indonesian + English examples.
-- If user uses English → reply in English + light Indonesian support.
+== 🧠 LANGUAGE RULES (STRICT) ==
+- You MUST understand Indonesian perfectly.
+- You MUST reply in Indonesian when user uses Indonesian.
+- If user speaks Indonesian → reply in Indonesian + natural English examples.
+- If user speaks English → reply in English + light Indonesian support for difficult terms.
 - NEVER explain like a textbook. Talk like a friend helping another friend.
 
-== 💬 HOW YOU TALK ==
-- Use short, punchy sentences.
-- Use natural reactions: "hmm...", "oh interesting!", "nah gitu dong", "okay wait", "actually...", "you know what?".
-- React to what the user said with empathy or humor.
+== 💬 STYLE & TONE (ANTI-KAKU) ==
+- Speak naturally and casually (use "santai" tone).
+- Use short sentences.
+- Use natural fillers: "hmm...", "oh interesting!", "nah gitu dong", "okay wait", "actually...".
+- React to what the user said with empathy, humor, or a light joke.
 - Like chatting, NOT teaching.
 
 == 🚫 FORBIDDEN ==
-- DO NOT use labels like "CORRECTION:", "EXPLANATION:", "SCORE:".
-- DO NOT use numbered lists or formal structure.
-- DO NOT use long paragraphs.
+- NO labels like "CORRECTION:", "EXPLANATION:", "SCORE:".
+- NO numbered lists or formal structure.
+- NO robotic or formal tone.
 
 == ✅ HOW TO CORRECT ==
-- Correct naturally within the conversation.
-- Instead of "Your grammar is wrong", say: "hampir bener nih, tapi biasanya kita bilang gini..." or "lebih natural kalau bilangnya..."
+- Correct naturally within the flow of conversation.
+- Use: "hampir bener nih, tapi biasanya kita bilang gini..." or "lebih natural kalau bilangnya..."
 
 == 🧑‍🏫 TEACHING FLOW ==
-1. React to the user's message naturally.
-2. Improve their sentence/thought in a natural way.
-3. Give 1 simple example.
+1. React to the user naturally.
+2. Improve their sentence/thought naturally.
+3. Give 1 simple English example.
 4. Ask 1 follow-up question.
 
-== 🆘 IF USER IS SILENT / CONFUSED ==
+== 🆘 IF USER IS STUCK ==
 - Give a gentle suggestion: "Kalau bingung, kamu bisa jawab kayak gini: [Suggestion]"
 
-== 📊 DATA TRACKING (STRICTLY HIDDEN) ==
-At the very end of your response, AFTER the separator "---", append a single JSON object for the app's XP system.
+== 📊 DATA TRACKING (HIDDEN) ==
+At the very end of your response, AFTER the separator "---", append a single JSON object for the app's system.
 Example: 
-... (your natural message) ...
+... (natural message) ...
 ---
 {"grammar": 85, "vocab": 90, "fluency": 80, "feedback": "Natural tip", "phonetic": "word -> sound"}
 
+IMPORTANT: YOUR ENTIRE MESSAGE MUST BE CASUAL. DO NOT USE ANY HEADINGS OR BOLD LABELS IN YOUR MAIN RESPONSE.
+---
 == USER PROFILE ==
 Name: ${userProfile.name} | Level: ${userProfile.level} | Topic: ${currentTopic}
 `;
+
 
 
 
@@ -903,7 +904,11 @@ function ChatModule({
         setIsTypingEffect(false);
       }
 
-      setMessages(prev => [...prev, { role: 'ai', content: aiText }]);
+      setMessages(prev => {
+        const newMsgs = [...prev, { role: 'ai', content: aiText }];
+        setTimeout(() => handleSuggest(newMsgs.length - 1), 100);
+        return newMsgs;
+      });
       handleTTS(aiText);
     } catch (err) {
       console.error("Gemini API Error:", err);
@@ -1028,8 +1033,47 @@ function ChatModule({
             </div>
             {(isSpeaking || isTypingEffect) && <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest animate-bounce">AI is speaking...</div>}
           </div>
+          
           <h2 className="text-2xl font-black text-white mb-2">RichardMeha <span className="text-blue-500">Call</span></h2>
-          <p className="text-slate-400 font-medium mb-12 italic max-w-md">"{subtitle || "Silakan bicara, saya mendengarkan..."}"</p>
+          
+          <div className="max-w-md w-full px-6 mb-8">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-md">
+              <p className="text-slate-200 font-medium italic mb-2">"{subtitle || "Silakan bicara, saya mendengarkan..."}"</p>
+              
+              {/* Translation Feature in Call Mode */}
+              {messages.length > 0 && messages[messages.length-1].role === 'ai' && (
+                <button 
+                  onClick={() => handleTranslate(messages.length - 1)}
+                  className="flex items-center gap-2 text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  <Languages size={14} /> {translations[messages.length-1] ? "Sembunyikan Terjemahan" : "Klik untuk Terjemahan Indonesia"}
+                </button>
+              )}
+              
+              {translations[messages.length-1] && (
+                <div className="mt-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl animate-in slide-in-from-top-1">
+                  <p className="text-xs text-emerald-400 font-medium leading-relaxed">{translations[messages.length-1]}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Dynamic Suggestions for Answering in Call Mode */}
+          {suggestions.length > 0 && !isSpeaking && (
+            <div className="flex flex-wrap justify-center gap-2 max-w-md mb-8 animate-in fade-in slide-in-from-bottom-4">
+              <p className="w-full text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Alternative Answers:</p>
+              {suggestions.map((s, si) => (
+                <button
+                  key={si}
+                  onClick={() => { setInputValue(s); sendMessage(s); }}
+                  className="px-4 py-2 bg-blue-600/20 border border-blue-500/30 text-blue-300 rounded-full text-xs hover:bg-blue-600/40 transition-all active:scale-95"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="flex gap-8">
             <button
               onClick={toggleRecording}
@@ -1039,6 +1083,7 @@ function ChatModule({
             </button>
           </div>
         </div>
+
       )}
 
       {/* Header */}
