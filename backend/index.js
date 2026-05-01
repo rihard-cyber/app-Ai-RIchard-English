@@ -25,7 +25,7 @@ if (!API_KEY) {
 // Frontend will send requests here instead of directly to Google
 app.post('/api/gemini', async (req, res) => {
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
     
     // Forward the payload from React directly to Google
     const response = await fetch(url, {
