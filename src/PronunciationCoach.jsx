@@ -31,15 +31,23 @@ Analysis: [Analisa kata per kata]
 Tips: [Saran perbaikan]
 `;
 
-export default function PronunciationCoach({ userProfile, onComplete, isPro }) {
+export default function PronunciationCoach({ userProfile, onComplete, isPro, onUpgrade }) {
   const [targetSentence, setTargetSentence] = useState('');
   const [transcript, setTranscript] = useState('');
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [usageCount, setUsageCount] = useState(() => parseInt(localStorage.getItem('speaking_coach_usage') || '0'));
   const recognitionRef = useRef(null);
 
-  if (!isPro) {
+  useEffect(() => {
+    localStorage.setItem('speaking_coach_usage', usageCount.toString());
+  }, [usageCount]);
+
+  // Lock after 3 attempts (approx 40% of a full session context) if not PRO
+  const isLocked = !isPro && usageCount >= 3;
+
+  if (isLocked) {
     return (
       <div className="h-full flex items-center justify-center p-6 bg-slate-50">
         <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-2xl border border-slate-100 max-w-lg text-center animate-in zoom-in-95 duration-500">
@@ -48,10 +56,10 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro }) {
            </div>
            <h2 className="text-3xl font-black text-slate-800 mb-4">Speaking Coach PRO 👑</h2>
            <p className="text-slate-500 mb-10 text-lg leading-relaxed">
-             Latihan pengucapan dengan feedback AI instan adalah fitur eksklusif. Upgrade sekarang untuk mulai melatih aksen dan kelancaran bicaramu!
+             Kamu sudah menggunakan jatah gratis harian (3x latihan). Upgrade ke PRO untuk latihan tanpa batas dengan feedback AI instan!
            </p>
            <button 
-             onClick={() => window.location.reload()}
+             onClick={onUpgrade}
              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-all text-lg"
            >
              Upgrade Sekarang
@@ -131,6 +139,7 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro }) {
       const data = await response.json();
       const aiResponse = data.candidates[0].content.parts[0].text;
       setAnalysis(aiResponse);
+      setUsageCount(prev => prev + 1);
       
       // Auto-save progress if score detected
       const scoreMatch = aiResponse.match(/Score: (\d+)/);

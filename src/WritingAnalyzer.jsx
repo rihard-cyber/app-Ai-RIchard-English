@@ -40,7 +40,10 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
   const [text, setText] = useState('');
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [usageCount, setUsageCount] = useState(() => parseInt(localStorage.getItem('writing_analyzer_usage') || '0'));
   const isPro = userProfile?.is_pro;
+
+  const isLocked = !isPro && usageCount >= 3;
 
   const analyzeWriting = async () => {
     if (!text.trim()) return;
@@ -62,12 +65,39 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
       const data = await response.json();
       const aiResponse = data.candidates[0].content.parts[0].text;
       setAnalysis(aiResponse);
+      setUsageCount(prev => {
+        const next = prev + 1;
+        localStorage.setItem('writing_analyzer_usage', next.toString());
+        return next;
+      });
     } catch (error) {
       console.error(error);
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (isLocked) {
+    return (
+      <div className="h-full flex items-center justify-center p-6 bg-slate-50">
+        <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-2xl border border-slate-100 max-w-lg text-center animate-in zoom-in-95 duration-500">
+           <div className="w-24 h-24 bg-gradient-to-tr from-indigo-400 to-blue-600 text-white rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-indigo-500/20">
+             <Crown size={48} />
+           </div>
+           <h2 className="text-3xl font-black text-slate-800 mb-4">Writing Analyzer PRO 👑</h2>
+           <p className="text-slate-500 mb-10 text-lg leading-relaxed">
+             Kamu sudah menggunakan jatah gratis harian (3x analisa). Upgrade ke PRO untuk analisa mendalam tanpa batas!
+           </p>
+           <button 
+             onClick={onUpgrade}
+             className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-all text-lg"
+           >
+             Upgrade Sekarang
+           </button>
+        </div>
+      </div>
+    );
+  }
 
   const renderFormattedAnalysis = (content) => {
       const lines = content.split('\n');
