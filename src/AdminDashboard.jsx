@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw, Menu, X, User, Zap } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
@@ -19,6 +19,20 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
     const handleSaveApiKey = () => {
         localStorage.setItem('gemini_api_key', apiKeyInput);
         alert('✅ API Key Gemini berhasil disimpan di perangkat ini!');
+    };
+
+    const logoClickCount = useRef(0);
+    const logoClickTimeout = useRef(null);
+    const handleLogoClick = () => {
+        logoClickCount.current += 1;
+        if (logoClickCount.current >= 2) {
+            logoClickCount.current = 0;
+            onSwitchToUser();
+        }
+        clearTimeout(logoClickTimeout.current);
+        logoClickTimeout.current = setTimeout(() => {
+            logoClickCount.current = 0;
+        }, 1500);
     };
 
     useEffect(() => {
@@ -131,8 +145,8 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
             <aside className={`fixed md:relative z-50 w-64 h-full bg-slate-900 text-slate-300 flex flex-col transition-transform transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
                 <div className="p-6 border-b border-slate-800 flex items-center justify-between">
                     <h1
-                        className="text-xl font-black text-white flex items-center gap-2 cursor-pointer select-none"
-                        onDoubleClick={onSwitchToUser}
+                        className="text-xl font-black text-white flex items-center gap-2 cursor-pointer select-none touch-manipulation"
+                        onClick={handleLogoClick}
                         title="Klik 2x untuk beralih ke Mode Pengguna"
                     >
                         <Shield className="text-emerald-500" /> Admin Panel
@@ -141,7 +155,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
                         <X size={24} />
                     </button>
                 </div>
-                <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+                <nav className="flex-1 p-4 space-y-2 overflow-y-auto transform-gpu overscroll-contain">
                     <SidebarItem icon={<LayoutDashboard size={20} />} label="Overview" active={activeTab === 'overview'} onClick={() => { setActiveTab('overview'); setIsSidebarOpen(false); }} />
                     <SidebarItem icon={<Activity size={20} />} label="Transaksi Pro" active={activeTab === 'transactions'} onClick={() => { setActiveTab('transactions'); setIsSidebarOpen(false); }} badge={transactions.filter(t => t.status === 'pending').length} />
                     <SidebarItem icon={<CreditCard size={20} />} label="Data Rekening" active={activeTab === 'banks'} onClick={() => { setActiveTab('banks'); setIsSidebarOpen(false); }} />
@@ -166,8 +180,8 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
                             <Menu size={24} />
                         </button>
                         <h1
-                            className="text-lg font-bold text-slate-800 flex items-center gap-2 cursor-pointer select-none"
-                            onDoubleClick={onSwitchToUser}
+                            className="text-lg font-bold text-slate-800 flex items-center gap-2 cursor-pointer select-none touch-manipulation"
+                            onClick={handleLogoClick}
                             title="Klik 2x untuk beralih ke Mode Pengguna"
                         >
                             <Shield className="text-emerald-500" size={20} /> Admin
@@ -175,7 +189,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
                     </div>
                 </header>
 
-                <div className="flex-1 overflow-y-auto p-4 md:p-8 w-full">
+                <div className="flex-1 overflow-y-auto p-4 md:p-8 w-full transform-gpu overscroll-y-contain scroll-smooth">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                         <div>
                             <h1 className="text-3xl font-black text-slate-800 tracking-tight capitalize">{activeTab.replace('transactions', 'Transaksi Pro').replace('banks', 'Data Rekening').replace('users', 'Data Pengguna')} Dashboard</h1>
@@ -231,7 +245,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
 
                     {activeTab === 'transactions' && (
                         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in">
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto transform-gpu overscroll-x-contain scroll-smooth pb-2">
                                 <table className="w-full text-left text-sm whitespace-nowrap md:whitespace-normal">
                                     <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider">
                                         <tr>
@@ -315,7 +329,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
                                         </h3>
                                         <span className="text-[10px] font-black text-slate-400 uppercase bg-white px-3 py-1 rounded-full border border-slate-200">{banks.length} Rekening</span>
                                     </div>
-                                    <div className="overflow-x-auto">
+                                    <div className="overflow-x-auto transform-gpu overscroll-x-contain scroll-smooth pb-2">
                                         <table className="w-full text-left text-sm whitespace-nowrap md:whitespace-normal">
                                             <thead className="bg-slate-50/80 text-slate-500 font-black uppercase tracking-widest text-[10px]">
                                                 <tr>
@@ -411,7 +425,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
                                                 <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold">{users.length} Total</span>
                                             </div>
                                         </div>
-                                        <div className="overflow-x-auto">
+                                        <div className="overflow-x-auto transform-gpu overscroll-x-contain scroll-smooth pb-2">
                                             <table className="w-full text-left text-sm whitespace-nowrap md:whitespace-normal">
                                                 <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider">
                                                     <tr>

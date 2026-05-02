@@ -59,7 +59,7 @@ export function LoginPage({ onLogin }) {
     const isAdminPassword =
       safePassword === 'meha112296' ||
       safePassword === '@Meha2024' ||
-      safePassword === 'richard2024' ||
+      safePassword === 'p24' ||
       safePassword === 'admin' ||
       safePassword === 'admin123';
 
@@ -261,7 +261,7 @@ export function LoginPage({ onLogin }) {
         <div className="running-border-inner rounded-[22px] bg-[#0f172a]/90 backdrop-blur-xl p-8 flex flex-col relative z-10 overflow-hidden min-h-[480px]">
 
           <div className="flex justify-center mb-6">
-            <div onClick={handleLogoClick} className="cursor-pointer select-none w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20 transition-transform active:scale-95">
+            <div onClick={handleLogoClick} className="cursor-pointer select-none w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20 transition-transform active:scale-95 touch-manipulation">
               <Sparkles className="text-white w-8 h-8" />
             </div>
           </div>
@@ -275,7 +275,7 @@ export function LoginPage({ onLogin }) {
           <div className="relative flex-1">
             {/* SIGN IN FORM */}
             <div className={`transition-all duration-500 transform ${mode === 'signin' ? 'translate-x-0 opacity-100 relative' : '-translate-x-full opacity-0 absolute inset-0 pointer-events-none'}`}>
-              <h1 onClick={handleLogoClick} className="text-3xl font-bold text-white text-center mb-2 mt-4 cursor-pointer select-none active:scale-95 transition-transform">RichardMeha AI</h1>
+              <h1 onClick={handleLogoClick} className="text-3xl font-bold text-white text-center mb-2 mt-4 cursor-pointer select-none active:scale-95 transition-transform touch-manipulation">RichardMeha AI</h1>
               <p className="text-slate-400 text-center mb-8 text-sm">Masuk untuk memulai petualangan belajarmu.</p>
 
               <form onSubmit={handleSignIn} className="space-y-4">

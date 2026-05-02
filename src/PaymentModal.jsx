@@ -68,7 +68,7 @@ export default function PaymentModal({ isOpen, onClose, onPaymentSuccess, planNa
           <button onClick={onClose} className="p-2 bg-white rounded-full text-slate-400 hover:text-slate-700 shadow-sm"><X size={20} /></button>
         </div>
 
-        <div className="p-6 overflow-y-auto space-y-6">
+        <div className="p-6 overflow-y-auto space-y-6 transform-gpu overscroll-contain scroll-smooth">
           <div className="bg-blue-50 text-blue-800 p-4 rounded-2xl flex gap-3 text-sm">
             <Shield className="shrink-0 text-blue-600" />
             <p>Silakan transfer sesuai nominal ke salah satu rekening resmi kami di bawah ini.</p>
