@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   LayoutDashboard,
   MessageSquare,
@@ -17,13 +17,8 @@ import {
   Flame,
   Trophy,
   ChevronRight,
-  ChevronDown,
   Languages,
-  History,
   Settings,
-  TrendingUp,
-  Award,
-  Clock,
   BarChart2,
   Zap,
   ArrowUpRight,
@@ -667,11 +662,9 @@ function ChatModule({
   // Interactive & Gamification States
   const [translations, setTranslations] = useState({});
   const [suggestions, setSuggestions] = useState([]);
-  const [activeToolsIndex, setActiveToolsIndex] = useState(null);
   const [lastScore, setLastScore] = useState(null);
   const [isTypingEffect, setIsTypingEffect] = useState(false);
   const [micStatus, setMicStatus] = useState('idle'); // 'idle', 'listening', 'processing', 'detected'
-  const [memory, setMemory] = useState({ mistakes: [], topics: [] });
   const [voicePersonality, setVoicePersonality] = useState('friendly'); // 'friendly', 'strict', 'buddy'
   const idleTimerRef = useRef(null);
 
@@ -1024,12 +1017,6 @@ function ChatModule({
 
           // Clean text for UI: remove everything from --- onwards
           aiText = parts.slice(0, -1).join('---').trim();
-
-          // Memory tracking: if mistake detected
-          if (aiText.includes('❌')) {
-            const mistake = aiText.match(/❌ (.*)/)?.[1];
-            if (mistake) setMemory(prev => ({ ...prev, mistakes: [...new Set([...prev.mistakes, mistake])].slice(-5) }));
-          }
         } catch (e) {
           // Fallback regex if split fails
           const match = aiText.match(/---[\s\S]*(\{[\s\S]*\})/);
