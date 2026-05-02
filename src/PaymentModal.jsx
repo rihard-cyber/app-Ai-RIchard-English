@@ -49,6 +49,7 @@ export default function PaymentModal({ isOpen, onClose, onPaymentSuccess, planNa
       alert('Pesanan dicatat! Anda akan diarahkan ke WhatsApp Admin untuk mengirimkan bukti transfer.');
       onPaymentSuccess();
     } catch (error) {
+      console.error(error);
       alert('Terjadi kesalahan saat memproses pembayaran.');
     }
     setIsSubmitting(false);

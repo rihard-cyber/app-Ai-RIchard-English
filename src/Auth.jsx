@@ -23,7 +23,7 @@ export function LoginPage({ onLogin }) {
 
   // Listener untuk menangkap event reset password dari link di Email
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setMode('update_password');
       }

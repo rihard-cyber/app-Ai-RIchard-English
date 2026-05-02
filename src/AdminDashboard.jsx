@@ -61,6 +61,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
             alert("Pembayaran Berhasil di ACC! User sekarang adalah PRO.");
             fetchData();
         } catch (error) {
+            console.error(error);
             alert("Gagal menyetujui pembayaran.");
         }
     };
@@ -71,6 +72,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
             alert("Pembayaran Ditolak.");
             fetchData();
         } catch (error) {
+            console.error(error);
             alert("Gagal menolak pembayaran.");
         }
     };

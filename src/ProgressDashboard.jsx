@@ -37,7 +37,7 @@ export default function ProgressDashboard({ userProfile }) {
     }
 
     // 1. Fetch Skill Averages
-    const { data: progressData, error } = await supabase
+    const { data: progressData } = await supabase
       .from('user_progress')
       .select('skill_type, score')
       .eq('user_id', user.id);
@@ -178,7 +178,7 @@ export default function ProgressDashboard({ userProfile }) {
               {recentActivity.map((act) => (
                 <div key={act.id} className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${act.type === 'Speaking' ? 'bg-rose-100 text-rose-600' :
-                      act.type === 'Vocabulary' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'
+                    act.type === 'Vocabulary' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'
                     }`}>
                     {act.type === 'Speaking' ? <Mic size={18} /> : <Zap size={18} />}
                   </div>
