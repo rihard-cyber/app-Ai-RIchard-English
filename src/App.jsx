@@ -667,7 +667,7 @@ function ConversationModule({ userProfile, setUserProfile, basePrompt, isPro, ch
     setCharacter(char); setIsStarted(true);
   };
 
-  if (isStarted) return <ChatModule userProfile={userProfile} setUserProfile={setUserProfile} module={`Chat with ${character.name}`} basePrompt={`${basePrompt}\n${character.prompt}`} topic={`Chat with ${character.name}`} onBack={() => setIsStarted(false)} />;
+  if (isStarted) return <ChatModule userProfile={userProfile} setUserProfile={setUserProfile} module={`Chat with ${character.name}`} basePrompt={`${basePrompt}\n${character.prompt}`} topic={`Chat with ${character.name}`} characterName={character.name} onBack={() => setIsStarted(false)} />;
 
   return (
     <div className="p-4 md:p-10 max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -703,7 +703,8 @@ function ChatModule({
   onComplete,
   onBack,
   initialCallMode = false,
-  initialSuggestions = []
+  initialSuggestions = [],
+  characterName = ''
 }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
@@ -845,14 +846,41 @@ function ChatModule({
     utterance.lang = lang === 'id' ? 'id-ID' : 'en-US';
     utterance.rate = 0.9; // Kecepatan diperlambat sedikit agar pengucapan bahasa Inggris lebih mulus
     utterance.pitch = 1.0;
+
+    // --- CHARACTER VOICE & GENDER CUSTOMIZATION ---
+    const femaleCharacters = ["Taylor Swift", "Oprah Winfrey", "Emma Watson"];
+    const ukCharacters = ["Sherlock Holmes", "Emma Watson", "Gordon Ramsay"];
+    const isFemale = characterName ? femaleCharacters.includes(characterName) : false;
+    const isUK = characterName ? ukCharacters.includes(characterName) : false;
+
     const voices = window.speechSynthesis.getVoices();
     let preferredVoice;
     if (lang === 'id') {
       preferredVoice = voices.find(v => v.lang === 'id-ID' && v.name.toLowerCase().includes('google')) || voices.find(v => v.lang.startsWith('id'));
     } else {
-      preferredVoice = voices.find(v => v.lang === 'en-US' && v.name.toLowerCase().includes('google')) || voices.find(v => v.lang.startsWith('en'));
+      const targetLang = isUK ? 'en-GB' : 'en-US';
+      const genderStr = isFemale ? 'female' : 'male';
+      // Try to find Google voices with specific gender and region, otherwise fallback smoothly
+      preferredVoice = voices.find(v => v.lang.startsWith(targetLang) && v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes(genderStr))
+        || voices.find(v => v.lang.startsWith(targetLang) && v.name.toLowerCase().includes(genderStr))
+        || voices.find(v => v.lang.startsWith(targetLang) && v.name.toLowerCase().includes('google'))
+        || voices.find(v => v.lang.startsWith(targetLang))
+        || voices.find(v => v.lang.startsWith('en'));
     }
     if (preferredVoice) utterance.voice = preferredVoice;
+
+    // Voice Tuning (Pitch & Speed) for Specific Characters
+    if (characterName === "Gordon Ramsay") { utterance.pitch = 0.8; utterance.rate = 1.05; }
+    else if (characterName === "Taylor Swift") { utterance.pitch = 1.2; utterance.rate = 0.95; }
+    else if (characterName === "Elon Musk") { utterance.pitch = 0.85; utterance.rate = 0.85; }
+    else if (characterName === "Barack Obama") { utterance.pitch = 0.6; utterance.rate = 0.8; }
+    else if (characterName === "Sherlock Holmes") { utterance.pitch = 0.8; utterance.rate = 1.1; }
+    else if (characterName === "Oprah Winfrey") { utterance.pitch = 0.9; utterance.rate = 0.9; }
+    else if (characterName === "Steve Jobs") { utterance.pitch = 0.9; utterance.rate = 0.9; }
+    else if (characterName === "Keanu Reeves") { utterance.pitch = 0.5; utterance.rate = 0.75; }
+    else if (characterName === "Emma Watson") { utterance.pitch = 1.1; utterance.rate = 0.95; }
+    else if (characterName === "Albert Einstein") { utterance.pitch = 0.7; utterance.rate = 0.85; }
+
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
     window.speechSynthesis.cancel();
