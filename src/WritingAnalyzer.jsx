@@ -53,7 +53,7 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
         systemInstruction: { parts: [{ text: WRITING_SYSTEM_PROMPT(isPro) }] }
       };
 
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+      const apiKey = localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
       if (!apiKey) {
         setAnalysis("⚠️ Gagal: API Key Gemini belum diatur. Silakan tambahkan VITE_GEMINI_API_KEY di file .env Anda.");
         setIsLoading(false);

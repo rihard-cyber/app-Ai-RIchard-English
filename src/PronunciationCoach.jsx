@@ -80,7 +80,7 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
         systemInstruction: { parts: [{ text: "You are a helpful English teacher. ONLY return 1 short, clear practice sentence. No extra text." }] }
       };
 
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+      const apiKey = localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
       if (!apiKey) {
         setTargetSentence("⚠️ API Key Gemini belum diatur (VITE_GEMINI_API_KEY).");
         setIsLoading(false);
@@ -150,7 +150,7 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
         systemInstruction: { parts: [{ text: PRONUNCIATION_PROMPT }] }
       };
 
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+      const apiKey = localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
       if (!apiKey) {
         setAnalysis("⚠️ API Key Gemini belum diatur. Tambahkan di file .env Anda.");
         setIsLoading(false);

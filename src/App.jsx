@@ -41,9 +41,9 @@ import PaymentModal from './PaymentModal';
 import AdminDashboard from './AdminDashboard';
 import { supabase } from './supabaseClient';
 import { CURRICULUM } from './data/curriculum';
-import { VOCABULARY_TOPICS as VOCAB_RAW, GRAMMAR_TOPICS as GRAMMAR_RAW, SPEAKING_TOPICS as SPEAKING_RAW, LISTENING_TOPICS as LISTENING_RAW, CONVERSATION_CHARACTERS as CHARS_RAW } from './data/topics';
+import { VOCABULARY_TOPICS as VOCAB_RAW, GRAMMAR_TOPICS as GRAMMAR_RAW, LISTENING_TOPICS as LISTENING_RAW, CONVERSATION_CHARACTERS as CHARS_RAW } from './data/topics';
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+const getApiKey = () => localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
 // --- DATA PROFIL DEFAULT ---
 const DEFAULT_PROFILE = {
   name: "User",
@@ -449,7 +449,6 @@ export default function App() {
 
 const mapTopics = (arr) => arr.map(t => ({ name: t, level: "Semua Level" }));
 const VOCABULARY_TOPICS = mapTopics(VOCAB_RAW);
-const SPEAKING_TOPICS = mapTopics(SPEAKING_RAW);
 const GRAMMAR_TOPICS = mapTopics(GRAMMAR_RAW);
 const LISTENING_TOPICS = mapTopics(LISTENING_RAW);
 const CONVERSATION_CHARACTERS = CHARS_RAW.map(c => ({
@@ -673,7 +672,6 @@ function ChatModule({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const recognitionRef = useRef(null);
   const hasInitialized = useRef(false);
-  const audioRef = useRef(null);
 
   const messagesEndRef = useRef(null);
 
@@ -696,6 +694,7 @@ function ChatModule({
   };
 
   const handleTranslate = async (index) => {
+    const apiKey = getApiKey();
     if (!apiKey) {
       alert("API Key Gemini belum diatur (VITE_GEMINI_API_KEY).");
       return;
@@ -733,6 +732,7 @@ function ChatModule({
   };
 
   const handleSuggest = async (index) => {
+    const apiKey = getApiKey();
     if (!apiKey) return;
     const history = messages.slice(0, index + 1).map(m => `${m.role}: ${m.content}`).join('\n');
     try {
@@ -796,7 +796,6 @@ function ChatModule({
         if (data.audioData) {
           window.speechSynthesis.cancel();
           const audio = new Audio(`data:${data.mimeType || 'audio/wav'};base64,${data.audioData}`);
-          audioRef.current = audio;
           audio.onended = () => setIsSpeaking(false);
           audio.onerror = () => fallbackTTS(cleanText);
           audio.play();
@@ -923,6 +922,7 @@ function ChatModule({
       setMicStatus('processing');
     }
 
+    const apiKey = getApiKey();
     if (!apiKey) {
       setMessages(prev => [...prev, { role: 'system', content: '⚠️ API Key Gemini belum diatur. Silakan tambahkan VITE_GEMINI_API_KEY di file .env Anda.' }]);
       setIsLoading(false);
@@ -1014,10 +1014,14 @@ function ChatModule({
           const scoreObj = JSON.parse(jsonPart);
           setLastScore(scoreObj);
           updateXP(15);
+          if (onComplete) {
+            onComplete(scoreObj.score || scoreObj.grammar || 80);
+          }
 
           // Clean text for UI: remove everything from --- onwards
           aiText = parts.slice(0, -1).join('---').trim();
         } catch (e) {
+          console.warn("JSON Parse direct failed", e);
           // Fallback regex if split fails
           const match = aiText.match(/---[\s\S]*(\{[\s\S]*\})/);
           if (match) {
@@ -1025,6 +1029,9 @@ function ChatModule({
               const obj = JSON.parse(match[1]);
               setLastScore(obj);
               updateXP(15);
+              if (onComplete) {
+                onComplete(obj.score || obj.grammar || 80);
+              }
               aiText = aiText.replace(/---[\s\S]*/, '').trim();
             } catch (ee) { console.warn("JSON Parse failed", ee); }
           }
