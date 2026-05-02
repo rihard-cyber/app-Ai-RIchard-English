@@ -7,7 +7,8 @@ export function LoginPage({ onLogin }) {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const [logoClicks, setLogoClicks] = useState(0);
+  const logoClickCount = useRef(0);
+  const logoClickTimeout = useRef(null);
   // Sign In State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,12 +34,15 @@ export function LoginPage({ onLogin }) {
   }, []);
 
   const handleLogoClick = () => {
-    const newCount = logoClicks + 1;
-    setLogoClicks(newCount);
-    if (newCount >= 3) {
+    logoClickCount.current += 1;
+    if (logoClickCount.current >= 3) {
+      logoClickCount.current = 0;
       setMode('admin_login');
-      setLogoClicks(0);
     }
+    clearTimeout(logoClickTimeout.current);
+    logoClickTimeout.current = setTimeout(() => {
+      logoClickCount.current = 0;
+    }, 1500);
   };
 
   const handleSignIn = async (e) => {
@@ -292,7 +296,7 @@ export function LoginPage({ onLogin }) {
           <div className="relative flex-1">
             {/* SIGN IN FORM */}
             <div className={`transition-all duration-500 transform ${mode === 'signin' ? 'translate-x-0 opacity-100 relative' : '-translate-x-full opacity-0 absolute inset-0 pointer-events-none'}`}>
-              <h1 className="text-3xl font-bold text-white text-center mb-2 mt-4">RichardMeha AI</h1>
+              <h1 onClick={handleLogoClick} className="text-3xl font-bold text-white text-center mb-2 mt-4 cursor-pointer select-none active:scale-95 transition-transform">RichardMeha AI</h1>
               <p className="text-slate-400 text-center mb-8 text-sm">Masuk untuk memulai petualangan belajarmu.</p>
 
               <form onSubmit={handleSignIn} className="space-y-4">
