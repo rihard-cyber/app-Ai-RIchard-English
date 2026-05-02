@@ -797,16 +797,30 @@ function ChatModule({
       "kok", "banget", "kalau", "kalo", "buat", "biar", "lagi", "aja", "saja", "bagus", "benar", "bener",
       "salah", "coba", "ini", "itu", "dan", "tapi", "karena", "untuk", "dari", "ke", "di", "sama", "dengan",
       "kasih", "beri", "oke", "hari", "orang", "lebih", "sangat", "paling", "sekali", "kalimat", "kata",
-      "bilang", "ngomong", "dengar", "denger", "lihat", "liat", "kayak", "seperti", "mantap", "keren", "yakin"
+      "bilang", "ngomong", "dengar", "denger", "lihat", "liat", "kayak", "seperti", "mantap", "keren", "yakin", "ya"
+    ];
+    const englishWords = [
+      "i", "you", "he", "she", "they", "we", "what", "why", "how", "when", "who", "where",
+      "eat", "drink", "sleep", "confused", "understand", "know", "hello", "hi", "can", "yes",
+      "no", "not", "already", "yet", "please", "very", "if", "for", "let", "again", "just",
+      "good", "right", "wrong", "try", "this", "that", "and", "but", "because", "from", "to", "at",
+      "with", "give", "ok", "day", "people", "more", "most", "sentence", "word", "say", "speak",
+      "hear", "listen", "see", "look", "like", "awesome", "cool", "sure", "is", "am", "are",
+      "do", "does", "did", "was", "were", "will", "would", "could", "should", "have", "has", "had",
+      "the", "a", "an", "in", "on", "of", "about", "it", "my", "your", "so", "much", "too",
+      "well", "great", "perfect", "job", "nice", "work", "english", "practice", "ready", "now", "time", "today"
     ];
     const lower = text.toLowerCase();
-    let score = 0;
-    indoWords.forEach(word => {
-      // match whole words to avoid false positives
-      const regex = new RegExp('\\b' + word + '\\b', 'i');
-      if (regex.test(lower)) score++;
+    let indoScore = 0;
+    let engScore = 0;
+
+    const words = lower.match(/\b\w+\b/g) || [];
+    words.forEach(w => {
+      if (indoWords.includes(w)) indoScore++;
+      if (englishWords.includes(w)) engScore++;
     });
-    return score >= 1 ? "id" : "en";
+
+    return engScore > indoScore ? "en" : "id";
   };
 
   const handleTTS = async (text) => {
@@ -854,7 +868,7 @@ function ChatModule({
     const lang = detectLanguage(cleanText);
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = lang === 'id' ? 'id-ID' : 'en-US';
-    utterance.rate = 1.0; // Kecepatan normal 1.0 agar tidak terdengar kaku/diseret
+    utterance.rate = 0.9; // Kecepatan diperlambat sedikit agar pengucapan bahasa Inggris lebih mulus
     utterance.pitch = 1.0;
     const voices = window.speechSynthesis.getVoices();
     let preferredVoice;
