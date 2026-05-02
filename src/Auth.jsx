@@ -47,18 +47,22 @@ export function LoginPage({ onLogin }) {
     setIsLoading(true);
     setErrorMsg('');
 
+    // Bersihkan spasi kosong dari keyboard Android
+    const safeEmail = email.trim().toLowerCase();
+    const safePassword = password.trim();
+
     // Admin Login logic
     if (mode === 'admin_login') {
-      const isCorrectEmail = email.toLowerCase() === 'richardpl.meha@gmail.com';
+      const isCorrectEmail = safeEmail === 'richardpl.meha@gmail.com';
 
       // 1. Try hardcoded fallbacks (various common patterns)
       const isCorrectPassword =
-        password === 'meha112296' ||
-        password === '@Meha112296' ||
-        password === '@Meha2024' ||
-        password === 'richard2024' ||
-        password === 'admin' ||
-        password === 'admin123';
+        safePassword === 'meha112296' ||
+        safePassword === '@Meha112296' ||
+        safePassword === '@Meha2024' ||
+        safePassword === 'richard2024' ||
+        safePassword === 'admin' ||
+        safePassword === 'admin123';
 
       if (isCorrectEmail && isCorrectPassword) {
         setIsLoading(false);
@@ -67,11 +71,11 @@ export function LoginPage({ onLogin }) {
       }
 
       // 2. Try Supabase Auth as secondary
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
 
       if (!error && data.user) {
         const { data: profile } = await supabase.from('user_profiles').select('is_admin').eq('id', data.user.id).maybeSingle();
-        if (profile?.is_admin || email.toLowerCase() === 'richardpl.meha@gmail.com') {
+        if (profile?.is_admin || safeEmail === 'richardpl.meha@gmail.com') {
           setIsLoading(false);
           onLogin('admin');
           return;
@@ -84,8 +88,8 @@ export function LoginPage({ onLogin }) {
     }
 
     // Prevent admin from logging in via regular user form to avoid confusion
-    if (mode === 'signin' && email.toLowerCase() === 'richardpl.meha@gmail.com') {
-      if (password === '@Meha112296') {
+    if (mode === 'signin' && safeEmail === 'richardpl.meha@gmail.com') {
+      if (safePassword === '@Meha112296') {
         setIsLoading(false);
         onLogin('owner_user_bypass');
         return;
@@ -96,7 +100,7 @@ export function LoginPage({ onLogin }) {
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: email.trim(),
       password,
     });
 

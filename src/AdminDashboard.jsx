@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowUpRight, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw, Menu, X } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
-export default function AdminDashboard({ onLogout }) {
+export default function AdminDashboard({ onLogout, onSwitchToUser }) {
     const [activeTab, setActiveTab] = useState('overview');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [stats, setStats] = useState({ totalUsers: 0, proUsers: 0, revenue: 0, totalTx: 0 });
@@ -121,7 +121,11 @@ export default function AdminDashboard({ onLogout }) {
             {/* Sidebar */}
             <aside className={`fixed md:relative z-50 w-64 h-full bg-slate-900 text-slate-300 flex flex-col transition-transform transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
                 <div className="p-6 border-b border-slate-800 flex items-center justify-between">
-                    <h1 className="text-xl font-black text-white flex items-center gap-2">
+                    <h1
+                        className="text-xl font-black text-white flex items-center gap-2 cursor-pointer select-none"
+                        onDoubleClick={onSwitchToUser}
+                        title="Klik 2x untuk beralih ke Mode Pengguna"
+                    >
                         <Shield className="text-emerald-500" /> Admin Panel
                     </h1>
                     <button className="md:hidden text-slate-400 hover:text-white" onClick={() => setIsSidebarOpen(false)}>
@@ -149,7 +153,11 @@ export default function AdminDashboard({ onLogout }) {
                         <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors">
                             <Menu size={24} />
                         </button>
-                        <h1 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <h1
+                            className="text-lg font-bold text-slate-800 flex items-center gap-2 cursor-pointer select-none"
+                            onDoubleClick={onSwitchToUser}
+                            title="Klik 2x untuk beralih ke Mode Pengguna"
+                        >
                             <Shield className="text-emerald-500" size={20} /> Admin
                         </h1>
                     </div>
@@ -295,7 +303,7 @@ export default function AdminDashboard({ onLogout }) {
                                                     <tr key={bank.id} className="hover:bg-slate-50/50 transition-colors">
                                                         <td className="p-6">
                                                             <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest ${bank.provider === 'QRIS' ? 'bg-purple-100 text-purple-700' :
-                                                                    bank.provider === 'VA' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                                                                bank.provider === 'VA' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
                                                                 }`}>
                                                                 {bank.provider}
                                                             </span>
