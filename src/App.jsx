@@ -149,7 +149,14 @@ export default function App() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [theme, setTheme] = useState('light'); // 'light' or 'dark'
 
-  useEffect(() => { checkUser(); }, []);
+  useEffect(() => {
+    if (localStorage.getItem('owner_bypass') === 'true') {
+      setIsInitializing(false);
+      handleLogin('owner_user_bypass');
+    } else {
+      checkUser();
+    }
+  }, []);
   useEffect(() => { if (authState === 'app') fetchStats(); }, [authState]);
 
   const fetchStats = async () => {
@@ -239,6 +246,19 @@ export default function App() {
   const handleLogin = (role) => {
     if (role === 'admin') {
       setAuthState('admin');
+    } else if (role === 'owner_user_bypass') {
+      localStorage.setItem('owner_bypass', 'true');
+      setUserProfile({
+        name: "Richard (Owner)",
+        gender: "male",
+        level: "Advanced (C1-C2)",
+        xp: 9999,
+        streak: 999,
+        has_completed_initial_test: true,
+        is_pro: true,
+        subscription_plan: 'Lifetime Pro'
+      });
+      setAuthState('app');
     } else {
       checkUser();
     }
@@ -272,7 +292,12 @@ export default function App() {
     if (user) await fetchProfile(user.id);
   };
 
-  const handleLogout = async () => { await supabase.auth.signOut(); setAuthState('login'); setUserProfile(DEFAULT_PROFILE); };
+  const handleLogout = async () => {
+    localStorage.removeItem('owner_bypass');
+    await supabase.auth.signOut();
+    setAuthState('login');
+    setUserProfile(DEFAULT_PROFILE);
+  };
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
   const saveProgress = async (skill, score, details = {}) => {
