@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, CheckCircle2, XCircle, ArrowRight, GraduationCap, Sparkles, Loader2, Volume2 } from 'lucide-react';
+import { Trophy, CheckCircle2, ArrowRight, GraduationCap, Sparkles, Loader2, Volume2 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { VOCABULARY_QUESTIONS } from './data/vocabularyTest';
 

@@ -82,7 +82,7 @@ export function LoginPage({ onLogin }) {
       return;
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email: safeEmail,
       password,
     });
@@ -113,7 +113,7 @@ export function LoginPage({ onLogin }) {
     setIsLoading(true);
     setErrorMsg('');
 
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -154,7 +154,7 @@ export function LoginPage({ onLogin }) {
     }
 
     // 2. Real verification via Supabase
-    const { data: { session }, error } = await supabase.auth.verifyOtp({
+    const { error } = await supabase.auth.verifyOtp({
       email,
       token: enteredCode,
       type: 'signup'

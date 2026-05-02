@@ -13,7 +13,6 @@ import {
   Loader2,
   GraduationCap,
   Sparkles,
-  User,
   Bot,
   Flame,
   Trophy,
@@ -22,14 +21,10 @@ import {
   Languages,
   History,
   Settings,
-  Star,
-  CheckCircle2,
-  AlertCircle,
   TrendingUp,
   Award,
   Clock,
   BarChart2,
-  Calendar,
   Zap,
   ArrowUpRight,
   PenTool,
@@ -147,7 +142,6 @@ export default function App() {
   }, [activeGoalId]);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState({ name: '', price: 0 });
-  const [userStats, setUserStats] = useState({ speaking: 0, writing: 0, grammar: 0, vocabulary: 0 });
   const [recommendation, setRecommendation] = useState('vocabulary');
   const [isInitializing, setIsInitializing] = useState(true);
   const [theme, setTheme] = useState('light'); // 'light' or 'dark'
@@ -175,15 +169,12 @@ export default function App() {
       const stats = { speaking: 0, writing: 0, grammar: 0, vocabulary: 0 };
       const counts = { speaking: 0, writing: 0, grammar: 0, vocabulary: 0 };
       data.forEach(p => { if (stats[p.skill_type] !== undefined) { stats[p.skill_type] += p.score; counts[p.skill_type]++; } });
-      const averages = {};
       let lowestSkill = 'vocabulary';
       let lowestScore = 101;
       Object.keys(stats).forEach(skill => {
         const avg = counts[skill] > 0 ? Math.round(stats[skill] / counts[skill]) : 0;
-        averages[skill] = avg;
         if (avg < lowestScore) { lowestScore = avg; lowestSkill = skill; }
       });
-      setUserStats(averages);
       setRecommendation(lowestSkill);
     }
   };
@@ -590,7 +581,6 @@ function DashboardCard({ title, desc, icon, color, hover, onClick }) {
 function SetupModule({ userProfile, setUserProfile, module, basePrompt, icon, color, bg, onComplete, isPro, topicsList = [], onUpgrade }) {
   const [isStarted, setIsStarted] = useState(false);
   const [topic, setTopic] = useState('');
-  const [showProWarning, setShowProWarning] = useState(false);
   const freeCount = Math.ceil(topicsList.length * 0.45);
 
   const handleSelectTopic = (selectedTopic, index) => {
@@ -623,7 +613,6 @@ function SetupModule({ userProfile, setUserProfile, module, basePrompt, icon, co
 function ConversationModule({ userProfile, setUserProfile, basePrompt, isPro, charactersList = [], onUpgrade }) {
   const [isStarted, setIsStarted] = useState(false);
   const [character, setCharacter] = useState(null);
-  const [showProWarning, setShowProWarning] = useState(false);
   const freeCount = Math.ceil(charactersList.length * 0.45);
 
   const handleSelectCharacter = (char, index) => {
@@ -867,7 +856,10 @@ function ChatModule({
 
   const startRecording = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
+    if (!SpeechRecognition) {
+      alert("Browser atau perangkat Anda tidak mendukung fitur mikrofon (Gunakan Chrome atau pastikan koneksi menggunakan HTTPS).");
+      return;
+    }
 
     recognitionRef.current = new SpeechRecognition();
     recognitionRef.current.lang = 'en-US';
@@ -903,9 +895,12 @@ function ChatModule({
       }
     };
 
-    recognitionRef.current.onerror = () => {
+    recognitionRef.current.onerror = (event) => {
       setIsRecording(false);
       setMicStatus('idle');
+      if (event.error === 'not-allowed') {
+        alert("Akses mikrofon ditolak. Izinkan mikrofon di pengaturan perangkat/browser Anda.");
+      }
     };
 
     recognitionRef.current.onend = () => {
@@ -913,7 +908,13 @@ function ChatModule({
       if (micStatus === 'listening') setMicStatus('idle');
     };
 
-    recognitionRef.current.start();
+    try {
+      recognitionRef.current.start();
+    } catch (error) {
+      console.error("Mic start error:", error);
+      setIsRecording(false);
+      setMicStatus('idle');
+    }
   };
 
   const sendMessage = async (text, isSystemInitiated = false) => {
@@ -1157,7 +1158,7 @@ function ChatModule({
   }, [messages]);
 
   return (
-    <>
+    <div className="absolute inset-0 flex flex-col bg-slate-50/50 z-20">
       {callMode && (
         <div className="absolute inset-0 bg-[#0f172a] z-50 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
           <div className="absolute top-6 left-6 flex items-center gap-2">
@@ -1378,12 +1379,12 @@ function ChatModule({
 
       {/* Input Form */}
       <div className="p-4 md:p-6 bg-white border-t border-slate-200 shrink-0">
-        <form onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue); }} className="max-w-4xl mx-auto flex gap-2">
+        <form onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue); }} className="max-w-4xl mx-auto w-full flex gap-2">
           <input
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder={isRecording ? "Mendengarkan..." : "Ketik pesan atau tanya RichardMeha AI..."}
-            className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 outline-none focus:border-blue-500 transition-all"
+            className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 outline-none focus:border-blue-500 transition-all text-base"
           />
           <button type="button" onClick={toggleRecording} className={`p-3 rounded-2xl transition-all ${isRecording ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-500'}`}>
             {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
@@ -1393,7 +1394,7 @@ function ChatModule({
           </button>
         </form>
       </div>
-    </>
+    </div>
   );
 
 }

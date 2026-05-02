@@ -4,10 +4,6 @@ import {
   MicOff,
   Volume2,
   RefreshCw,
-  CheckCircle2,
-  AlertTriangle,
-  Trophy,
-  Play,
   Loader2,
   Sparkles,
   Crown
@@ -116,7 +112,12 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
+    if (!SpeechRecognition) {
+      alert("Browser atau perangkat Anda tidak mendukung fitur mikrofon (Gunakan Chrome atau pastikan koneksi menggunakan HTTPS).");
+      return;
+    }
+
+    try {
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.lang = 'en-US';
       recognitionRef.current.onresult = (event) => {
@@ -124,9 +125,20 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
         setTranscript(result);
         analyzePronunciation(result);
       };
+      recognitionRef.current.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        setIsRecording(false);
+        if (event.error === 'not-allowed') {
+          alert("Akses mikrofon ditolak. Izinkan mikrofon di pengaturan perangkat/browser Anda.");
+        }
+      };
       recognitionRef.current.onend = () => setIsRecording(false);
       recognitionRef.current.start();
       setIsRecording(true);
+    } catch (error) {
+      console.error("Mic start error:", error);
+      setIsRecording(false);
+      alert("Terjadi kesalahan saat memulai mikrofon.");
     }
   };
 
@@ -211,8 +223,8 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
             onClick={toggleRecording}
             disabled={isLoading}
             className={`p-8 rounded-full transition-all active:scale-90 shadow-2xl ${isRecording
-                ? 'bg-rose-500 text-white animate-pulse ring-8 ring-rose-100'
-                : 'bg-white border-4 border-rose-500 text-rose-500 hover:bg-rose-50'
+              ? 'bg-rose-500 text-white animate-pulse ring-8 ring-rose-100'
+              : 'bg-white border-4 border-rose-500 text-rose-500 hover:bg-rose-50'
               }`}
           >
             {isRecording ? <MicOff size={32} /> : <Mic size={32} />}

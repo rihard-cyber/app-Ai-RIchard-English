@@ -3,12 +3,10 @@ import {
   PenTool,
   Sparkles,
   CheckCircle2,
-  AlertCircle,
   RotateCcw,
   ArrowRight,
   Loader2,
   Copy,
-  Lightbulb,
   Crown,
   Lock
 } from 'lucide-react';
