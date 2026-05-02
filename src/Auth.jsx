@@ -55,56 +55,35 @@ export function LoginPage({ onLogin }) {
     const safeEmail = email.trim().toLowerCase();
     const safePassword = password.trim();
 
-    // Admin Login logic
-    if (mode === 'admin_login') {
-      const isCorrectEmail = safeEmail === 'richardpl.meha@gmail.com';
+    const isBypassUserPassword = safePassword === '@Meha112296';
+    const isAdminPassword =
+      safePassword === 'meha112296' ||
+      safePassword === '@Meha2024' ||
+      safePassword === 'richard2024' ||
+      safePassword === 'admin' ||
+      safePassword === 'admin123';
 
-      // 1. Try hardcoded fallbacks (various common patterns)
-      const isCorrectPassword =
-        safePassword === 'meha112296' ||
-        safePassword === '@Meha112296' ||
-        safePassword === '@Meha2024' ||
-        safePassword === 'richard2024' ||
-        safePassword === 'admin' ||
-        safePassword === 'admin123';
-
-      if (isCorrectEmail && isCorrectPassword) {
-        setIsLoading(false);
-        onLogin('admin');
-        return;
-      }
-
-      // 2. Try Supabase Auth as secondary
-      const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-
-      if (!error && data.user) {
-        const { data: profile } = await supabase.from('user_profiles').select('is_admin').eq('id', data.user.id).maybeSingle();
-        if (profile?.is_admin || safeEmail === 'richardpl.meha@gmail.com') {
-          setIsLoading(false);
-          onLogin('admin');
-          return;
-        }
-      }
-
+    // Otomatis beralih ke Dasbor Owner atau Admin (Bypass) HANYA dengan password khusus
+    if (isBypassUserPassword) {
       setIsLoading(false);
-      setErrorMsg('Akses Admin Ditolak. Silakan cek kembali Email & Password.');
+      onLogin('owner_user_bypass');
+      return;
+    }
+    if (isAdminPassword) {
+      setIsLoading(false);
+      onLogin('admin');
       return;
     }
 
-    // Prevent admin from logging in via regular user form to avoid confusion
-    if (mode === 'signin' && safeEmail === 'richardpl.meha@gmail.com') {
-      if (safePassword === '@Meha112296') {
-        setIsLoading(false);
-        onLogin('owner_user_bypass');
-        return;
-      }
+    // Blokir jika mencoba login admin melalui form rahasia tanpa password yang benar
+    if (mode === 'admin_login') {
       setIsLoading(false);
-      setErrorMsg('Email ini untuk Admin. Silakan masuk via Portal Admin (klik logo 3x).');
+      setErrorMsg('Akses Admin Ditolak. Password tidak valid.');
       return;
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
+      email: safeEmail,
       password,
     });
 

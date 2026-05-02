@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowUpRight, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowUpRight, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw, Menu, X, User } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 export default function AdminDashboard({ onLogout, onSwitchToUser }) {
@@ -138,7 +138,10 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
                     <SidebarItem icon={<CreditCard size={20} />} label="Data Rekening" active={activeTab === 'banks'} onClick={() => { setActiveTab('banks'); setIsSidebarOpen(false); }} />
                     <SidebarItem icon={<Users size={20} />} label="Data Pengguna" active={activeTab === 'users'} onClick={() => { setActiveTab('users'); setIsSidebarOpen(false); }} />
                 </nav>
-                <div className="p-4 border-t border-slate-800">
+                <div className="p-4 border-t border-slate-800 space-y-2">
+                    <button onClick={onSwitchToUser} className="w-full flex items-center gap-3 px-4 py-3 text-blue-400 hover:bg-blue-500/10 rounded-xl transition-colors font-medium">
+                        <User size={20} /> Mode Pengguna
+                    </button>
                     <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors font-medium">
                         <LogOut size={20} /> Keluar
                     </button>
