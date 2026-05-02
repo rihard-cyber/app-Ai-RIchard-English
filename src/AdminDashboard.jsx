@@ -214,13 +214,13 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
 
                             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm mt-8">
                                 <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Zap className="text-blue-500" /> Konfigurasi AI (API Key)</h3>
-                                <p className="text-xs text-slate-500 mb-4">Masukkan API Key dari Google AI Studio. <b>Tips Anti-Limit:</b> Masukkan 2 atau lebih API Key sekaligus dan pisahkan dengan tanda koma (,) agar sistem AI otomatis memutar kunci saat limit habis.</p>
+                                <p className="text-xs text-slate-500 mb-4">Masukkan API Key dari <b>Google Gemini</b> (AIza...), <b>Groq</b> (gsk_...), atau <b>OpenAI</b> (sk-...).<br /><b>Tips Lintas-AI:</b> Masukkan banyak API Key sekaligus pisahkan dengan koma (,). Sistem otomatis mengubah koneksi model/AI provider saat limit habis.</p>
                                 <div className="flex flex-col sm:flex-row gap-2">
                                     <input
                                         type="password"
                                         value={apiKeyInput}
                                         onChange={(e) => setApiKeyInput(e.target.value)}
-                                        placeholder="AIzaSy123..., AIzaSy456..."
+                                        placeholder="AIzaSy..., gsk_..., sk-..."
                                         className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono"
                                     />
                                     <button onClick={handleSaveApiKey} className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 active:scale-95 transition-all">Simpan</button>

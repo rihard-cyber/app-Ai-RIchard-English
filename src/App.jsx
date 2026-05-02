@@ -47,31 +47,46 @@ const getApiKey = () => localStorage.getItem('gemini_api_key') || import.meta.en
 
 const fetchGeminiWithRotation = async (payload) => {
   const apiKeys = getApiKey().split(',').map(k => k.trim()).filter(k => k);
-  if (apiKeys.length === 0) throw new Error("API Key Gemini belum diatur.");
+  if (apiKeys.length === 0) throw new Error("API Key AI belum diatur.");
+
+  const translateToOpenAIFormat = (geminiPayload) => {
+    const messages = [];
+    if (geminiPayload.systemInstruction?.parts?.[0]?.text) {
+      messages.push({ role: "system", content: geminiPayload.systemInstruction.parts[0].text });
+    }
+    if (geminiPayload.contents) {
+      geminiPayload.contents.forEach(c => {
+        messages.push({ role: c.role === 'model' ? 'assistant' : 'user', content: c.parts[0].text });
+      });
+    }
+    return { messages, temperature: geminiPayload.generationConfig?.temperature || 0.7, max_tokens: geminiPayload.generationConfig?.maxOutputTokens || 1024 };
+  };
 
   let lastError = "Unknown Error";
   for (const key of apiKeys) {
     try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        const errMsg = data.error?.message || `API Error: ${res.status}`;
-        if (res.status === 429 || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('limit')) {
-          lastError = errMsg;
-          continue; // Otomatis putar ke API Key selanjutnya
-        }
-        throw new Error(errMsg);
+      if (key.startsWith('gsk_')) {
+        const groqPayload = { ...translateToOpenAIFormat(payload), model: "llama3-70b-8192" };
+        const res = await fetch(`https://api.groq.com/openai/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }, body: JSON.stringify(groqPayload) });
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(data.error?.message || `Groq Error: ${res.status}`);
+        return { candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] };
+      } else if (key.startsWith('sk-')) {
+        const oaPayload = { ...translateToOpenAIFormat(payload), model: "gpt-4o-mini" };
+        const res = await fetch(`https://api.openai.com/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }, body: JSON.stringify(oaPayload) });
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(data.error?.message || `OpenAI Error: ${res.status}`);
+        return { candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] };
+      } else {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(data.error?.message || `Gemini Error: ${res.status}`);
+        return data;
       }
-      return data;
     } catch (err) {
       lastError = err.message;
-      if (lastError.toLowerCase().includes('quota') || lastError.toLowerCase().includes('limit') || lastError.includes('Failed to fetch')) {
-        continue; // Otomatis putar ke API Key selanjutnya
-      }
+      const lowerErr = lastError.toLowerCase();
+      if (lowerErr.includes('quota') || lowerErr.includes('limit') || lowerErr.includes('failed to fetch') || lowerErr.includes('429') || lowerErr.includes('insufficient')) continue;
       throw err;
     }
   }
