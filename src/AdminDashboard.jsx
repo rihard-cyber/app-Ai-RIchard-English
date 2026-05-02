@@ -16,12 +16,33 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
     const [newBank, setNewBank] = useState({ provider: 'BCA', account_number: '', account_name: '' });
 
     // API Key State
-    const [apiKeyInput, setApiKeyInput] = useState(() => localStorage.getItem('gemini_api_key') || '');
+    const [apiKeyInput, setApiKeyInput] = useState('');
     const [saveKeySuccess, setSaveKeySuccess] = useState(false);
-    const handleSaveApiKey = () => {
+
+    const fetchApiKey = async () => {
+        try {
+            const { data } = await supabase.from('app_settings').select('value').eq('id', 'api_keys').single();
+            if (data && data.value) {
+                setApiKeyInput(data.value);
+                localStorage.setItem('gemini_api_key', data.value);
+            } else {
+                setApiKeyInput(localStorage.getItem('gemini_api_key') || '');
+            }
+        } catch (error) {
+            console.error("DB Key Error:", error);
+            setApiKeyInput(localStorage.getItem('gemini_api_key') || '');
+        }
+    };
+
+    const handleSaveApiKey = async () => {
         const cleanedKey = apiKeyInput.trim();
         localStorage.setItem('gemini_api_key', cleanedKey);
         setApiKeyInput(cleanedKey);
+        try {
+            await supabase.from('app_settings').upsert({ id: 'api_keys', value: cleanedKey });
+        } catch (err) {
+            console.error(err);
+        }
         setSaveKeySuccess(true);
         setTimeout(() => setSaveKeySuccess(false), 3000);
     };
@@ -42,6 +63,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
 
     useEffect(() => {
         fetchData();
+        if (activeTab === 'overview') fetchApiKey();
     }, [activeTab]); // Refetch every time tab changes
 
     const fetchData = async () => {

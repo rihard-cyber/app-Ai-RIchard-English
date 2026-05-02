@@ -43,10 +43,14 @@ import { supabase } from './supabaseClient';
 import { CURRICULUM } from './data/curriculum';
 import { VOCABULARY_TOPICS as VOCAB_RAW, GRAMMAR_TOPICS as GRAMMAR_RAW, LISTENING_TOPICS as LISTENING_RAW, CONVERSATION_CHARACTERS as CHARS_RAW } from './data/topics';
 
-const getApiKey = () => localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
-
 const fetchGeminiWithRotation = async (payload) => {
-  const apiKeys = getApiKey().split(',').map(k => k.trim()).filter(k => k);
+  let rawKey = localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
+  try {
+    const { data } = await supabase.from('app_settings').select('value').eq('id', 'api_keys').single();
+    if (data && data.value) rawKey = data.value;
+  } catch (err) { console.error("DB Key Error:", err); }
+
+  const apiKeys = rawKey.split(',').map(k => k.trim()).filter(k => k);
   if (apiKeys.length === 0) throw new Error("API Key AI belum diatur.");
 
   const translateToOpenAIFormat = (geminiPayload) => {
@@ -63,34 +67,39 @@ const fetchGeminiWithRotation = async (payload) => {
   };
 
   let lastError = "Unknown Error";
-  for (const key of apiKeys) {
-    try {
-      if (key.startsWith('gsk_')) {
-        const groqPayload = { ...translateToOpenAIFormat(payload), model: "llama-3.3-70b-versatile" };
-        const res = await fetch(`https://api.groq.com/openai/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }, body: JSON.stringify(groqPayload) });
-        const data = await res.json();
-        if (!res.ok || data.error) throw new Error(data.error?.message || `Groq Error: ${res.status}`);
-        return { candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] };
-      } else if (key.startsWith('sk-')) {
-        const oaPayload = { ...translateToOpenAIFormat(payload), model: "gpt-4o-mini" };
-        const res = await fetch(`https://api.openai.com/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }, body: JSON.stringify(oaPayload) });
-        const data = await res.json();
-        if (!res.ok || data.error) throw new Error(data.error?.message || `OpenAI Error: ${res.status}`);
-        return { candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] };
-      } else {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-        const data = await res.json();
-        if (!res.ok || data.error) throw new Error(data.error?.message || `Gemini Error: ${res.status}`);
-        return data;
+
+  // Coba 2 putaran (Loop) jika semua key limit, istirahat 3.5 detik lalu mencoba lagi otomatis
+  for (let attempt = 0; attempt < 2; attempt++) {
+    for (const key of apiKeys) {
+      try {
+        if (key.startsWith('gsk_')) {
+          const groqPayload = { ...translateToOpenAIFormat(payload), model: "llama-3.3-70b-versatile" };
+          const res = await fetch(`https://api.groq.com/openai/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }, body: JSON.stringify(groqPayload) });
+          const data = await res.json();
+          if (!res.ok || data.error) throw new Error(data.error?.message || `Groq Error: ${res.status}`);
+          return { candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] };
+        } else if (key.startsWith('sk-')) {
+          const oaPayload = { ...translateToOpenAIFormat(payload), model: "gpt-4o-mini" };
+          const res = await fetch(`https://api.openai.com/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }, body: JSON.stringify(oaPayload) });
+          const data = await res.json();
+          if (!res.ok || data.error) throw new Error(data.error?.message || `OpenAI Error: ${res.status}`);
+          return { candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] };
+        } else {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+          const data = await res.json();
+          if (!res.ok || data.error) throw new Error(data.error?.message || `Gemini Error: ${res.status}`);
+          return data;
+        }
+      } catch (err) {
+        lastError = err.message;
+        const lowerErr = lastError.toLowerCase();
+        if (lowerErr.includes('quota') || lowerErr.includes('limit') || lowerErr.includes('failed to fetch') || lowerErr.includes('429') || lowerErr.includes('insufficient') || lowerErr.includes('too many')) continue;
+        throw err;
       }
-    } catch (err) {
-      lastError = err.message;
-      const lowerErr = lastError.toLowerCase();
-      if (lowerErr.includes('quota') || lowerErr.includes('limit') || lowerErr.includes('failed to fetch') || lowerErr.includes('429') || lowerErr.includes('insufficient')) continue;
-      throw err;
     }
+    if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 3500)); // Tunggu 3.5 detik sebelum retry
   }
-  throw new Error(`Semua API Key kehabisan limit: ${lastError}`);
+  throw new Error(`Sistem AI sedang sibuk/limit. Mohon tunggu beberapa detik dan coba lagi.`);
 };
 
 // --- DATA PROFIL DEFAULT ---
@@ -107,40 +116,38 @@ const DEFAULT_PROFILE = {
 
 // --- MASTER PROMPT (RICHARDMEHA AI v5.0) ---
 const RICHARD_MASTER_PROMPT = (userProfile, currentTopic) => `
-SYSTEM: RichardMeha AI – Hyper-Realistic Human Voice Call Mode
+SYSTEM: RichardMeha AI – Professional & Friendly English Tutor
 
-You are Richard, a real human English tutor having a casual PHONE CALL with ${userProfile.name}. 
-You are NOT a text AI. Your responses will be read aloud by a Voice Engine, so write EXACTLY how a human speaks in real life.
+You are Richard, a professional, highly encouraging, and friendly English tutor teaching ${userProfile.name}.
 
-== 🧠 BILINGUAL 50/50 RULE (STRICT) ==
-- You MUST mix English and Indonesian equally (50/50 code-switching, like "Anak Jaksel" style).
-- Example: "Hmm, that's interesting ya. Kalau menurutku sih, you can say it like this..."
-- Seamlessly weave both languages in almost every sentence. Make it sound cool and natural.
+== 🧠 LANGUAGE RULE (80% ENGLISH / 20% INDONESIAN) ==
+- You MUST speak PRIMARILY in English (around 80%) to immerse the user in the language.
+- Use Indonesian (20%) ONLY to explain difficult concepts, translate complex words, or if the user is struggling.
+- Example: "That's a great effort! However, remember that we use 'was' for the past tense. Jadi, kalau kejadiannya kemarin, pakai 'was' ya."
 
-== 🗣️ VOICE CALL REALISM (PREVENT STUTTERING) ==
-- Speak in SHORT, flowing sentences. Long paragraphs sound robotic.
-- Use natural human fillers: "Hmm...", "Oh!", "Ah, I see", "Well,", "Like," "Eh," "Kan," "Nah," "Lho."
-- Use commas (,) to create natural breathing pauses.
-- NO bullet points, NO lists, NO asterisks (*), NO emojis in the middle of sentences. Only words, commas, and simple punctuation so the voice engine can read smoothly.
-- React with genuine emotion (laugh gently with "haha", sound excited, etc).
+== 🗣️ CONVERSATION STYLE ==
+- Speak in SHORT, clear, and natural sentences.
+- Be professional yet warm and friendly.
+- NO bullet points, NO lists, NO asterisks (*), NO emojis in the middle of sentences. Only words and simple punctuation.
 
 == ✅ HOW TO CORRECT ==
-- Correct mistakes smoothly: "Eh wait, almost perfect! Usually native speakers say it like this nih..."
+- Correct mistakes smoothly and politely: "Almost perfect! Native speakers usually say it like this: [Correction] ✅"
+- If the user's sentence is completely correct, compliment them!
 
 == 🧑‍🏫 TEACHING FLOW ==
-1. React warmly to what ${userProfile.name} just said.
+1. Acknowledge and encourage ${userProfile.name}'s response.
 2. Give brief feedback or continue the topic.
-3. Ask 1 short follow-up question to keep the chat going.
+3. Ask 1 short follow-up question in English to keep the conversation engaging.
 
 == 🆘 IF STUCK ==
-- Give a gentle hint: "Kalau bingung, maybe you can answer like this..."
+- Give a gentle hint in Indonesian: "Kalau bingung, mungkin bisa jawab seperti ini..."
 
 == 📊 DATA TRACKING (HIDDEN) ==
 At the very end of your response, AFTER the separator "---", append a single JSON object for the app's system.
 Example: 
 ... (natural message) ...
 ---
-{"grammar": 85, "vocab": 90, "fluency": 80, "feedback": "Natural tip", "phonetic": "word -> sound"}
+{"grammar": 85, "vocab": 90, "fluency": 80, "feedback": "Good effort, just watch out for past tense verbs."}
 
 IMPORTANT: DO NOT USE BOLD (**), LISTS, OR WEIRD SYMBOLS. WRITE EXACTLY AS YOU WOULD SPEAK OUT LOUD.
 ---
@@ -893,10 +900,10 @@ function ChatModule({
       setIsRecording(false);
       setMicStatus('processing');
       if (currentTranscriptRef.current.trim()) {
-        sendMessage(currentTranscriptRef.current);
+        sendMessage(currentTranscriptRef.current, false, true);
         currentTranscriptRef.current = '';
       } else if (inputValue.trim()) {
-        sendMessage(inputValue);
+        sendMessage(inputValue, false, true);
       }
     } else {
       startRecording();
@@ -941,7 +948,7 @@ function ChatModule({
 
       if (finalTranscript) {
         setInputValue(finalTranscript);
-        sendMessage(finalTranscript);
+        sendMessage(finalTranscript, false, true);
         currentTranscriptRef.current = '';
       }
     };
@@ -968,7 +975,7 @@ function ChatModule({
     }
   };
 
-  const sendMessage = async (text, isSystemInitiated = false) => {
+  const sendMessage = async (text, isSystemInitiated = false, isVoiceInput = false) => {
     if (!text.trim()) return;
 
     // Pencegah AI membalas ganda (Anti-Duplicate System)
@@ -991,8 +998,8 @@ function ChatModule({
 
     const lang = detectLanguage(text);
     const modeInstruction = lang === 'id'
-      ? "\n(Note: User speaks Indonesian. Explain/help using Indonesian Tutor persona.)"
-      : "\n(Note: User speaks English. Practice conversation using English Tutor persona. ALWAYS correct user grammar if there's a mistake using ❌/✅ format.)";
+      ? "\n(Note: User used Indonesian. Encourage them to try in English, and provide the English translation for what they said.)"
+      : "\n(Note: User used English. If they made grammatical or phrasing mistakes, gently correct them using ❌/✅ format before continuing the conversation.)";
 
     const newUserMsg = { role: 'user', content: text, isHidden: isSystemInitiated && hideInputAtStart };
     const updatedMessages = [...messages, newUserMsg];
@@ -1097,7 +1104,9 @@ function ChatModule({
         setTimeout(() => handleSuggest(newMsgs.length - 1), 100);
         return newMsgs;
       });
-      handleTTS(aiText);
+      if (isVoiceInput || callMode) {
+        handleTTS(aiText);
+      }
     } catch (err) {
       console.error("Gemini API Error:", err);
       setMessages(prev => [...prev, { role: 'system', content: `⚠️ Connection failed: ${err.message}` }]);
@@ -1253,7 +1262,7 @@ function ChatModule({
               {suggestions.map((s, si) => (
                 <button
                   key={si}
-                  onClick={() => { setInputValue(s); sendMessage(s); }}
+                  onClick={() => { setInputValue(s); sendMessage(s, false, false); }}
                   className="px-4 py-2 bg-blue-600/20 border border-blue-500/30 text-blue-300 rounded-full text-xs hover:bg-blue-600/40 transition-all active:scale-95"
                 >
                   {s}
@@ -1357,7 +1366,7 @@ function ChatModule({
                   {suggestions.map((s, si) => (
                     <button
                       key={si}
-                      onClick={() => { setInputValue(s); sendMessage(s); }}
+                      onClick={() => { setInputValue(s); sendMessage(s, false, false); }}
                       className="px-4 py-2 bg-white border border-blue-200 text-blue-600 rounded-full text-xs md:text-sm hover:bg-blue-50 transition-all active:scale-95 shadow-sm"
                     >
                       {s}
@@ -1415,7 +1424,7 @@ function ChatModule({
 
       {/* Input Form */}
       <div className="p-4 md:p-6 bg-white border-t border-slate-200 shrink-0">
-        <form onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue); }} className="max-w-4xl mx-auto w-full flex gap-2">
+        <form onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue, false, false); }} className="max-w-4xl mx-auto w-full flex gap-2">
           <input
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
