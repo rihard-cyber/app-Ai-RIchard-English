@@ -217,7 +217,7 @@ export default function App() {
           subscription_plan: data.subscription_plan || 'Free'
         });
         const isAdmin = data?.is_admin || userObj.email === 'richardpl.meha@gmail.com';
-        
+
         if (isAdmin) {
           setAuthState('admin');
         } else if (data && !data.has_completed_initial_test) {
@@ -261,12 +261,8 @@ export default function App() {
   };
 
   const handlePaymentSuccess = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from('user_profiles').update({ is_pro: true, subscription_plan: selectedPlan.name }).eq('id', user.id);
-      await fetchProfile(user.id);
-    }
     setAuthState('app');
+    setIsPaymentModalOpen(false);
   };
 
   const handleAssessmentComplete = async (level) => {
@@ -363,7 +359,12 @@ export default function App() {
   if (isInitializing) return <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-6 text-white"><Loader2 className="animate-spin text-blue-500 mb-4" size={48} /><p className="text-slate-400 font-bold animate-pulse">Menyiapkan RichardMeha AI...</p></div>;
   if (authState === 'login') return <LoginPage onLogin={handleLogin} />;
   if (authState === 'assessment') return <LevelTest onComplete={handleAssessmentComplete} />;
-  if (authState === 'subscription') return <SubscriptionPage onSelectPlan={handleSelectPlan} />;
+  if (authState === 'subscription') return (
+    <>
+      <SubscriptionPage onSelectPlan={handleSelectPlan} />
+      <PaymentModal isOpen={isPaymentModalOpen} userName={userProfile.name} onClose={() => setIsPaymentModalOpen(false)} onPaymentSuccess={handlePaymentSuccess} planName={selectedPlan.name} price={selectedPlan.price} />
+    </>
+  );
   if (authState === 'admin') return <AdminDashboard onLogout={handleLogout} />;
 
   return (
@@ -661,6 +662,10 @@ function ChatModule({
   };
 
   const handleTranslate = async (index) => {
+    if (!apiKey) {
+      alert("API Key Gemini belum diatur (VITE_GEMINI_API_KEY).");
+      return;
+    }
     if (translations[index]) {
       setTranslations(prev => {
         const next = { ...prev };
@@ -677,12 +682,13 @@ function ChatModule({
         contents: [{ role: 'user', parts: [{ text: textToTranslate }] }],
         systemInstruction: { parts: [{ text: "Translate this English sentence to natural, casual, friendly Indonesian (Kampung Inggris style). ONLY return the translation." }] }
       };
-      const res = await fetch('http://localhost:3000/api/gemini', {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || "API Error");
       const translation = data.candidates[0].content.parts[0].text;
       setTranslations(prev => ({ ...prev, [index]: translation }));
     } catch (err) {
@@ -693,18 +699,20 @@ function ChatModule({
   };
 
   const handleSuggest = async (index) => {
+    if (!apiKey) return;
     const history = messages.slice(0, index + 1).map(m => `${m.role}: ${m.content}`).join('\n');
     try {
       const payload = {
         contents: [{ role: 'user', parts: [{ text: `Conversation history:\n${history}\n\nSuggest 3–4 very short, natural English response options for the user based on the last AI message. Format: Just the options separated by | character. No numbering.` }] }],
         systemInstruction: { parts: [{ text: "You are a helpful assistant providing English conversation suggestions." }] }
       };
-      const res = await fetch('http://localhost:3000/api/gemini', {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || "API Error");
       const rawSuggestions = data.candidates[0].content.parts[0].text;
       const suggestionsList = rawSuggestions.split('|').map(s => s.trim()).filter(s => s);
       setSuggestions(suggestionsList);
@@ -869,6 +877,12 @@ function ChatModule({
       setMicStatus('processing');
     }
 
+    if (!apiKey) {
+      setMessages(prev => [...prev, { role: 'system', content: '⚠️ API Key Gemini belum diatur. Silakan tambahkan VITE_GEMINI_API_KEY di file .env Anda.' }]);
+      setIsLoading(false);
+      return;
+    }
+
     const lang = detectLanguage(text);
     const modeInstruction = lang === 'id'
       ? "\n(Note: User speaks Indonesian. Explain/help using Indonesian Tutor persona.)"
@@ -901,7 +915,7 @@ function ChatModule({
     };
     const personalityInstruction = personalityMap[voicePersonality] || personalityMap.friendly;
 
-    const contents = updatedMessages.filter(msg => !msg.isHidden).map(msg => ({
+    const contents = updatedMessages.filter(msg => !msg.isHidden && msg.role !== 'system').map(msg => ({
       role: msg.role === 'user' ? 'user' : 'model',
       parts: [{ text: msg.content }]
     }));
@@ -923,7 +937,7 @@ function ChatModule({
     try {
       // Direct Client-Side Call to Gemini API (GitHub Pages compatible)
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-      
+
       const res = await fetch(geminiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

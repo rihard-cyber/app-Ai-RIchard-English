@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { 
-  PenTool, 
-  Sparkles, 
-  CheckCircle2, 
-  AlertCircle, 
-  RotateCcw, 
+import {
+  PenTool,
+  Sparkles,
+  CheckCircle2,
+  AlertCircle,
+  RotateCcw,
   ArrowRight,
   Loader2,
   Copy,
@@ -55,13 +55,24 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
         systemInstruction: { parts: [{ text: WRITING_SYSTEM_PROMPT(isPro) }] }
       };
 
-      const response = await fetch('http://localhost:3000/api/gemini', {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+      if (!apiKey) {
+        setAnalysis("⚠️ Gagal: API Key Gemini belum diatur. Silakan tambahkan VITE_GEMINI_API_KEY di file .env Anda.");
+        setIsLoading(false);
+        return;
+      }
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
       const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error?.message || "API Error");
+      }
+
       const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Maaf, Richard sedang sibuk. Coba sebentar lagi ya!";
       setAnalysis(aiResponse);
       setUsageCount(prev => {
@@ -81,32 +92,32 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
     return (
       <div className="h-full flex items-center justify-center p-6 bg-slate-50">
         <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-2xl border border-slate-100 max-w-lg text-center animate-in zoom-in-95 duration-500">
-           <div className="w-24 h-24 bg-gradient-to-tr from-indigo-400 to-blue-600 text-white rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-indigo-500/20">
-             <Crown size={48} />
-           </div>
-           <h2 className="text-3xl font-black text-slate-800 mb-4">Writing Analyzer PRO 👑</h2>
-           <p className="text-slate-500 mb-10 text-lg leading-relaxed">
-             Kamu sudah menggunakan jatah gratis harian (3x analisa). Upgrade ke PRO untuk analisa mendalam tanpa batas!
-           </p>
-           <button 
-             onClick={onUpgrade}
-             className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-all text-lg"
-           >
-             Upgrade Sekarang
-           </button>
+          <div className="w-24 h-24 bg-gradient-to-tr from-indigo-400 to-blue-600 text-white rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-indigo-500/20">
+            <Crown size={48} />
+          </div>
+          <h2 className="text-3xl font-black text-slate-800 mb-4">Writing Analyzer PRO 👑</h2>
+          <p className="text-slate-500 mb-10 text-lg leading-relaxed">
+            Kamu sudah menggunakan jatah gratis harian (3x analisa). Upgrade ke PRO untuk analisa mendalam tanpa batas!
+          </p>
+          <button
+            onClick={onUpgrade}
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-all text-lg"
+          >
+            Upgrade Sekarang
+          </button>
         </div>
       </div>
     );
   }
 
   const renderFormattedAnalysis = (content) => {
-      const lines = content.split('\n');
-      return lines.map((line, i) => {
-          if (line.includes('|')) {
-              return <div key={i} className="text-xs font-mono bg-slate-50 p-2 border-b border-slate-200">{line}</div>;
-          }
-          return <p key={i} className="mb-2 text-sm leading-relaxed">{line}</p>;
-      });
+    const lines = content.split('\n');
+    return lines.map((line, i) => {
+      if (line.includes('|')) {
+        return <div key={i} className="text-xs font-mono bg-slate-50 p-2 border-b border-slate-200">{line}</div>;
+      }
+      return <p key={i} className="mb-2 text-sm leading-relaxed">{line}</p>;
+    });
   };
 
   return (
@@ -122,7 +133,7 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
           </div>
         </div>
         {!isPro && (
-          <button 
+          <button
             onClick={onUpgrade}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-xl text-xs font-black shadow-lg shadow-orange-500/20 active:scale-95 transition-all"
           >
@@ -132,19 +143,19 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
       </div>
 
       <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl overflow-hidden ring-1 ring-slate-100">
-        <textarea 
+        <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Paste your English text here... RichardMeha will check it for you! 😊"
           className="w-full h-48 md:h-64 p-8 text-lg text-slate-700 outline-none resize-none placeholder:text-slate-300 font-medium leading-relaxed"
         ></textarea>
-        
+
         <div className="bg-slate-50/50 backdrop-blur-sm p-6 border-t border-slate-100 flex justify-between items-center">
           <div className="flex flex-col">
-             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Text Density</span>
-             <span className="text-sm font-bold text-slate-700">{text.split(/\s+/).filter(x => x).length} Words</span>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Text Density</span>
+            <span className="text-sm font-bold text-slate-700">{text.split(/\s+/).filter(x => x).length} Words</span>
           </div>
-          <button 
+          <button
             onClick={analyzeWriting}
             disabled={isLoading || !text.trim()}
             className="bg-slate-900 hover:bg-black text-white font-black py-4 px-10 rounded-2xl transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 shadow-xl shadow-slate-900/10"
@@ -158,11 +169,11 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
       {!isPro && (
         <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex items-center gap-3">
           <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
-             <Lock size={20} />
+            <Lock size={20} />
           </div>
           <p className="text-xs text-amber-800 font-medium">
-             You are currently in **Free Mode**. Deep analysis, tone improvement, and advanced vocabulary are locked. 
-             <button onClick={onUpgrade} className="ml-2 underline font-black">Unlock Pro features 👑</button>
+            You are currently in **Free Mode**. Deep analysis, tone improvement, and advanced vocabulary are locked.
+            <button onClick={onUpgrade} className="ml-2 underline font-black">Unlock Pro features 👑</button>
           </p>
         </div>
       )}
@@ -170,43 +181,43 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
       {analysis && (
         <div className="bg-white rounded-[2.5rem] border border-indigo-100 shadow-2xl p-8 md:p-10 animate-in zoom-in-95 duration-500 relative overflow-hidden">
           <div className="absolute top-0 right-0 p-6">
-             <button 
-                onClick={() => {
-                   navigator.clipboard.writeText(analysis);
-                   alert("Copied to clipboard!");
-                }}
-                className="bg-indigo-50 text-indigo-600 p-3 rounded-2xl cursor-pointer hover:bg-indigo-100 transition-colors shadow-sm"
-             >
-                <Copy size={20} />
-             </button>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(analysis);
+                alert("Copied to clipboard!");
+              }}
+              className="bg-indigo-50 text-indigo-600 p-3 rounded-2xl cursor-pointer hover:bg-indigo-100 transition-colors shadow-sm"
+            >
+              <Copy size={20} />
+            </button>
           </div>
-          
+
           <div className="flex items-center gap-3 mb-8">
-             <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center shadow-inner">
-                <CheckCircle2 size={24} />
-             </div>
-             <div>
-                <h3 className="text-xl font-black text-slate-800 tracking-tight">Analysis Report</h3>
-                <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">RichardMeha Verified</p>
-             </div>
+            <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center shadow-inner">
+              <CheckCircle2 size={24} />
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-slate-800 tracking-tight">Analysis Report</h3>
+              <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">RichardMeha Verified</p>
+            </div>
           </div>
-          
+
           <div className="prose prose-slate max-w-none text-slate-600">
-             {renderFormattedAnalysis(analysis)}
+            {renderFormattedAnalysis(analysis)}
           </div>
 
           <div className="mt-10 pt-8 border-t border-slate-100 flex items-center justify-between">
-             <button 
-                onClick={() => { setAnalysis(null); setText(''); }}
-                className="flex items-center gap-2 text-xs font-black text-slate-400 hover:text-slate-800 transition-colors uppercase tracking-widest"
-             >
-                <RotateCcw size={16} /> Reset Analyzer
-             </button>
-             {!isPro && (
-                <button onClick={onUpgrade} className="text-xs font-black text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
-                   See more with PRO <ArrowRight size={14} />
-                </button>
-             )}
+            <button
+              onClick={() => { setAnalysis(null); setText(''); }}
+              className="flex items-center gap-2 text-xs font-black text-slate-400 hover:text-slate-800 transition-colors uppercase tracking-widest"
+            >
+              <RotateCcw size={16} /> Reset Analyzer
+            </button>
+            {!isPro && (
+              <button onClick={onUpgrade} className="text-xs font-black text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+                See more with PRO <ArrowRight size={14} />
+              </button>
+            )}
           </div>
         </div>
       )}

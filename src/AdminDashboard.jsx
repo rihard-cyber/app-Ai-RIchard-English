@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowUpRight, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowUpRight, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw, Menu, X } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 export default function AdminDashboard({ onLogout }) {
     const [activeTab, setActiveTab] = useState('overview');
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [stats, setStats] = useState({ totalUsers: 0, proUsers: 0, revenue: 0, totalTx: 0 });
     const [transactions, setTransactions] = useState([]);
     const [banks, setBanks] = useState([]);
@@ -77,14 +78,14 @@ export default function AdminDashboard({ onLogout }) {
     const handleAddBank = async (e) => {
         e.preventDefault();
         if (!newBank.account_number || !newBank.account_name) return;
-        
+
         try {
             console.log("Mencoba simpan rekening:", newBank);
-            const { data, error } = await supabase.from('payment_methods').insert([{ 
+            const { data, error } = await supabase.from('payment_methods').insert([{
                 provider: newBank.provider,
                 account_number: newBank.account_number,
                 account_name: newBank.account_name,
-                is_active: true 
+                is_active: true
             }]);
 
             if (error) throw error;
@@ -108,19 +109,30 @@ export default function AdminDashboard({ onLogout }) {
     if (isLoading) return <div className="h-screen flex items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-emerald-600" size={40} /></div>;
 
     return (
-        <div className="flex h-screen bg-slate-50 font-sans">
+        <div className="flex h-[100dvh] bg-slate-50 font-sans overflow-hidden">
+            {/* Mobile Sidebar Overlay */}
+            {isSidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden transition-opacity"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
             {/* Sidebar */}
-            <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col">
-                <div className="p-6 border-b border-slate-800">
+            <aside className={`fixed md:relative z-50 w-64 h-full bg-slate-900 text-slate-300 flex flex-col transition-transform transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+                <div className="p-6 border-b border-slate-800 flex items-center justify-between">
                     <h1 className="text-xl font-black text-white flex items-center gap-2">
                         <Shield className="text-emerald-500" /> Admin Panel
                     </h1>
+                    <button className="md:hidden text-slate-400 hover:text-white" onClick={() => setIsSidebarOpen(false)}>
+                        <X size={24} />
+                    </button>
                 </div>
-                <nav className="flex-1 p-4 space-y-2">
-                    <SidebarItem icon={<LayoutDashboard size={20} />} label="Overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
-                    <SidebarItem icon={<Activity size={20} />} label="Transaksi Pro" active={activeTab === 'transactions'} onClick={() => setActiveTab('transactions')} badge={transactions.filter(t => t.status === 'pending').length} />
-                    <SidebarItem icon={<CreditCard size={20} />} label="Data Rekening" active={activeTab === 'banks'} onClick={() => setActiveTab('banks')} />
-                    <SidebarItem icon={<Users size={20} />} label="Data Pengguna" active={activeTab === 'users'} onClick={() => setActiveTab('users')} />
+                <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+                    <SidebarItem icon={<LayoutDashboard size={20} />} label="Overview" active={activeTab === 'overview'} onClick={() => { setActiveTab('overview'); setIsSidebarOpen(false); }} />
+                    <SidebarItem icon={<Activity size={20} />} label="Transaksi Pro" active={activeTab === 'transactions'} onClick={() => { setActiveTab('transactions'); setIsSidebarOpen(false); }} badge={transactions.filter(t => t.status === 'pending').length} />
+                    <SidebarItem icon={<CreditCard size={20} />} label="Data Rekening" active={activeTab === 'banks'} onClick={() => { setActiveTab('banks'); setIsSidebarOpen(false); }} />
+                    <SidebarItem icon={<Users size={20} />} label="Data Pengguna" active={activeTab === 'users'} onClick={() => { setActiveTab('users'); setIsSidebarOpen(false); }} />
                 </nav>
                 <div className="p-4 border-t border-slate-800">
                     <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors font-medium">
@@ -130,294 +142,309 @@ export default function AdminDashboard({ onLogout }) {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto p-8">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                    <div>
-                        <h1 className="text-3xl font-black text-slate-800 tracking-tight capitalize">{activeTab.replace('transactions', 'Transaksi Pro').replace('banks', 'Data Rekening').replace('users', 'Data Pengguna')} Dashboard</h1>
-                        <p className="text-slate-500 font-medium">Selamat datang kembali di pusat kendali RichardMeha AI.</p>
+            <main className="flex-1 flex flex-col h-full w-full overflow-hidden relative">
+                {/* Mobile Header */}
+                <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30 shrink-0 md:hidden shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors">
+                            <Menu size={24} />
+                        </button>
+                        <h1 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <Shield className="text-emerald-500" size={20} /> Admin
+                        </h1>
                     </div>
-                    <button 
-                        onClick={fetchData}
-                        disabled={isLoading}
-                        className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-xs font-black text-slate-600 hover:bg-slate-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
-                    >
-                        <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} /> REFRESH DATA
-                    </button>
-                </div>
+                </header>
 
-                {activeTab === 'overview' && (
-                    <div className="space-y-8 animate-in fade-in">
-                        {/* Stats Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            <StatCard title="Total Pengguna" value={stats.totalUsers} icon={<Users />} color="bg-blue-500" />
-                            <SubStatCard title="Pengguna PRO" value={stats.proUsers} icon={<CheckCircle />} color="text-emerald-500" />
-                            <StatCard title="Dana Masuk (Rp)" value={stats.revenue.toLocaleString('id-ID')} icon={<ArrowDownRight />} color="bg-emerald-500" />
-                            <StatCard title="Total Transaksi" value={stats.totalTx} icon={<Activity />} color="bg-purple-500" />
+                <div className="flex-1 overflow-y-auto p-4 md:p-8 w-full">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                        <div>
+                            <h1 className="text-3xl font-black text-slate-800 tracking-tight capitalize">{activeTab.replace('transactions', 'Transaksi Pro').replace('banks', 'Data Rekening').replace('users', 'Data Pengguna')} Dashboard</h1>
+                            <p className="text-slate-500 font-medium">Selamat datang kembali di pusat kendali RichardMeha AI.</p>
                         </div>
-
-                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                            <h3 className="font-bold text-slate-800 mb-4">Grafik Pertumbuhan (Simulasi)</h3>
-                            <div className="h-64 flex items-end gap-2 md:gap-4 w-full border-b border-slate-100 pb-2">
-                                {[40, 70, 45, 90, 65, 120, 100].map((val, i) => (
-                                    <div key={i} className="w-full bg-blue-100 hover:bg-blue-500 transition-colors rounded-t-md relative group flex flex-col justify-end" style={{ height: `${(val / 120) * 100}%` }}>
-                                        <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-lg">{val} Users</div>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="flex justify-between text-xs text-slate-400 mt-2 font-bold uppercase"><span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span><span>Min</span></div>
-                        </div>
+                        <button
+                            onClick={fetchData}
+                            disabled={isLoading}
+                            className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-xs font-black text-slate-600 hover:bg-slate-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                        >
+                            <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} /> REFRESH DATA
+                        </button>
                     </div>
-                )}
 
-                {activeTab === 'transactions' && (
-                    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider">
-                                <tr>
-                                    <th className="p-4">Tanggal</th>
-                                    <th className="p-4">User</th>
-                                    <th className="p-4">Paket</th>
-                                    <th className="p-4">Nominal</th>
-                                    <th className="p-4">Status</th>
-                                    <th className="p-4 text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {transactions.map(tx => (
-                                    <tr key={tx.id} className="hover:bg-slate-50/50">
-                                        <td className="p-4 text-slate-600">{new Date(tx.created_at).toLocaleDateString('id-ID')}</td>
-                                        <td className="p-4 font-bold text-slate-800">{tx.user_name || 'User'}</td>
-                                        <td className="p-4 text-blue-600 font-medium">{tx.plan_name}</td>
-                                        <td className="p-4 font-bold text-emerald-600">Rp {Number(tx.amount).toLocaleString('id-ID')}</td>
-                                        <td className="p-4">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${tx.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : tx.status === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>{tx.status}</span>
-                                        </td>
-                                        <td className="p-4 flex justify-center gap-2">
-                                            {tx.status === 'pending' ? (
-                                                <>
-                                                    <button onClick={() => handleAccPayment(tx.id, tx.user_id)} className="p-2 bg-emerald-100 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-colors" title="ACC Pembayaran"><CheckCircle size={18} /></button>
-                                                    <button onClick={() => handleRejectPayment(tx.id)} className="p-2 bg-rose-100 text-rose-600 hover:bg-rose-600 hover:text-white rounded-lg transition-colors" title="Tolak"><XCircle size={18} /></button>
-                                                </>
-                                            ) : (
-                                                <span className="text-xs text-slate-400 italic">Selesai</span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                                {transactions.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-slate-400">Belum ada data transaksi.</td></tr>}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-
-                {activeTab === 'banks' && (
-                    <div className="space-y-8 animate-in fade-in">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            {/* Form Tambah */}
-                            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm h-fit">
-                                <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
-                                    <Plus className="text-emerald-500" /> Tambah Rekening
-                                </h3>
-                                <form onSubmit={handleAddBank} className="space-y-5">
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Provider Pembayaran</label>
-                                        <select value={newBank.provider} onChange={e => setNewBank({ ...newBank, provider: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm font-bold">
-                                            <option value="BCA">BCA (Bank Central Asia)</option>
-                                            <option value="BRI">BRI (Bank Rakyat Indonesia)</option>
-                                            <option value="MANDIRI">Mandiri (Bank Mandiri)</option>
-                                            <option value="VA">Virtual Account (VA)</option>
-                                            <option value="QRIS">QRIS / Barcode</option>
-                                            <option value="DANA">DANA (E-Wallet)</option>
-                                            <option value="GOPAY">GoPay (E-Wallet)</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Nomor Rekening / HP / VA</label>
-                                        <input type="text" value={newBank.account_number} onChange={e => setNewBank({ ...newBank, account_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm font-bold" placeholder="Contoh: 123456789" required />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Atas Nama (A.N)</label>
-                                        <input type="text" value={newBank.account_name} onChange={e => setNewBank({ ...newBank, account_name: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm font-bold" placeholder="Contoh: RICHARD MEHA" required />
-                                    </div>
-                                    <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-emerald-600/20 active:scale-95 flex items-center justify-center gap-2">
-                                        <Plus size={18} /> Simpan Rekening Baru
-                                    </button>
-                                </form>
+                    {activeTab === 'overview' && (
+                        <div className="space-y-8 animate-in fade-in">
+                            {/* Stats Cards */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <StatCard title="Total Pengguna" value={stats.totalUsers} icon={<Users />} color="bg-blue-500" />
+                                <SubStatCard title="Pengguna PRO" value={stats.proUsers} icon={<CheckCircle />} color="text-emerald-500" />
+                                <StatCard title="Dana Masuk (Rp)" value={stats.revenue.toLocaleString('id-ID')} icon={<ArrowDownRight />} color="bg-emerald-500" />
+                                <StatCard title="Total Transaksi" value={stats.totalTx} icon={<Activity />} color="bg-purple-500" />
                             </div>
 
-                            {/* Tabel Daftar Rekening */}
-                            <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
-                                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                                    <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                                        <CreditCard className="text-blue-500" /> Rekening Terdaftar
-                                    </h3>
-                                    <span className="text-[10px] font-black text-slate-400 uppercase bg-white px-3 py-1 rounded-full border border-slate-200">{banks.length} Rekening</span>
+                            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                                <h3 className="font-bold text-slate-800 mb-4">Grafik Pertumbuhan (Simulasi)</h3>
+                                <div className="h-64 flex items-end gap-2 md:gap-4 w-full border-b border-slate-100 pb-2">
+                                    {[40, 70, 45, 90, 65, 120, 100].map((val, i) => (
+                                        <div key={i} className="w-full bg-blue-100 hover:bg-blue-500 transition-colors rounded-t-md relative group flex flex-col justify-end" style={{ height: `${(val / 120) * 100}%` }}>
+                                            <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-lg">{val} Users</div>
+                                        </div>
+                                    ))}
                                 </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left text-sm">
-                                        <thead className="bg-slate-50/80 text-slate-500 font-black uppercase tracking-widest text-[10px]">
-                                            <tr>
-                                                <th className="p-6">Provider</th>
-                                                <th className="p-6">Nomor Akun</th>
-                                                <th className="p-6">Atas Nama</th>
-                                                <th className="p-6 text-center">Aksi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {banks.map(bank => (
-                                                <tr key={bank.id} className="hover:bg-slate-50/50 transition-colors">
-                                                    <td className="p-6">
-                                                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest ${
-                                                            bank.provider === 'QRIS' ? 'bg-purple-100 text-purple-700' : 
-                                                            bank.provider === 'VA' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
-                                                        }`}>
-                                                            {bank.provider}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-6 font-black text-slate-800 text-lg tracking-wider">{bank.account_number}</td>
-                                                    <td className="p-6 text-slate-500 font-bold uppercase text-xs">{bank.account_name}</td>
-                                                    <td className="p-6">
-                                                        <div className="flex justify-center">
-                                                            <button onClick={() => handleDeleteBank(bank.id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors" title="Hapus">
-                                                                <Trash2 size={20} />
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            {banks.length === 0 && (
-                                                <tr>
-                                                    <td colSpan="4" className="p-20 text-center text-slate-300">
-                                                        <CreditCard size={48} className="mx-auto mb-4 opacity-20" />
-                                                        <p className="font-bold">Belum ada rekening terdaftar.</p>
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                <div className="flex justify-between text-xs text-slate-400 mt-2 font-bold uppercase"><span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span><span>Min</span></div>
                             </div>
                         </div>
-                    </div>
-                )}
-                {activeTab === 'users' && (
-                    <div className="space-y-8 animate-in fade-in">
-                        {isLoading ? (
-                            <div className="flex flex-col items-center justify-center p-20 text-slate-400">
-                                <Loader2 className="animate-spin mb-4" size={48} />
-                                <p className="font-bold tracking-widest text-[10px] uppercase">Mengambil data murid...</p>
-                            </div>
-                        ) : (
-                            <>
-                                {/* User Distribution Cards */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
-                                <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
-                                    <Users size={28} />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Murid</p>
-                                    <h4 className="text-2xl font-black text-slate-800">{users.length}</h4>
-                                </div>
-                            </div>
-                            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
-                                <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center">
-                                    <Crown size={28} />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Member PRO</p>
-                                    <h4 className="text-2xl font-black text-slate-800">{users.filter(u => u.is_pro).length}</h4>
-                                </div>
-                            </div>
-                            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
-                                <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
-                                    <Activity size={28} />
-                                </div>
-                                <div>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Conversion Rate</p>
-                                    <h4 className="text-2xl font-black text-slate-800">
-                                        {users.length > 0 ? ((users.filter(u => u.is_pro).length / users.length) * 100).toFixed(1) : 0}%
-                                    </h4>
-                                </div>
-                            </div>
-                        </div>
+                    )}
 
-                        {/* User Table Panel */}
-                        <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
-                            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                                <h3 className="font-bold text-slate-800">Daftar Pengguna Aktif</h3>
-                                <div className="flex gap-2">
-                                    <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold">{users.length} Total</span>
-                                </div>
-                            </div>
+                    {activeTab === 'transactions' && (
+                        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in">
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left text-sm">
+                                <table className="w-full text-left text-sm whitespace-nowrap md:whitespace-normal">
                                     <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider">
                                         <tr>
-                                            <th className="p-6">User Profile</th>
-                                            <th className="p-6">Language Level</th>
-                                            <th className="p-6">Subscription</th>
-                                            <th className="p-6">Join Date</th>
-                                            <th className="p-6">Status</th>
+                                            <th className="p-4">Tanggal</th>
+                                            <th className="p-4">User</th>
+                                            <th className="p-4">Paket</th>
+                                            <th className="p-4">Nominal</th>
+                                            <th className="p-4">Status</th>
+                                            <th className="p-4 text-center">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
-                                        {users.map(u => (
-                                            <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
-                                                <td className="p-6">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold">
-                                                            {u.name?.charAt(0).toUpperCase()}
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-bold text-slate-800">{u.name}</p>
-                                                            <p className="text-xs text-slate-400 capitalize">{u.gender}</p>
-                                                        </div>
-                                                    </div>
+                                        {transactions.map(tx => (
+                                            <tr key={tx.id} className="hover:bg-slate-50/50">
+                                                <td className="p-4 text-slate-600">{new Date(tx.created_at).toLocaleDateString('id-ID')}</td>
+                                                <td className="p-4 font-bold text-slate-800">{tx.user_name || 'User'}</td>
+                                                <td className="p-4 text-blue-600 font-medium">{tx.plan_name}</td>
+                                                <td className="p-4 font-bold text-emerald-600">Rp {Number(tx.amount).toLocaleString('id-ID')}</td>
+                                                <td className="p-4">
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${tx.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : tx.status === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>{tx.status}</span>
                                                 </td>
-                                                <td className="p-6">
-                                                    <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-black tracking-tight">
-                                                        {u.level}
-                                                    </span>
-                                                </td>
-                                                <td className="p-6">
-                                                    {u.is_pro ? (
-                                                        <div className="flex items-center gap-1.5 text-amber-600 font-bold">
-                                                            <Crown size={14} /> PRO MEMBER
-                                                        </div>
+                                                <td className="p-4 flex justify-center gap-2">
+                                                    {tx.status === 'pending' ? (
+                                                        <>
+                                                            <button onClick={() => handleAccPayment(tx.id, tx.user_id)} className="p-2 bg-emerald-100 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-colors" title="ACC Pembayaran"><CheckCircle size={18} /></button>
+                                                            <button onClick={() => handleRejectPayment(tx.id)} className="p-2 bg-rose-100 text-rose-600 hover:bg-rose-600 hover:text-white rounded-lg transition-colors" title="Tolak"><XCircle size={18} /></button>
+                                                        </>
                                                     ) : (
-                                                        <span className="text-slate-400 font-medium">Free Tier</span>
+                                                        <span className="text-xs text-slate-400 italic">Selesai</span>
                                                     )}
-                                                </td>
-                                                <td className="p-6 text-slate-500 font-medium">
-                                                    {new Date(u.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                </td>
-                                                <td className="p-6">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                                                        <span className="text-xs font-bold text-slate-600">Aktif</span>
-                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
-                                        {users.length === 0 && (
-                                            <tr>
-                                                <td colSpan="5" className="p-20 text-center">
-                                                    <div className="flex flex-col items-center gap-2 text-slate-300">
-                                                        <Users size={48} />
-                                                        <p className="text-lg font-medium">Belum ada data murid.</p>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )}
+                                        {transactions.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-slate-400">Belum ada data transaksi.</td></tr>}
                                     </tbody>
                                 </table>
                             </div>
                         </div>
-                            </>
-                        )}
-                    </div>
-                )}
+                    )}
+
+                    {activeTab === 'banks' && (
+                        <div className="space-y-8 animate-in fade-in">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                {/* Form Tambah */}
+                                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm h-fit">
+                                    <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                                        <Plus className="text-emerald-500" /> Tambah Rekening
+                                    </h3>
+                                    <form onSubmit={handleAddBank} className="space-y-5">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Provider Pembayaran</label>
+                                            <select value={newBank.provider} onChange={e => setNewBank({ ...newBank, provider: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm font-bold">
+                                                <option value="BCA">BCA (Bank Central Asia)</option>
+                                                <option value="BRI">BRI (Bank Rakyat Indonesia)</option>
+                                                <option value="MANDIRI">Mandiri (Bank Mandiri)</option>
+                                                <option value="VA">Virtual Account (VA)</option>
+                                                <option value="QRIS">QRIS / Barcode</option>
+                                                <option value="DANA">DANA (E-Wallet)</option>
+                                                <option value="GOPAY">GoPay (E-Wallet)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Nomor Rekening / HP / VA</label>
+                                            <input type="text" value={newBank.account_number} onChange={e => setNewBank({ ...newBank, account_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm font-bold" placeholder="Contoh: 123456789" required />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Atas Nama (A.N)</label>
+                                            <input type="text" value={newBank.account_name} onChange={e => setNewBank({ ...newBank, account_name: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm font-bold" placeholder="Contoh: RICHARD MEHA" required />
+                                        </div>
+                                        <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-emerald-600/20 active:scale-95 flex items-center justify-center gap-2">
+                                            <Plus size={18} /> Simpan Rekening Baru
+                                        </button>
+                                    </form>
+                                </div>
+
+                                {/* Tabel Daftar Rekening */}
+                                <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+                                    <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                        <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                            <CreditCard className="text-blue-500" /> Rekening Terdaftar
+                                        </h3>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase bg-white px-3 py-1 rounded-full border border-slate-200">{banks.length} Rekening</span>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left text-sm whitespace-nowrap md:whitespace-normal">
+                                            <thead className="bg-slate-50/80 text-slate-500 font-black uppercase tracking-widest text-[10px]">
+                                                <tr>
+                                                    <th className="p-6">Provider</th>
+                                                    <th className="p-6">Nomor Akun</th>
+                                                    <th className="p-6">Atas Nama</th>
+                                                    <th className="p-6 text-center">Aksi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {banks.map(bank => (
+                                                    <tr key={bank.id} className="hover:bg-slate-50/50 transition-colors">
+                                                        <td className="p-6">
+                                                            <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest ${bank.provider === 'QRIS' ? 'bg-purple-100 text-purple-700' :
+                                                                    bank.provider === 'VA' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                                                                }`}>
+                                                                {bank.provider}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-6 font-black text-slate-800 text-lg tracking-wider">{bank.account_number}</td>
+                                                        <td className="p-6 text-slate-500 font-bold uppercase text-xs">{bank.account_name}</td>
+                                                        <td className="p-6">
+                                                            <div className="flex justify-center">
+                                                                <button onClick={() => handleDeleteBank(bank.id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors" title="Hapus">
+                                                                    <Trash2 size={20} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {banks.length === 0 && (
+                                                    <tr>
+                                                        <td colSpan="4" className="p-20 text-center text-slate-300">
+                                                            <CreditCard size={48} className="mx-auto mb-4 opacity-20" />
+                                                            <p className="font-bold">Belum ada rekening terdaftar.</p>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {activeTab === 'users' && (
+                        <div className="space-y-8 animate-in fade-in">
+                            {isLoading ? (
+                                <div className="flex flex-col items-center justify-center p-20 text-slate-400">
+                                    <Loader2 className="animate-spin mb-4" size={48} />
+                                    <p className="font-bold tracking-widest text-[10px] uppercase">Mengambil data murid...</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* User Distribution Cards */}
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+                                            <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
+                                                <Users size={28} />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Murid</p>
+                                                <h4 className="text-2xl font-black text-slate-800">{users.length}</h4>
+                                            </div>
+                                        </div>
+                                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+                                            <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center">
+                                                <Crown size={28} />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Member PRO</p>
+                                                <h4 className="text-2xl font-black text-slate-800">{users.filter(u => u.is_pro).length}</h4>
+                                            </div>
+                                        </div>
+                                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+                                            <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
+                                                <Activity size={28} />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Conversion Rate</p>
+                                                <h4 className="text-2xl font-black text-slate-800">
+                                                    {users.length > 0 ? ((users.filter(u => u.is_pro).length / users.length) * 100).toFixed(1) : 0}%
+                                                </h4>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* User Table Panel */}
+                                    <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+                                        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                                            <h3 className="font-bold text-slate-800">Daftar Pengguna Aktif</h3>
+                                            <div className="flex gap-2">
+                                                <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold">{users.length} Total</span>
+                                            </div>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left text-sm whitespace-nowrap md:whitespace-normal">
+                                                <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider">
+                                                    <tr>
+                                                        <th className="p-6">User Profile</th>
+                                                        <th className="p-6">Language Level</th>
+                                                        <th className="p-6">Subscription</th>
+                                                        <th className="p-6">Join Date</th>
+                                                        <th className="p-6">Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {users.map(u => (
+                                                        <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
+                                                            <td className="p-6">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold">
+                                                                        {u.name?.charAt(0).toUpperCase()}
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="font-bold text-slate-800">{u.name}</p>
+                                                                        <p className="text-xs text-slate-400 capitalize">{u.gender}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="p-6">
+                                                                <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-black tracking-tight">
+                                                                    {u.level}
+                                                                </span>
+                                                            </td>
+                                                            <td className="p-6">
+                                                                {u.is_pro ? (
+                                                                    <div className="flex items-center gap-1.5 text-amber-600 font-bold">
+                                                                        <Crown size={14} /> PRO MEMBER
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-slate-400 font-medium">Free Tier</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="p-6 text-slate-500 font-medium">
+                                                                {new Date(u.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                            </td>
+                                                            <td className="p-6">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                                                    <span className="text-xs font-bold text-slate-600">Aktif</span>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                    {users.length === 0 && (
+                                                        <tr>
+                                                            <td colSpan="5" className="p-20 text-center">
+                                                                <div className="flex flex-col items-center gap-2 text-slate-300">
+                                                                    <Users size={48} />
+                                                                    <p className="text-lg font-medium">Belum ada data murid.</p>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
             </main>
         </div>
     );

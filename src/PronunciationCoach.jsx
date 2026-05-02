@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Mic, 
-  MicOff, 
-  Volume2, 
-  RefreshCw, 
-  CheckCircle2, 
-  AlertTriangle, 
+import {
+  Mic,
+  MicOff,
+  Volume2,
+  RefreshCw,
+  CheckCircle2,
+  AlertTriangle,
   Trophy,
   Play,
   Loader2,
@@ -51,19 +51,19 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
     return (
       <div className="h-full flex items-center justify-center p-6 bg-slate-50">
         <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-2xl border border-slate-100 max-w-lg text-center animate-in zoom-in-95 duration-500">
-           <div className="w-24 h-24 bg-gradient-to-tr from-rose-400 to-pink-600 text-white rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-rose-500/20">
-             <Crown size={48} />
-           </div>
-           <h2 className="text-3xl font-black text-slate-800 mb-4">Speaking Coach PRO 👑</h2>
-           <p className="text-slate-500 mb-10 text-lg leading-relaxed">
-             Kamu sudah menggunakan jatah gratis harian (3x latihan). Upgrade ke PRO untuk latihan tanpa batas dengan feedback AI instan!
-           </p>
-           <button 
-             onClick={onUpgrade}
-             className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-all text-lg"
-           >
-             Upgrade Sekarang
-           </button>
+          <div className="w-24 h-24 bg-gradient-to-tr from-rose-400 to-pink-600 text-white rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-rose-500/20">
+            <Crown size={48} />
+          </div>
+          <h2 className="text-3xl font-black text-slate-800 mb-4">Speaking Coach PRO 👑</h2>
+          <p className="text-slate-500 mb-10 text-lg leading-relaxed">
+            Kamu sudah menggunakan jatah gratis harian (3x latihan). Upgrade ke PRO untuk latihan tanpa batas dengan feedback AI instan!
+          </p>
+          <button
+            onClick={onUpgrade}
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-all text-lg"
+          >
+            Upgrade Sekarang
+          </button>
         </div>
       </div>
     );
@@ -77,20 +77,27 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
     setIsLoading(true);
     setAnalysis(null);
     setTranscript('');
-    
+
     try {
       const payload = {
         contents: [{ role: 'user', parts: [{ text: `Berikan saya 1 kalimat latihan pengucapan untuk level ${userProfile.level}. Berikan kalimatnya saja tanpa teks lain.` }] }],
         systemInstruction: { parts: [{ text: "You are a helpful English teacher. ONLY return 1 short, clear practice sentence. No extra text." }] }
       };
 
-      const response = await fetch('http://localhost:3000/api/gemini', {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+      if (!apiKey) {
+        setTargetSentence("⚠️ API Key Gemini belum diatur (VITE_GEMINI_API_KEY).");
+        setIsLoading(false);
+        return;
+      }
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error?.message || "API Error");
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "Hello, how are you today?";
       setTargetSentence(text.trim().replace(/"/g, ''));
     } catch (error) {
@@ -131,17 +138,24 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
         systemInstruction: { parts: [{ text: PRONUNCIATION_PROMPT }] }
       };
 
-      const response = await fetch('http://localhost:3000/api/gemini', {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+      if (!apiKey) {
+        setAnalysis("⚠️ API Key Gemini belum diatur. Tambahkan di file .env Anda.");
+        setIsLoading(false);
+        return;
+      }
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
       const data = await response.json();
+      if (!response.ok) throw new Error(data.error?.message || "API Error");
       const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Error analyzing pronunciation.";
       setAnalysis(aiResponse);
       setUsageCount(prev => prev + 1);
-      
+
       // Auto-save progress if score detected
       const scoreMatch = aiResponse.match(/Score: (\d+)/);
       if (scoreMatch && onComplete) {
@@ -186,25 +200,24 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
         </div>
 
         <div className="flex justify-center gap-4">
-          <button 
+          <button
             onClick={speakSentence}
             className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all active:scale-95"
             title="Dengarkan Contoh"
           >
             <Volume2 size={24} />
           </button>
-          <button 
+          <button
             onClick={toggleRecording}
             disabled={isLoading}
-            className={`p-8 rounded-full transition-all active:scale-90 shadow-2xl ${
-              isRecording 
-                ? 'bg-rose-500 text-white animate-pulse ring-8 ring-rose-100' 
-                : 'bg-white border-4 border-rose-500 text-rose-500 hover:bg-rose-50'
-            }`}
+            className={`p-8 rounded-full transition-all active:scale-90 shadow-2xl ${isRecording
+              ? 'bg-rose-500 text-white animate-pulse ring-8 ring-rose-100'
+              : 'bg-white border-4 border-rose-500 text-rose-500 hover:bg-rose-50'
+              }`}
           >
             {isRecording ? <MicOff size={32} /> : <Mic size={32} />}
           </button>
-          <button 
+          <button
             onClick={generateNewSentence}
             className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all active:scale-95"
             title="Kalimat Baru"
@@ -228,24 +241,24 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
               <Sparkles className="text-yellow-500" /> Hasil Penilaian
             </h3>
             {analysis.match(/Score: (\d+)/) && (
-                <div className="text-2xl font-black text-rose-500 bg-rose-50 px-4 py-2 rounded-2xl border border-rose-100">
-                    {analysis.match(/Score: (\d+)/)[1]}%
-                </div>
+              <div className="text-2xl font-black text-rose-500 bg-rose-50 px-4 py-2 rounded-2xl border border-rose-100">
+                {analysis.match(/Score: (\d+)/)[1]}%
+              </div>
             )}
           </div>
-          
+
           <div className="space-y-4 text-slate-600 leading-relaxed">
-             {analysis.split('\n').map((line, i) => (
-                 <p key={i} className="text-sm md:text-base">{line}</p>
-             ))}
+            {analysis.split('\n').map((line, i) => (
+              <p key={i} className="text-sm md:text-base">{line}</p>
+            ))}
           </div>
 
           <div className="mt-8 flex justify-center">
-            <button 
-                onClick={generateNewSentence}
-                className="bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 px-10 rounded-2xl transition-all shadow-lg shadow-rose-500/20 active:scale-95"
+            <button
+              onClick={generateNewSentence}
+              className="bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 px-10 rounded-2xl transition-all shadow-lg shadow-rose-500/20 active:scale-95"
             >
-                Latihan Kalimat Lain
+              Latihan Kalimat Lain
             </button>
           </div>
         </div>
