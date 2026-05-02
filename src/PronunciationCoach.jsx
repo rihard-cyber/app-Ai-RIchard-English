@@ -90,7 +90,7 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
         setIsLoading(false);
         return;
       }
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -144,7 +144,7 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
         setIsLoading(false);
         return;
       }
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -211,8 +211,8 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
             onClick={toggleRecording}
             disabled={isLoading}
             className={`p-8 rounded-full transition-all active:scale-90 shadow-2xl ${isRecording
-              ? 'bg-rose-500 text-white animate-pulse ring-8 ring-rose-100'
-              : 'bg-white border-4 border-rose-500 text-rose-500 hover:bg-rose-50'
+                ? 'bg-rose-500 text-white animate-pulse ring-8 ring-rose-100'
+                : 'bg-white border-4 border-rose-500 text-rose-500 hover:bg-rose-50'
               }`}
           >
             {isRecording ? <MicOff size={32} /> : <Mic size={32} />}
