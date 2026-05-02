@@ -988,7 +988,7 @@ function ChatModule({
     };
     const personalityInstruction = personalityMap[voicePersonality] || personalityMap.friendly;
 
-    const contents = updatedMessages.filter(msg => !msg.isHidden && msg.role !== 'system').map(msg => ({
+    const contents = updatedMessages.filter(msg => msg.role !== 'system').map(msg => ({
       role: msg.role === 'user' ? 'user' : 'model',
       parts: [{ text: msg.content }]
     }));
