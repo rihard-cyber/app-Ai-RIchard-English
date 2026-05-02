@@ -35,7 +35,7 @@ export function LoginPage({ onLogin }) {
 
   const handleLogoClick = () => {
     logoClickCount.current += 1;
-    if (logoClickCount.current >= 3) {
+    if (logoClickCount.current >= 2) {
       logoClickCount.current = 0;
       setMode('admin_login');
     }

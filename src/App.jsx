@@ -188,7 +188,7 @@ export default function App() {
   const [selectedPlan, setSelectedPlan] = useState({ name: '', price: 0 });
   const [recommendation, setRecommendation] = useState('vocabulary');
   const [isInitializing, setIsInitializing] = useState(true);
-  const [theme, setTheme] = useState('light'); // 'light' or 'dark'
+  const [theme, setTheme] = useState(() => localStorage.getItem('richard_theme') || 'light');
 
   useEffect(() => {
     const ownerMode = localStorage.getItem('owner_mode');
@@ -343,7 +343,11 @@ export default function App() {
     setAuthState('login');
     setUserProfile(DEFAULT_PROFILE);
   };
-  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  const toggleTheme = () => setTheme(prev => {
+    const newTheme = prev === 'light' ? 'dark' : 'light';
+    localStorage.setItem('richard_theme', newTheme);
+    return newTheme;
+  });
 
   const saveProgress = async (skill, score, details = {}) => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -358,7 +362,7 @@ export default function App() {
   const handleLogoClick = () => {
     if (localStorage.getItem('owner_mode') === 'user' || localStorage.getItem('owner_bypass') === 'true') {
       logoClickCount.current += 1;
-      if (logoClickCount.current >= 3) {
+      if (logoClickCount.current >= 2) {
         logoClickCount.current = 0;
         handleLogin('admin');
       }
@@ -455,7 +459,7 @@ export default function App() {
     <div className={`flex h-[100dvh] font-sans overflow-hidden transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b1121] text-slate-200 dark-mode' : 'bg-slate-50 text-slate-800'}`}>
       {isSidebarOpen && <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300" onClick={() => setIsSidebarOpen(false)} />}
       <aside className={`fixed md:relative inset-y-0 left-0 z-50 w-72 md:w-64 bg-[#0f172a] text-slate-300 shadow-2xl md:shadow-none transform transition-transform duration-300 ease-in-out flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <div className="h-16 flex items-center justify-between px-6 bg-[#0b1121]"><h1 onClick={handleLogoClick} title={(localStorage.getItem('owner_mode') === 'user' || localStorage.getItem('owner_bypass') === 'true') ? 'Klik 3x untuk ke Admin' : ''} className="text-xl font-bold tracking-wider flex items-center gap-2 text-white cursor-pointer select-none active:scale-95 transition-transform touch-manipulation"><Sparkles className="text-blue-500" /> RichardMeha<span className="text-blue-500"> AI</span></h1><button className="md:hidden text-slate-400 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button></div>
+        <div className="h-16 flex items-center justify-between px-6 bg-[#0b1121]"><h1 onClick={handleLogoClick} title={(localStorage.getItem('owner_mode') === 'user' || localStorage.getItem('owner_bypass') === 'true') ? 'Klik 2x untuk ke Admin' : ''} className="text-xl font-bold tracking-wider flex items-center gap-2 text-white cursor-pointer select-none active:scale-95 transition-transform touch-manipulation"><Sparkles className="text-blue-500" /> RichardMeha<span className="text-blue-500"> AI</span></h1><button className="md:hidden text-slate-400 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button></div>
         <div className="p-6 border-b border-slate-800 flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-blue-500/20">{userProfile.name.charAt(0)}</div><div className="flex flex-col"><span className="text-base font-semibold text-white">{userProfile.name}</span><span className="text-xs text-blue-400 flex items-center gap-1"><Trophy size={12} /> {userProfile.level}</span></div></div>
         <nav className="flex-1 py-4 px-4 space-y-1 overflow-y-auto custom-scrollbar transform-gpu overscroll-contain">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-2">Menu Utama</p>
@@ -481,7 +485,7 @@ export default function App() {
       </aside>
       <main className="flex-1 flex flex-col h-full w-full relative overflow-hidden">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30 shrink-0 md:hidden shadow-sm">
-          <div className="flex items-center gap-3"><button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors"><Menu size={24} /></button><h2 onClick={handleLogoClick} title={(localStorage.getItem('owner_mode') === 'user' || localStorage.getItem('owner_bypass') === 'true') ? 'Klik 3x untuk ke Admin' : ''} className="text-lg font-semibold text-slate-800 flex items-center gap-2 cursor-pointer select-none active:scale-95 transition-transform touch-manipulation">RichardMeha<span className="text-blue-600"> AI</span></h2></div>
+          <div className="flex items-center gap-3"><button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors"><Menu size={24} /></button><h2 onClick={handleLogoClick} title={(localStorage.getItem('owner_mode') === 'user' || localStorage.getItem('owner_bypass') === 'true') ? 'Klik 2x untuk ke Admin' : ''} className="text-lg font-semibold text-slate-800 flex items-center gap-2 cursor-pointer select-none active:scale-95 transition-transform touch-manipulation">RichardMeha<span className="text-blue-600"> AI</span></h2></div>
           <div className="flex items-center gap-2"><div className="flex items-center gap-1 text-sm font-bold text-orange-500 bg-orange-50 px-3 py-1 rounded-full"><Flame size={16} className="fill-orange-500" /> {userProfile.streak}</div></div>
         </header>
         <div className="flex-1 overflow-y-auto w-full relative bg-slate-50/50 transform-gpu overscroll-y-contain scroll-smooth">{renderContent()}</div>
