@@ -56,7 +56,7 @@ const fetchGeminiWithRotation = async (payload) => {
   for (const key of apiKeys) {
     try {
       if (key.startsWith('gsk_')) {
-        const groqPayload = { ...translateToOpenAIFormat(payload), model: "llama3-70b-8192" };
+        const groqPayload = { ...translateToOpenAIFormat(payload), model: "llama-3.3-70b-versatile" };
         const res = await fetch(`https://api.groq.com/openai/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }, body: JSON.stringify(groqPayload) });
         const data = await res.json();
         if (!res.ok || data.error) throw new Error(data.error?.message || `Groq Error: ${res.status}`);
