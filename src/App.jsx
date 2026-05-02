@@ -120,8 +120,9 @@ SYSTEM: RichardMeha AI – Professional & Friendly English Tutor
 
 You are Richard, a professional, highly encouraging, and friendly English tutor teaching ${userProfile.name}.
 
-== 🧠 LANGUAGE RULE (80% ENGLISH / 20% INDONESIAN) ==
-- You MUST speak PRIMARILY in English (around 80%) to immerse the user in the language.
+== 🧠 STRICT LANGUAGE RULE (80% ENGLISH / 20% INDONESIAN) ==
+- You MUST speak PRIMARILY in English (at least 80%) in EVERY response to immerse the user in the language.
+- NEVER respond fully in Indonesian. Even if the user speaks Indonesian, your reply MUST be mostly in English.
 - Use Indonesian (20%) ONLY to explain difficult concepts, translate complex words, or if the user is struggling.
 - Example: "That's a great effort! However, remember that we use 'was' for the past tense. Jadi, kalau kejadiannya kemarin, pakai 'was' ya."
 
@@ -410,7 +411,7 @@ export default function App() {
             },
             'daily': {
               topic: 'Daily Routines',
-              msg: "Hmm... pagi Richard! 😊\nHari ini kita ngobrol santai aja soal 'Daily Routines'.\n\nBiasanya kalau pagi-pagi gini kamu ngapain dulu? Langsung cek HP atau kopi dulu? 😄",
+              msg: "Good morning! 😊\nToday we are going to talk about 'Daily Routines'.\n\nWhat do you usually do first in the morning? Langsung cek HP atau minum kopi dulu? 😄",
               suggestions: ["I check my phone", "I have coffee", "I take a shower", "I usually wake up at..."]
             }
           }
@@ -514,7 +515,7 @@ const LISTENING_TOPICS = mapTopics(LISTENING_RAW);
 const CONVERSATION_CHARACTERS = CHARS_RAW.map(c => ({
   name: c.name,
   role: c.topic,
-  prompt: `Berperanlah sebagai ${c.name} dan bicarakan tentang ${c.topic}.`
+  prompt: `Act as ${c.name} and talk about ${c.topic}. YOU MUST SPEAK PRIMARILY IN ENGLISH, just like the real person.`
 }));
 
 
@@ -705,7 +706,7 @@ function ChatModule({
   module,
   basePrompt,
   topic = '',
-  startMessage = 'Halo! Richard di sini. Siap buat ngobrol santai hari ini? 😊',
+  startMessage = "Hello! Richard here. Are you ready to practice your English today? 😊",
   hideInputAtStart = false,
   onComplete,
   onBack,
@@ -998,8 +999,8 @@ function ChatModule({
 
     const lang = detectLanguage(text);
     const modeInstruction = lang === 'id'
-      ? "\n(Note: User used Indonesian. Encourage them to try in English, and provide the English translation for what they said.)"
-      : "\n(Note: User used English. If they made grammatical or phrasing mistakes, gently correct them using ❌/✅ format before continuing the conversation.)";
+      ? "\n(Note: User used Indonesian. You MUST REPLY PRIMARILY IN ENGLISH. Encourage them to try answering in English, and provide the English translation for what they just said.)"
+      : "\n(Note: User used English. You MUST REPLY IN ENGLISH. If they made grammatical or phrasing mistakes, gently correct them using ❌/✅ format before continuing.)";
 
     const newUserMsg = { role: 'user', content: text, isHidden: isSystemInitiated && hideInputAtStart };
     const updatedMessages = [...messages, newUserMsg];
@@ -1193,7 +1194,7 @@ function ChatModule({
     if (messages.length === 0 && hideInputAtStart) {
       sendMessage(startMessage, true);
     } else if (messages.length === 0 && topic) {
-      sendMessage(`TOPIK HARI INI: ${topic}. Mulai sesi pembelajaran tentang "${topic}" sekarang!`, true);
+      sendMessage(`TODAY'S TOPIC: ${topic}. Let's start our learning session about "${topic}" now!`, true);
     }
   }, []);
 
