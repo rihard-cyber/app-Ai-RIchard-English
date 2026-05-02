@@ -378,7 +378,7 @@ export default function App() {
     switch (activeTab) {
       case 'home':
         return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} recommendation={recommendation} onStartGoal={(id) => { setActiveGoalId(id); setActiveTab('goal_session'); }} onUpgrade={() => triggerUpgrade()} />;
-      case 'progress': return <ProgressDashboard userProfile={userProfile} />;
+      case 'progress': return <ProgressDashboard userProfile={userProfile} onNavigate={handleTabChange} />;
       case 'assessment': return <LevelTest onComplete={handleAssessmentComplete} />;
       case 'vocabulary': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Vocabulary" basePrompt={prompts.vocabulary} icon={<BookA size={24} />} color="text-indigo-600" bg="bg-indigo-100" onComplete={(score) => saveProgress('vocabulary', score)} isPro={userProfile.is_pro} topicsList={VOCABULARY_TOPICS} onUpgrade={() => triggerUpgrade()} />;
       case 'speaking': return <PronunciationCoach userProfile={userProfile} isPro={userProfile.is_pro} onComplete={(score) => saveProgress('speaking', score)} onUpgrade={() => triggerUpgrade()} />;
@@ -726,6 +726,9 @@ function ChatModule({
   const recognitionRef = useRef(null);
   const hasInitialized = useRef(false);
 
+  const lastSentTextRef = useRef('');
+  const lastSentTimeRef = useRef(0);
+  const currentTranscriptRef = useRef('');
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -823,39 +826,11 @@ function ChatModule({
     return engScore > indoScore ? "en" : "id";
   };
 
-  const handleTTS = async (text) => {
+  const handleTTS = (text) => {
     if (!text) return;
     setIsSpeaking(true);
-    try {
-      // Remove hidden markings, emojis, bold stars, and weird brackets to prevent stuttering
-      const cleanText = text.replace(/❌[\s\S]*?✅/g, '').replace(/[✅❌*#_\\]/g, '').replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').substring(0, 600).trim();
-
-      const lang = detectLanguage(cleanText);
-
-      // Try backend TTS first (Gemini natural voice)
-      const res = await fetch('http://localhost:3000/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleanText, voiceName: lang === 'id' ? 'id-ID' : 'en-US', lang: lang })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.audioData) {
-          window.speechSynthesis.cancel();
-          const audio = new Audio(`data:${data.mimeType || 'audio/wav'};base64,${data.audioData}`);
-          audio.onended = () => setIsSpeaking(false);
-          audio.onerror = () => fallbackTTS(cleanText);
-          audio.play();
-          return;
-        }
-      }
-      // Fallback to browser TTS if backend unavailable
-      fallbackTTS(cleanText);
-    } catch (err) {
-      console.warn("Backend TTS unavailable, using browser TTS", err);
-      fallbackTTS(text);
-    }
+    const cleanText = text.replace(/❌[\s\S]*?✅/g, '').replace(/[✅❌*#_\\]/g, '').replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').substring(0, 600).trim();
+    fallbackTTS(cleanText);
   };
 
   const fallbackTTS = (text) => {
@@ -889,6 +864,12 @@ function ChatModule({
       recognitionRef.current?.stop();
       setIsRecording(false);
       setMicStatus('processing');
+      if (currentTranscriptRef.current.trim()) {
+        sendMessage(currentTranscriptRef.current);
+        currentTranscriptRef.current = '';
+      } else if (inputValue.trim()) {
+        sendMessage(inputValue);
+      }
     } else {
       startRecording();
     }
@@ -924,6 +905,7 @@ function ChatModule({
       }
 
       setMicStatus('detected');
+      currentTranscriptRef.current = finalTranscript || interimTranscript;
 
       if (interimTranscript) {
         setInputValue(interimTranscript);
@@ -932,6 +914,7 @@ function ChatModule({
       if (finalTranscript) {
         setInputValue(finalTranscript);
         sendMessage(finalTranscript);
+        currentTranscriptRef.current = '';
       }
     };
 
@@ -959,6 +942,14 @@ function ChatModule({
 
   const sendMessage = async (text, isSystemInitiated = false) => {
     if (!text.trim()) return;
+
+    // Pencegah AI membalas ganda (Anti-Duplicate System)
+    const now = Date.now();
+    if (!isSystemInitiated && text === lastSentTextRef.current && now - lastSentTimeRef.current < 2000) {
+      return;
+    }
+    lastSentTextRef.current = text;
+    lastSentTimeRef.current = now;
 
     if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     setSuggestions([]);

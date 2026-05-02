@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
-export default function ProgressDashboard({ userProfile }) {
+export default function ProgressDashboard({ userProfile, onNavigate }) {
   const [stats, setStats] = useState({
     speaking: 0,
     writing: 0,
@@ -195,8 +195,8 @@ export default function ProgressDashboard({ userProfile }) {
                 </div>
               ))}
             </div>
-            <button className="w-full mt-6 py-3 text-sm font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-2xl transition-all flex items-center justify-center gap-2">
-              View All History <ArrowUpRight size={16} />
+            <button onClick={() => onNavigate && onNavigate('home')} className="w-full mt-6 py-3 text-sm font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2">
+              Kembali ke Beranda Belajar <ArrowUpRight size={16} />
             </button>
           </div>
 

@@ -1,487 +1,376 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw, Menu, X, User, Zap } from 'lucide-react';
-import { supabase } from './supabaseClient';
+import {
+    LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw, Menu, X, User, Zap
 
 export default function AdminDashboard({ onLogout, onSwitchToUser }) {
-    const [activeTab, setActiveTab] = useState('overview');
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [stats, setStats] = useState({ totalUsers: 0, proUsers: 0, revenue: 0, totalTx: 0 });
-    const [transactions, setTransactions] = useState([]);
-    const [banks, setBanks] = useState([]);
-    const [users, setUsers] = useState([]); // New User State
-    const [isLoading, setIsLoading] = useState(true);
+        const [activeTab, setActiveTab] = useState('overview');
+        const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+        const [stats, setStats] = useState({ totalUsers: 0, proUsers: 0, revenue: 0, totalTx: 0 });
+        const [transactions, setTransactions] = useState([]);
+        const [banks, setBanks] = useState([]);
+        const [users, setUsers] = useState([]); // New User State
+        const [isLoading, setIsLoading] = useState(true);
 
-    // New Bank State
-    const [newBank, setNewBank] = useState({ provider: 'BCA', account_number: '', account_name: '' });
+        // New Bank State
+        const [newBank, setNewBank] = useState({ provider: 'BCA', account_number: '', account_name: '' });
 
-    // API Key State
-    const [apiKeyInput, setApiKeyInput] = useState(() => localStorage.getItem('gemini_api_key') || '');
-    const handleSaveApiKey = () => {
-        localStorage.setItem('gemini_api_key', apiKeyInput);
-        alert('✅ API Key Gemini berhasil disimpan di perangkat ini!');
-    };
+        // API Key State
+        const [apiKeyInput, setApiKeyInput] = useState(() => localStorage.getItem('gemini_api_key') || '');
+        const [saveKeySuccess, setSaveKeySuccess] = useState(false);
+        const handleSaveApiKey = () => {
+            const cleanedKey = apiKeyInput.trim();
+            localStorage.setItem('gemini_api_key', cleanedKey);
+            setApiKeyInput(cleanedKey);
+            setSaveKeySuccess(true);
+            setTimeout(() => setSaveKeySuccess(false), 3000);
+        };
 
-    const logoClickCount = useRef(0);
-    const logoClickTimeout = useRef(null);
-    const handleLogoClick = () => {
-        logoClickCount.current += 1;
-        if (logoClickCount.current >= 2) {
-            logoClickCount.current = 0;
-            onSwitchToUser();
-        }
-        clearTimeout(logoClickTimeout.current);
-        logoClickTimeout.current = setTimeout(() => {
-            logoClickCount.current = 0;
-        }, 1500);
-    };
+        const logoClickCount = useRef(0);
+        const logoClickTimeout = useRef(null);
+        const handleLogoClick = () => {
+            logoClickCount.current += 1;
+            if (logoClickCount.current >= 2) {
+                logoClickCount.current = 0;
+                onSwitchToUser();
+            }
+            clearTimeout(logoClickTimeout.current);
+            logoClickTimeout.current = setTimeout(() => {
+                logoClickCount.current = 0;
+            }, 1500);
+        };
 
-    useEffect(() => {
-        fetchData();
-    }, [activeTab]); // Refetch every time tab changes
-
-    const fetchData = async () => {
-        setIsLoading(true);
-        try {
-            // Fetch stats
-            const { count: totalUsers } = await supabase.from('user_profiles').select('*', { count: 'exact', head: true });
-            const { count: proUsers } = await supabase.from('user_profiles').select('*', { count: 'exact', head: true }).eq('is_pro', true);
-
-            // Fetch Transactions
-            const { data: txData } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
-            setTransactions(txData || []);
-
-            const revenue = (txData || []).filter(tx => tx.status === 'approved').reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
-
-            setStats({
-                totalUsers: totalUsers || 0,
-                proUsers: proUsers || 0,
-                revenue: revenue,
-                totalTx: txData?.length || 0
-            });
-
-            // Fetch Banks
-            const { data: bankData } = await supabase.from('payment_methods').select('*').order('created_at', { ascending: true });
-            setBanks(bankData || []);
-
-            // Fetch All Users
-            const { data: userData } = await supabase.from('user_profiles').select('*').order('created_at', { ascending: false });
-            setUsers(userData || []);
-
-        } catch (error) {
-            console.error("Error fetching admin data:", error);
-        }
-        setIsLoading(false);
-    };
-
-    const handleAccPayment = async (txId, userId) => {
-        try {
-            // Update transaction status
-            await supabase.from('transactions').update({ status: 'approved' }).eq('id', txId);
-            // Upgrade User to PRO
-            await supabase.from('user_profiles').update({ is_pro: true }).eq('id', userId);
-            alert("Pembayaran Berhasil di ACC! User sekarang adalah PRO.");
+        useEffect(() => {
             fetchData();
-        } catch (error) {
-            console.error(error);
-            alert("Gagal menyetujui pembayaran.");
-        }
-    };
+        }, [activeTab]); // Refetch every time tab changes
 
-    const handleRejectPayment = async (txId) => {
-        try {
-            await supabase.from('transactions').update({ status: 'rejected' }).eq('id', txId);
-            alert("Pembayaran Ditolak.");
-            fetchData();
-        } catch (error) {
-            console.error(error);
-            alert("Gagal menolak pembayaran.");
-        }
-    };
+        const fetchData = async () => {
+            setIsLoading(true);
+            try {
+                // Fetch stats
+                const { count: totalUsers } = await supabase.from('user_profiles').select('*', { count: 'exact', head: true });
+                const { count: proUsers } = await supabase.from('user_profiles').select('*', { count: 'exact', head: true }).eq('is_pro', true);
 
-    const handleAddBank = async (e) => {
-        e.preventDefault();
-        if (!newBank.account_number || !newBank.account_name) return;
+                // Fetch Transactions
+                const { data: txData } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
+                setTransactions(txData || []);
 
-        try {
-            console.log("Mencoba simpan rekening:", newBank);
-            const { error } = await supabase.from('payment_methods').insert([{
-                provider: newBank.provider,
-                account_number: newBank.account_number,
-                account_name: newBank.account_name,
-                is_active: true
-            }]);
+                const revenue = (txData || []).filter(tx => tx.status === 'approved').reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
 
-            if (error) throw error;
+                setStats({
+                    totalUsers: totalUsers || 0,
+                    proUsers: proUsers || 0,
+                    revenue: revenue,
+                    totalTx: txData?.length || 0
+                });
 
-            setNewBank({ provider: 'BCA', account_number: '', account_name: '' });
-            alert("✅ Berhasil! Rekening " + newBank.provider + " sudah tersimpan dan aktif.");
-            fetchData();
-        } catch (error) {
-            console.error("Gagal simpan:", error);
-            alert("❌ Gagal Simpan: " + (error.message || "Masalah koneksi database"));
-        }
-    };
+                // Fetch Banks
+                const { data: bankData } = await supabase.from('payment_methods').select('*').order('created_at', { ascending: true });
+                setBanks(bankData || []);
 
-    const handleDeleteBank = async (id) => {
-        if (window.confirm('Hapus rekening ini?')) {
-            await supabase.from('payment_methods').delete().eq('id', id);
-            fetchData();
-        }
-    };
+                // Fetch All Users
+                const { data: userData } = await supabase.from('user_profiles').select('*').order('created_at', { ascending: false });
+                setUsers(userData || []);
 
-    if (isLoading) return <div className="h-screen flex items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-emerald-600" size={40} /></div>;
+            } catch (error) {
+                console.error("Error fetching admin data:", error);
+            }
+            setIsLoading(false);
+        };
 
-    return (
-        <div className="flex h-[100dvh] bg-slate-50 font-sans overflow-hidden">
-            {/* Mobile Sidebar Overlay */}
-            {isSidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden transition-opacity"
-                    onClick={() => setIsSidebarOpen(false)}
-                />
-            )}
+        const handleAccPayment = async (txId, userId) => {
+            try {
+                // Update transaction status
+                await supabase.from('transactions').update({ status: 'approved' }).eq('id', txId);
+                // Upgrade User to PRO
+                await supabase.from('user_profiles').update({ is_pro: true }).eq('id', userId);
+                alert("Pembayaran Berhasil di ACC! User sekarang adalah PRO.");
+                fetchData();
+            } catch (error) {
+                console.error(error);
+                alert("Gagal menyetujui pembayaran.");
+            }
+        };
 
-            {/* Sidebar */}
-            <aside className={`fixed md:relative z-50 w-64 h-full bg-slate-900 text-slate-300 flex flex-col transition-transform transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-                <div className="p-6 border-b border-slate-800 flex items-center justify-between">
-                    <h1
-                        className="text-xl font-black text-white flex items-center gap-2 cursor-pointer select-none touch-manipulation"
-                        onClick={handleLogoClick}
-                        title="Klik 2x untuk beralih ke Mode Pengguna"
-                    >
-                        <Shield className="text-emerald-500" /> Admin Panel
-                    </h1>
-                    <button className="md:hidden text-slate-400 hover:text-white" onClick={() => setIsSidebarOpen(false)}>
-                        <X size={24} />
-                    </button>
-                </div>
-                <nav className="flex-1 p-4 space-y-2 overflow-y-auto transform-gpu overscroll-contain">
-                    <SidebarItem icon={<LayoutDashboard size={20} />} label="Overview" active={activeTab === 'overview'} onClick={() => { setActiveTab('overview'); setIsSidebarOpen(false); }} />
-                    <SidebarItem icon={<Activity size={20} />} label="Transaksi Pro" active={activeTab === 'transactions'} onClick={() => { setActiveTab('transactions'); setIsSidebarOpen(false); }} badge={transactions.filter(t => t.status === 'pending').length} />
-                    <SidebarItem icon={<CreditCard size={20} />} label="Data Rekening" active={activeTab === 'banks'} onClick={() => { setActiveTab('banks'); setIsSidebarOpen(false); }} />
-                    <SidebarItem icon={<Users size={20} />} label="Data Pengguna" active={activeTab === 'users'} onClick={() => { setActiveTab('users'); setIsSidebarOpen(false); }} />
-                </nav>
-                <div className="p-4 border-t border-slate-800 space-y-2">
-                    <button onClick={onSwitchToUser} className="w-full flex items-center gap-3 px-4 py-3 text-blue-400 hover:bg-blue-500/10 rounded-xl transition-colors font-medium">
-                        <User size={20} /> Mode Pengguna
-                    </button>
-                    <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors font-medium">
-                        <LogOut size={20} /> Keluar
-                    </button>
-                </div>
-            </aside>
+        const handleRejectPayment = async (txId) => {
+            try {
+                await supabase.from('transactions').update({ status: 'rejected' }).eq('id', txId);
+                alert("Pembayaran Ditolak.");
+                fetchData();
+            } catch (error) {
+                console.error(error);
+                alert("Gagal menolak pembayaran.");
+            }
+        };
 
-            {/* Main Content */}
-            <main className="flex-1 flex flex-col h-full w-full overflow-hidden relative">
-                {/* Mobile Header */}
-                <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30 shrink-0 md:hidden shadow-sm">
-                    <div className="flex items-center gap-3">
-                        <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors">
-                            <Menu size={24} />
-                        </button>
+        const handleAddBank = async (e) => {
+            e.preventDefault();
+            if (!newBank.account_number || !newBank.account_name) return;
+
+            try {
+                console.log("Mencoba simpan rekening:", newBank);
+                const { error } = await supabase.from('payment_methods').insert([{
+                    provider: newBank.provider,
+                    account_number: newBank.account_number,
+                    account_name: newBank.account_name,
+                    is_active: true
+                }]);
+
+                if (error) throw error;
+
+                setNewBank({ provider: 'BCA', account_number: '', account_name: '' });
+                alert("✅ Berhasil! Rekening " + newBank.provider + " sudah tersimpan dan aktif.");
+                fetchData();
+            } catch (error) {
+                console.error("Gagal simpan:", error);
+                alert("❌ Gagal Simpan: " + (error.message || "Masalah koneksi database"));
+            }
+        };
+
+        const handleDeleteBank = async (id) => {
+            if (window.confirm('Hapus rekening ini?')) {
+                await supabase.from('payment_methods').delete().eq('id', id);
+                fetchData();
+            }
+        };
+
+        if (isLoading) return <div className="h-screen flex items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-emerald-600" size={40} /></div>;
+
+        return (
+            <div className="flex h-[100dvh] bg-slate-50 font-sans overflow-hidden">
+                {/* Mobile Sidebar Overlay */}
+                {isSidebarOpen && (
+                    <div
+                        className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden transition-opacity"
+                        onClick={() => setIsSidebarOpen(false)}
+                    />
+                )}
+
+                {/* Sidebar */}
+                <aside className={`fixed md:relative z-50 w-64 h-full bg-slate-900 text-slate-300 flex flex-col transition-transform transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+                    <div className="p-6 border-b border-slate-800 flex items-center justify-between">
                         <h1
-                            className="text-lg font-bold text-slate-800 flex items-center gap-2 cursor-pointer select-none touch-manipulation"
+                            className="text-xl font-black text-white flex items-center gap-2 cursor-pointer select-none touch-manipulation"
                             onClick={handleLogoClick}
                             title="Klik 2x untuk beralih ke Mode Pengguna"
                         >
-                            <Shield className="text-emerald-500" size={20} /> Admin
+                            <Shield className="text-emerald-500" /> Admin Panel
                         </h1>
-                    </div>
-                </header>
-
-                <div className="flex-1 overflow-y-auto p-4 md:p-8 w-full transform-gpu overscroll-y-contain scroll-smooth">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                        <div>
-                            <h1 className="text-3xl font-black text-slate-800 tracking-tight capitalize">{activeTab.replace('transactions', 'Transaksi Pro').replace('banks', 'Data Rekening').replace('users', 'Data Pengguna')} Dashboard</h1>
-                            <p className="text-slate-500 font-medium">Selamat datang kembali di pusat kendali RichardMeha AI.</p>
-                        </div>
-                        <button
-                            onClick={fetchData}
-                            disabled={isLoading}
-                            className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-xs font-black text-slate-600 hover:bg-slate-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
-                        >
-                            <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} /> REFRESH DATA
+                        <button className="md:hidden text-slate-400 hover:text-white" onClick={() => setIsSidebarOpen(false)}>
+                            <X size={24} />
                         </button>
                     </div>
+                    <nav className="flex-1 p-4 space-y-2 overflow-y-auto transform-gpu overscroll-contain">
+                        <SidebarItem icon={<LayoutDashboard size={20} />} label="Overview" active={activeTab === 'overview'} onClick={() => { setActiveTab('overview'); setIsSidebarOpen(false); }} />
+                        <SidebarItem icon={<Activity size={20} />} label="Transaksi Pro" active={activeTab === 'transactions'} onClick={() => { setActiveTab('transactions'); setIsSidebarOpen(false); }} badge={transactions.filter(t => t.status === 'pending').length} />
+                        <SidebarItem icon={<CreditCard size={20} />} label="Data Rekening" active={activeTab === 'banks'} onClick={() => { setActiveTab('banks'); setIsSidebarOpen(false); }} />
+                        <SidebarItem icon={<Users size={20} />} label="Data Pengguna" active={activeTab === 'users'} onClick={() => { setActiveTab('users'); setIsSidebarOpen(false); }} />
+                    </nav>
+                    <div className="p-4 border-t border-slate-800 space-y-2">
+                        <button onClick={onSwitchToUser} className="w-full flex items-center gap-3 px-4 py-3 text-blue-400 hover:bg-blue-500/10 rounded-xl transition-colors font-medium">
+                            <User size={20} /> Mode Pengguna
+                        </button>
+                        <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors font-medium">
+                            <LogOut size={20} /> Keluar
+                        </button>
+                    </div>
+                </aside>
 
-                    {activeTab === 'overview' && (
-                        <div className="space-y-8 animate-in fade-in">
-                            {/* Stats Cards */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                <StatCard title="Total Pengguna" value={stats.totalUsers} icon={<Users />} color="bg-blue-500" />
-                                <SubStatCard title="Pengguna PRO" value={stats.proUsers} icon={<CheckCircle />} color="text-emerald-500" />
-                                <StatCard title="Dana Masuk (Rp)" value={stats.revenue.toLocaleString('id-ID')} icon={<ArrowDownRight />} color="bg-emerald-500" />
-                                <StatCard title="Total Transaksi" value={stats.totalTx} icon={<Activity />} color="bg-purple-500" />
-                            </div>
-
-                            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                                <h3 className="font-bold text-slate-800 mb-4">Grafik Pertumbuhan (Simulasi)</h3>
-                                <div className="h-64 flex items-end gap-2 md:gap-4 w-full border-b border-slate-100 pb-2">
-                                    {[40, 70, 45, 90, 65, 120, 100].map((val, i) => (
-                                        <div key={i} className="w-full bg-blue-100 hover:bg-blue-500 transition-colors rounded-t-md relative group flex flex-col justify-end" style={{ height: `${(val / 120) * 100}%` }}>
-                                            <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-lg">{val} Users</div>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="flex justify-between text-xs text-slate-400 mt-2 font-bold uppercase"><span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span><span>Min</span></div>
-                            </div>
-
-                            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm mt-8">
-                                <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Zap className="text-blue-500" /> Konfigurasi AI (API Key)</h3>
-                                <p className="text-xs text-slate-500 mb-4">Masukkan API Key dari <b>Google Gemini</b> (AIza...), <b>Groq</b> (gsk_...), atau <b>OpenAI</b> (sk-...).<br /><b>Tips Lintas-AI:</b> Masukkan banyak API Key sekaligus pisahkan dengan koma (,). Sistem otomatis mengubah koneksi model/AI provider saat limit habis.</p>
-                                <div className="flex flex-col sm:flex-row gap-2">
-                                    <input
-                                        type="password"
-                                        value={apiKeyInput}
-                                        onChange={(e) => setApiKeyInput(e.target.value)}
-                                        placeholder="AIzaSy..., gsk_..., sk-..."
-                                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono"
-                                    />
-                                    <button onClick={handleSaveApiKey} className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 active:scale-95 transition-all">Simpan</button>
-                                </div>
-                            </div>
+                {/* Main Content */}
+                <main className="flex-1 flex flex-col h-full w-full overflow-hidden relative">
+                    {/* Mobile Header */}
+                    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30 shrink-0 md:hidden shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors">
+                                <Menu size={24} />
+                            </button>
+                            <h1
+                                className="text-lg font-bold text-slate-800 flex items-center gap-2 cursor-pointer select-none touch-manipulation"
+                                onClick={handleLogoClick}
+                                title="Klik 2x untuk beralih ke Mode Pengguna"
+                            >
+                                <Shield className="text-emerald-500" size={20} /> Admin
+                            </h1>
                         </div>
-                    )}
+                    </header>
 
-                    {activeTab === 'transactions' && (
-                        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in">
-                            <div className="overflow-x-auto transform-gpu overscroll-x-contain scroll-smooth pb-2">
-                                <table className="w-full text-left text-sm whitespace-nowrap md:whitespace-normal">
-                                    <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider">
-                                        <tr>
-                                            <th className="p-4">Tanggal</th>
-                                            <th className="p-4">User</th>
-                                            <th className="p-4">Paket</th>
-                                            <th className="p-4">Nominal</th>
-                                            <th className="p-4">Status</th>
-                                            <th className="p-4 text-center">Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {transactions.map(tx => (
-                                            <tr key={tx.id} className="hover:bg-slate-50/50">
-                                                <td className="p-4 text-slate-600">{new Date(tx.created_at).toLocaleDateString('id-ID')}</td>
-                                                <td className="p-4 font-bold text-slate-800">{tx.user_name || 'User'}</td>
-                                                <td className="p-4 text-blue-600 font-medium">{tx.plan_name}</td>
-                                                <td className="p-4 font-bold text-emerald-600">Rp {Number(tx.amount).toLocaleString('id-ID')}</td>
-                                                <td className="p-4">
-                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${tx.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : tx.status === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>{tx.status}</span>
-                                                </td>
-                                                <td className="p-4 flex justify-center gap-2">
-                                                    {tx.status === 'pending' ? (
-                                                        <>
-                                                            <button onClick={() => handleAccPayment(tx.id, tx.user_id)} className="p-2 bg-emerald-100 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-colors" title="ACC Pembayaran"><CheckCircle size={18} /></button>
-                                                            <button onClick={() => handleRejectPayment(tx.id)} className="p-2 bg-rose-100 text-rose-600 hover:bg-rose-600 hover:text-white rounded-lg transition-colors" title="Tolak"><XCircle size={18} /></button>
-                                                        </>
-                                                    ) : (
-                                                        <span className="text-xs text-slate-400 italic">Selesai</span>
-                                                    )}
-                                                </td>
-                                            </tr>
+                    <div className="flex-1 overflow-y-auto p-4 md:p-8 w-full transform-gpu overscroll-y-contain scroll-smooth">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                            <div>
+                                <h1 className="text-3xl font-black text-slate-800 tracking-tight capitalize">{activeTab.replace('transactions', 'Transaksi Pro').replace('banks', 'Data Rekening').replace('users', 'Data Pengguna')} Dashboard</h1>
+                                <p className="text-slate-500 font-medium">Selamat datang kembali di pusat kendali RichardMeha AI.</p>
+                            </div>
+                            <button
+                                onClick={fetchData}
+                                disabled={isLoading}
+                                className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2.5 rounded-xl text-xs font-black text-slate-600 hover:bg-slate-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                            >
+                                <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} /> REFRESH DATA
+                            </button>
+                        </div>
+
+                        {activeTab === 'overview' && (
+                            <div className="space-y-8 animate-in fade-in">
+                                {/* Stats Cards */}
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                    <StatCard title="Total Pengguna" value={stats.totalUsers} icon={<Users />} color="bg-blue-500" />
+                                    <SubStatCard title="Pengguna PRO" value={stats.proUsers} icon={<CheckCircle />} color="text-emerald-500" />
+                                    <StatCard title="Dana Masuk (Rp)" value={stats.revenue.toLocaleString('id-ID')} icon={<ArrowDownRight />} color="bg-emerald-500" />
+                                    <StatCard title="Total Transaksi" value={stats.totalTx} icon={<Activity />} color="bg-purple-500" />
+                                </div>
+
+                                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                                    <h3 className="font-bold text-slate-800 mb-4">Grafik Pertumbuhan (Simulasi)</h3>
+                                    <div className="h-64 flex items-end gap-2 md:gap-4 w-full border-b border-slate-100 pb-2">
+                                        {[40, 70, 45, 90, 65, 120, 100].map((val, i) => (
+                                            <div key={i} className="w-full bg-blue-100 hover:bg-blue-500 transition-colors rounded-t-md relative group flex flex-col justify-end" style={{ height: `${(val / 120) * 100}%` }}>
+                                                <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-lg">{val} Users</div>
+                                            </div>
                                         ))}
-                                        {transactions.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-slate-400">Belum ada data transaksi.</td></tr>}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
+                                    </div>
+                                    <div className="flex justify-between text-xs text-slate-400 mt-2 font-bold uppercase"><span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span><span>Min</span></div>
+                                </div>
 
-                    {activeTab === 'banks' && (
-                        <div className="space-y-8 animate-in fade-in">
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                {/* Form Tambah */}
-                                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm h-fit">
-                                    <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
-                                        <Plus className="text-emerald-500" /> Tambah Rekening
-                                    </h3>
-                                    <form onSubmit={handleAddBank} className="space-y-5">
-                                        <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Provider Pembayaran</label>
-                                            <select value={newBank.provider} onChange={e => setNewBank({ ...newBank, provider: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm font-bold">
-                                                <option value="BCA">BCA (Bank Central Asia)</option>
-                                                <option value="BRI">BRI (Bank Rakyat Indonesia)</option>
-                                                <option value="MANDIRI">Mandiri (Bank Mandiri)</option>
-                                                <option value="VA">Virtual Account (VA)</option>
-                                                <option value="QRIS">QRIS / Barcode</option>
-                                                <option value="DANA">DANA (E-Wallet)</option>
-                                                <option value="GOPAY">GoPay (E-Wallet)</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Nomor Rekening / HP / VA</label>
-                                            <input type="text" value={newBank.account_number} onChange={e => setNewBank({ ...newBank, account_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm font-bold" placeholder="Contoh: 123456789" required />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Atas Nama (A.N)</label>
-                                            <input type="text" value={newBank.account_name} onChange={e => setNewBank({ ...newBank, account_name: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm font-bold" placeholder="Contoh: RICHARD MEHA" required />
-                                        </div>
-                                        <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-emerald-600/20 active:scale-95 flex items-center justify-center gap-2">
-                                            <Plus size={18} /> Simpan Rekening Baru
+                                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm mt-8">
+                                    <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Zap className="text-blue-500" /> Konfigurasi AI (API Key)</h3>
+                                    <p className="text-xs text-slate-500 mb-4">Masukkan API Key dari <b>Google Gemini</b> (AIza...), <b>Groq</b> (gsk_...), atau <b>OpenAI</b> (sk-...).<br /><b>Tips Lintas-AI:</b> Masukkan banyak API Key sekaligus pisahkan dengan koma (,). Sistem otomatis mengubah koneksi model/AI provider saat limit habis.</p>
+                                    <div className="flex flex-col sm:flex-row gap-2">
+                                        <input
+                                            type="password"
+                                            value={apiKeyInput}
+                                            onChange={(e) => setApiKeyInput(e.target.value)}
+                                            placeholder="AIzaSy..., gsk_..., sk-..."
+                                            className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono"
+                                        />
+                                        <button onClick={handleSaveApiKey} className={`${saveKeySuccess ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-blue-600 hover:bg-blue-700'} text-white px-6 py-3 rounded-xl font-bold active:scale-95 transition-all min-w-[120px] flex justify-center items-center`}>
+                                            {saveKeySuccess ? 'Tersimpan ✅' : 'Simpan'}
                                         </button>
-                                    </form>
-                                </div>
-
-                                {/* Tabel Daftar Rekening */}
-                                <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
-                                    <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                                        <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                                            <CreditCard className="text-blue-500" /> Rekening Terdaftar
-                                        </h3>
-                                        <span className="text-[10px] font-black text-slate-400 uppercase bg-white px-3 py-1 rounded-full border border-slate-200">{banks.length} Rekening</span>
-                                    </div>
-                                    <div className="overflow-x-auto transform-gpu overscroll-x-contain scroll-smooth pb-2">
-                                        <table className="w-full text-left text-sm whitespace-nowrap md:whitespace-normal">
-                                            <thead className="bg-slate-50/80 text-slate-500 font-black uppercase tracking-widest text-[10px]">
-                                                <tr>
-                                                    <th className="p-6">Provider</th>
-                                                    <th className="p-6">Nomor Akun</th>
-                                                    <th className="p-6">Atas Nama</th>
-                                                    <th className="p-6 text-center">Aksi</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-100">
-                                                {banks.map(bank => (
-                                                    <tr key={bank.id} className="hover:bg-slate-50/50 transition-colors">
-                                                        <td className="p-6">
-                                                            <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest ${bank.provider === 'QRIS' ? 'bg-purple-100 text-purple-700' :
-                                                                bank.provider === 'VA' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
-                                                                }`}>
-                                                                {bank.provider}
-                                                            </span>
-                                                        </td>
-                                                        <td className="p-6 font-black text-slate-800 text-lg tracking-wider">{bank.account_number}</td>
-                                                        <td className="p-6 text-slate-500 font-bold uppercase text-xs">{bank.account_name}</td>
-                                                        <td className="p-6">
-                                                            <div className="flex justify-center">
-                                                                <button onClick={() => handleDeleteBank(bank.id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors" title="Hapus">
-                                                                    <Trash2 size={20} />
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                                {banks.length === 0 && (
-                                                    <tr>
-                                                        <td colSpan="4" className="p-20 text-center text-slate-300">
-                                                            <CreditCard size={48} className="mx-auto mb-4 opacity-20" />
-                                                            <p className="font-bold">Belum ada rekening terdaftar.</p>
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </tbody>
-                                        </table>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
-                    {activeTab === 'users' && (
-                        <div className="space-y-8 animate-in fade-in">
-                            {isLoading ? (
-                                <div className="flex flex-col items-center justify-center p-20 text-slate-400">
-                                    <Loader2 className="animate-spin mb-4" size={48} />
-                                    <p className="font-bold tracking-widest text-[10px] uppercase">Mengambil data murid...</p>
+                        )}
+
+                        {activeTab === 'transactions' && (
+                            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in">
+                                <div className="overflow-x-auto transform-gpu overscroll-x-contain scroll-smooth pb-2">
+                                    <table className="w-full text-left text-sm whitespace-nowrap md:whitespace-normal">
+                                        <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider">
+                                            <tr>
+                                                <th className="p-4">Tanggal</th>
+                                                <th className="p-4">User</th>
+                                                <th className="p-4">Paket</th>
+                                                <th className="p-4">Nominal</th>
+                                                <th className="p-4">Status</th>
+                                                <th className="p-4 text-center">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {transactions.map(tx => (
+                                                <tr key={tx.id} className="hover:bg-slate-50/50">
+                                                    <td className="p-4 text-slate-600">{new Date(tx.created_at).toLocaleDateString('id-ID')}</td>
+                                                    <td className="p-4 font-bold text-slate-800">{tx.user_name || 'User'}</td>
+                                                    <td className="p-4 text-blue-600 font-medium">{tx.plan_name}</td>
+                                                    <td className="p-4 font-bold text-emerald-600">Rp {Number(tx.amount).toLocaleString('id-ID')}</td>
+                                                    <td className="p-4">
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${tx.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : tx.status === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>{tx.status}</span>
+                                                    </td>
+                                                    <td className="p-4 flex justify-center gap-2">
+                                                        {tx.status === 'pending' ? (
+                                                            <>
+                                                                <button onClick={() => handleAccPayment(tx.id, tx.user_id)} className="p-2 bg-emerald-100 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-colors" title="ACC Pembayaran"><CheckCircle size={18} /></button>
+                                                                <button onClick={() => handleRejectPayment(tx.id)} className="p-2 bg-rose-100 text-rose-600 hover:bg-rose-600 hover:text-white rounded-lg transition-colors" title="Tolak"><XCircle size={18} /></button>
+                                                            </>
+                                                        ) : (
+                                                            <span className="text-xs text-slate-400 italic">Selesai</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {transactions.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-slate-400">Belum ada data transaksi.</td></tr>}
+                                        </tbody>
+                                    </table>
                                 </div>
-                            ) : (
-                                <>
-                                    {/* User Distribution Cards */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
-                                            <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
-                                                <Users size={28} />
+                            </div>
+                        )}
+
+                        {activeTab === 'banks' && (
+                            <div className="space-y-8 animate-in fade-in">
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                    {/* Form Tambah */}
+                                    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm h-fit">
+                                        <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                                            <Plus className="text-emerald-500" /> Tambah Rekening
+                                        </h3>
+                                        <form onSubmit={handleAddBank} className="space-y-5">
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Provider Pembayaran</label>
+                                                <select value={newBank.provider} onChange={e => setNewBank({ ...newBank, provider: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm font-bold">
+                                                    <option value="BCA">BCA (Bank Central Asia)</option>
+                                                    <option value="BRI">BRI (Bank Rakyat Indonesia)</option>
+                                                    <option value="MANDIRI">Mandiri (Bank Mandiri)</option>
+                                                    <option value="VA">Virtual Account (VA)</option>
+                                                    <option value="QRIS">QRIS / Barcode</option>
+                                                    <option value="DANA">DANA (E-Wallet)</option>
+                                                    <option value="GOPAY">GoPay (E-Wallet)</option>
+                                                </select>
                                             </div>
                                             <div>
-                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Murid</p>
-                                                <h4 className="text-2xl font-black text-slate-800">{users.length}</h4>
-                                            </div>
-                                        </div>
-                                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
-                                            <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center">
-                                                <Crown size={28} />
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Nomor Rekening / HP / VA</label>
+                                                <input type="text" value={newBank.account_number} onChange={e => setNewBank({ ...newBank, account_number: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm font-bold" placeholder="Contoh: 123456789" required />
                                             </div>
                                             <div>
-                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Member PRO</p>
-                                                <h4 className="text-2xl font-black text-slate-800">{users.filter(u => u.is_pro).length}</h4>
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Atas Nama (A.N)</label>
+                                                <input type="text" value={newBank.account_name} onChange={e => setNewBank({ ...newBank, account_name: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 focus:outline-none focus:border-emerald-500 text-sm font-bold" placeholder="Contoh: RICHARD MEHA" required />
                                             </div>
-                                        </div>
-                                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
-                                            <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
-                                                <Activity size={28} />
-                                            </div>
-                                            <div>
-                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Conversion Rate</p>
-                                                <h4 className="text-2xl font-black text-slate-800">
-                                                    {users.length > 0 ? ((users.filter(u => u.is_pro).length / users.length) * 100).toFixed(1) : 0}%
-                                                </h4>
-                                            </div>
-                                        </div>
+                                            <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-emerald-600/20 active:scale-95 flex items-center justify-center gap-2">
+                                                <Plus size={18} /> Simpan Rekening Baru
+                                            </button>
+                                        </form>
                                     </div>
 
-                                    {/* User Table Panel */}
-                                    <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
-                                        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                                            <h3 className="font-bold text-slate-800">Daftar Pengguna Aktif</h3>
-                                            <div className="flex gap-2">
-                                                <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold">{users.length} Total</span>
-                                            </div>
+                                    {/* Tabel Daftar Rekening */}
+                                    <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+                                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                                <CreditCard className="text-blue-500" /> Rekening Terdaftar
+                                            </h3>
+                                            <span className="text-[10px] font-black text-slate-400 uppercase bg-white px-3 py-1 rounded-full border border-slate-200">{banks.length} Rekening</span>
                                         </div>
                                         <div className="overflow-x-auto transform-gpu overscroll-x-contain scroll-smooth pb-2">
                                             <table className="w-full text-left text-sm whitespace-nowrap md:whitespace-normal">
-                                                <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider">
+                                                <thead className="bg-slate-50/80 text-slate-500 font-black uppercase tracking-widest text-[10px]">
                                                     <tr>
-                                                        <th className="p-6">User Profile</th>
-                                                        <th className="p-6">Language Level</th>
-                                                        <th className="p-6">Subscription</th>
-                                                        <th className="p-6">Join Date</th>
-                                                        <th className="p-6">Status</th>
+                                                        <th className="p-6">Provider</th>
+                                                        <th className="p-6">Nomor Akun</th>
+                                                        <th className="p-6">Atas Nama</th>
+                                                        <th className="p-6 text-center">Aksi</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-100">
-                                                    {users.map(u => (
-                                                        <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
+                                                    {banks.map(bank => (
+                                                        <tr key={bank.id} className="hover:bg-slate-50/50 transition-colors">
                                                             <td className="p-6">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold">
-                                                                        {u.name?.charAt(0).toUpperCase()}
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="font-bold text-slate-800">{u.name}</p>
-                                                                        <p className="text-xs text-slate-400 capitalize">{u.gender}</p>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="p-6">
-                                                                <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-black tracking-tight">
-                                                                    {u.level}
+                                                                <span className={`px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest ${bank.provider === 'QRIS' ? 'bg-purple-100 text-purple-700' :
+                                                                    bank.provider === 'VA' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                                                                    }`}>
+                                                                    {bank.provider}
                                                                 </span>
                                                             </td>
+                                                            <td className="p-6 font-black text-slate-800 text-lg tracking-wider">{bank.account_number}</td>
+                                                            <td className="p-6 text-slate-500 font-bold uppercase text-xs">{bank.account_name}</td>
                                                             <td className="p-6">
-                                                                {u.is_pro ? (
-                                                                    <div className="flex items-center gap-1.5 text-amber-600 font-bold">
-                                                                        <Crown size={14} /> PRO MEMBER
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="text-slate-400 font-medium">Free Tier</span>
-                                                                )}
-                                                            </td>
-                                                            <td className="p-6 text-slate-500 font-medium">
-                                                                {new Date(u.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                                            </td>
-                                                            <td className="p-6">
-                                                                <div className="flex items-center gap-2">
-                                                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                                                                    <span className="text-xs font-bold text-slate-600">Aktif</span>
+                                                                <div className="flex justify-center">
+                                                                    <button onClick={() => handleDeleteBank(bank.id)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors" title="Hapus">
+                                                                        <Trash2 size={20} />
+                                                                    </button>
                                                                 </div>
                                                             </td>
                                                         </tr>
                                                     ))}
-                                                    {users.length === 0 && (
+                                                    {banks.length === 0 && (
                                                         <tr>
-                                                            <td colSpan="5" className="p-20 text-center">
-                                                                <div className="flex flex-col items-center gap-2 text-slate-300">
-                                                                    <Users size={48} />
-                                                                    <p className="text-lg font-medium">Belum ada data murid.</p>
-                                                                </div>
+                                                            <td colSpan="4" className="p-20 text-center text-slate-300">
+                                                                <CreditCard size={48} className="mx-auto mb-4 opacity-20" />
+                                                                <p className="font-bold">Belum ada rekening terdaftar.</p>
                                                             </td>
                                                         </tr>
                                                     )}
@@ -489,15 +378,132 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
                                             </table>
                                         </div>
                                     </div>
-                                </>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </main>
-        </div>
-    );
-}
+                                </div>
+                            </div>
+                        )}
+                        {activeTab === 'users' && (
+                            <div className="space-y-8 animate-in fade-in">
+                                {isLoading ? (
+                                    <div className="flex flex-col items-center justify-center p-20 text-slate-400">
+                                        <Loader2 className="animate-spin mb-4" size={48} />
+                                        <p className="font-bold tracking-widest text-[10px] uppercase">Mengambil data murid...</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* User Distribution Cards */}
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+                                                <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
+                                                    <Users size={28} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Murid</p>
+                                                    <h4 className="text-2xl font-black text-slate-800">{users.length}</h4>
+                                                </div>
+                                            </div>
+                                            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+                                                <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center">
+                                                    <Crown size={28} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Member PRO</p>
+                                                    <h4 className="text-2xl font-black text-slate-800">{users.filter(u => u.is_pro).length}</h4>
+                                                </div>
+                                            </div>
+                                            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+                                                <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
+                                                    <Activity size={28} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Conversion Rate</p>
+                                                    <h4 className="text-2xl font-black text-slate-800">
+                                                        {users.length > 0 ? ((users.filter(u => u.is_pro).length / users.length) * 100).toFixed(1) : 0}%
+                                                    </h4>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* User Table Panel */}
+                                        <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+                                            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                                                <h3 className="font-bold text-slate-800">Daftar Pengguna Aktif</h3>
+                                                <div className="flex gap-2">
+                                                    <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold">{users.length} Total</span>
+                                                </div>
+                                            </div>
+                                            <div className="overflow-x-auto transform-gpu overscroll-x-contain scroll-smooth pb-2">
+                                                <table className="w-full text-left text-sm whitespace-nowrap md:whitespace-normal">
+                                                    <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider">
+                                                        <tr>
+                                                            <th className="p-6">User Profile</th>
+                                                            <th className="p-6">Language Level</th>
+                                                            <th className="p-6">Subscription</th>
+                                                            <th className="p-6">Join Date</th>
+                                                            <th className="p-6">Status</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {users.map(u => (
+                                                            <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
+                                                                <td className="p-6">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold">
+                                                                            {u.name?.charAt(0).toUpperCase()}
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="font-bold text-slate-800">{u.name}</p>
+                                                                            <p className="text-xs text-slate-400 capitalize">{u.gender}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="p-6">
+                                                                    <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-black tracking-tight">
+                                                                        {u.level}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="p-6">
+                                                                    {u.is_pro ? (
+                                                                        <div className="flex items-center gap-1.5 text-amber-600 font-bold">
+                                                                            <Crown size={14} /> PRO MEMBER
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="text-slate-400 font-medium">Free Tier</span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="p-6 text-slate-500 font-medium">
+                                                                    {new Date(u.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                                                </td>
+                                                                <td className="p-6">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                                                        <span className="text-xs font-bold text-slate-600">Aktif</span>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                        {users.length === 0 && (
+                                                            <tr>
+                                                                <td colSpan="5" className="p-20 text-center">
+                                                                    <div className="flex flex-col items-center gap-2 text-slate-300">
+                                                                        <Users size={48} />
+                                                                        <p className="text-lg font-medium">Belum ada data murid.</p>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </main>
+            </div>
+        );
+    }
 
 function SidebarItem({ icon, label, active, onClick, badge }) {
     return (

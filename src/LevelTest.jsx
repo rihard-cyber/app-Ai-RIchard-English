@@ -12,21 +12,7 @@ export default function LevelTest({ onComplete }) {
 
   const currentQuestion = VOCABULARY_QUESTIONS[currentQuestionIndex];
 
-  const handleTTS = async (text) => {
-    try {
-      const res = await fetch('http://localhost:3000/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, voice: 'Kore' })
-      });
-      const data = await res.json();
-      if (data.audioContent) {
-        const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
-        audio.play();
-        return;
-      }
-    } catch (err) { console.error(err); }
-
+  const handleTTS = (text) => {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'en-US';
     utterance.rate = 0.9;
