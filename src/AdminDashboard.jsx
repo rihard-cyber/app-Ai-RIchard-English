@@ -81,7 +81,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
 
         try {
             console.log("Mencoba simpan rekening:", newBank);
-            const { data, error } = await supabase.from('payment_methods').insert([{
+            const { error } = await supabase.from('payment_methods').insert([{
                 provider: newBank.provider,
                 account_number: newBank.account_number,
                 account_name: newBank.account_name,
