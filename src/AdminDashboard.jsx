@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw, Menu, X, User } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw, Menu, X, User, Zap } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 export default function AdminDashboard({ onLogout, onSwitchToUser }) {
@@ -13,6 +13,13 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
 
     // New Bank State
     const [newBank, setNewBank] = useState({ provider: 'BCA', account_number: '', account_name: '' });
+
+    // API Key State
+    const [apiKeyInput, setApiKeyInput] = useState(() => localStorage.getItem('gemini_api_key') || '');
+    const handleSaveApiKey = () => {
+        localStorage.setItem('gemini_api_key', apiKeyInput);
+        alert('✅ API Key Gemini berhasil disimpan di perangkat ini!');
+    };
 
     useEffect(() => {
         fetchData();
@@ -203,6 +210,21 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
                                     ))}
                                 </div>
                                 <div className="flex justify-between text-xs text-slate-400 mt-2 font-bold uppercase"><span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span><span>Min</span></div>
+                            </div>
+
+                            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm mt-8">
+                                <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Zap className="text-blue-500" /> Konfigurasi AI (API Key)</h3>
+                                <p className="text-xs text-slate-500 mb-4">Masukkan API Key dari Google AI Studio. <b>Tips Anti-Limit:</b> Masukkan 2 atau lebih API Key sekaligus dan pisahkan dengan tanda koma (,) agar sistem AI otomatis memutar kunci saat limit habis.</p>
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                    <input
+                                        type="password"
+                                        value={apiKeyInput}
+                                        onChange={(e) => setApiKeyInput(e.target.value)}
+                                        placeholder="AIzaSy123..., AIzaSy456..."
+                                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono"
+                                    />
+                                    <button onClick={handleSaveApiKey} className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 active:scale-95 transition-all">Simpan</button>
+                                </div>
                             </div>
                         </div>
                     )}

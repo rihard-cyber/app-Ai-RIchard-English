@@ -44,6 +44,40 @@ import { CURRICULUM } from './data/curriculum';
 import { VOCABULARY_TOPICS as VOCAB_RAW, GRAMMAR_TOPICS as GRAMMAR_RAW, LISTENING_TOPICS as LISTENING_RAW, CONVERSATION_CHARACTERS as CHARS_RAW } from './data/topics';
 
 const getApiKey = () => localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
+
+const fetchGeminiWithRotation = async (payload) => {
+  const apiKeys = getApiKey().split(',').map(k => k.trim()).filter(k => k);
+  if (apiKeys.length === 0) throw new Error("API Key Gemini belum diatur.");
+
+  let lastError = "Unknown Error";
+  for (const key of apiKeys) {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        const errMsg = data.error?.message || `API Error: ${res.status}`;
+        if (res.status === 429 || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('limit')) {
+          lastError = errMsg;
+          continue; // Otomatis putar ke API Key selanjutnya
+        }
+        throw new Error(errMsg);
+      }
+      return data;
+    } catch (err) {
+      lastError = err.message;
+      if (lastError.toLowerCase().includes('quota') || lastError.toLowerCase().includes('limit') || lastError.includes('Failed to fetch')) {
+        continue; // Otomatis putar ke API Key selanjutnya
+      }
+      throw err;
+    }
+  }
+  throw new Error(`Semua API Key kehabisan limit: ${lastError}`);
+};
+
 // --- DATA PROFIL DEFAULT ---
 const DEFAULT_PROFILE = {
   name: "User",
@@ -694,11 +728,6 @@ function ChatModule({
   };
 
   const handleTranslate = async (index) => {
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      alert("API Key Gemini belum diatur (VITE_GEMINI_API_KEY).");
-      return;
-    }
     if (translations[index]) {
       setTranslations(prev => {
         const next = { ...prev };
@@ -715,13 +744,7 @@ function ChatModule({
         contents: [{ role: 'user', parts: [{ text: textToTranslate }] }],
         systemInstruction: { parts: [{ text: "Translate this English sentence to natural, casual, friendly Indonesian (Kampung Inggris style). ONLY return the translation." }] }
       };
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || "API Error");
+      const data = await fetchGeminiWithRotation(payload);
       const translation = data.candidates[0].content.parts[0].text;
       setTranslations(prev => ({ ...prev, [index]: translation }));
     } catch (err) {
@@ -732,21 +755,13 @@ function ChatModule({
   };
 
   const handleSuggest = async (index) => {
-    const apiKey = getApiKey();
-    if (!apiKey) return;
     const history = messages.slice(0, index + 1).map(m => `${m.role}: ${m.content}`).join('\n');
     try {
       const payload = {
         contents: [{ role: 'user', parts: [{ text: `Conversation history:\n${history}\n\nSuggest 3–4 very short, natural English response options for the user based on the last AI message. Format: Just the options separated by | character. No numbering.` }] }],
         systemInstruction: { parts: [{ text: "You are a helpful assistant providing English conversation suggestions." }] }
       };
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message || "API Error");
+      const data = await fetchGeminiWithRotation(payload);
       const rawSuggestions = data.candidates[0].content.parts[0].text;
       const suggestionsList = rawSuggestions.split('|').map(s => s.trim()).filter(s => s);
       setSuggestions(suggestionsList);
@@ -922,13 +937,6 @@ function ChatModule({
       setMicStatus('processing');
     }
 
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      setMessages(prev => [...prev, { role: 'system', content: '⚠️ API Key Gemini belum diatur. Silakan tambahkan VITE_GEMINI_API_KEY di file .env Anda.' }]);
-      setIsLoading(false);
-      return;
-    }
-
     const lang = detectLanguage(text);
     const modeInstruction = lang === 'id'
       ? "\n(Note: User speaks Indonesian. Explain/help using Indonesian Tutor persona.)"
@@ -981,25 +989,7 @@ function ChatModule({
     };
 
     try {
-      // Direct Client-Side Call to Gemini API (GitHub Pages compatible)
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-
-      const res = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: payload.contents,
-          systemInstruction: payload.systemInstruction,
-          generationConfig: payload.generationConfig
-        })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || data.error) {
-        throw new Error(data.error?.message || `API Error: ${res.status}`);
-      }
-
+      const data = await fetchGeminiWithRotation(payload);
       let aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
       if (!aiText) {

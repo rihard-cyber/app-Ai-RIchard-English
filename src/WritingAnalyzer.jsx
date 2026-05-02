@@ -34,6 +34,37 @@ ANALISA TERBATAS:
 Gunakan nada bicara RichardMeha AI yang memberi semangat (encouraging).
 `;
 
+const fetchGeminiWithRotation = async (payload) => {
+  const rawKey = localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
+  const apiKeys = rawKey.split(',').map(k => k.trim()).filter(k => k);
+  if (apiKeys.length === 0) throw new Error("API Key Gemini belum diatur.");
+
+  let lastError = "Unknown Error";
+  for (const key of apiKeys) {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        const errMsg = data.error?.message || `API Error: ${res.status}`;
+        if (res.status === 429 || errMsg.toLowerCase().includes('quota') || errMsg.toLowerCase().includes('limit')) {
+          lastError = errMsg; continue;
+        }
+        throw new Error(errMsg);
+      }
+      return data;
+    } catch (err) {
+      lastError = err.message;
+      if (lastError.toLowerCase().includes('quota') || lastError.toLowerCase().includes('limit')) continue;
+      throw err;
+    }
+  }
+  throw new Error(`Semua API Key kehabisan limit: ${lastError}`);
+};
+
 export default function WritingAnalyzer({ userProfile, onUpgrade }) {
   const [text, setText] = useState('');
   const [analysis, setAnalysis] = useState(null);
@@ -53,24 +84,7 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
         systemInstruction: { parts: [{ text: WRITING_SYSTEM_PROMPT(isPro) }] }
       };
 
-      const apiKey = localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
-      if (!apiKey) {
-        setAnalysis("⚠️ Gagal: API Key Gemini belum diatur. Silakan tambahkan VITE_GEMINI_API_KEY di file .env Anda.");
-        setIsLoading(false);
-        return;
-      }
-
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error?.message || "API Error");
-      }
-
+      const data = await fetchGeminiWithRotation(payload);
       const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Maaf, Richard sedang sibuk. Coba sebentar lagi ya!";
       setAnalysis(aiResponse);
       setUsageCount(prev => {
