@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  base: './', // Mengubah path menjadi relatif agar support di GitHub Pages & Android APK
   build: {
     target: 'esnext',
     minify: 'esbuild',

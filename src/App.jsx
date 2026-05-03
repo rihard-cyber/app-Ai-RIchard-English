@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, Suspense } from 'react';
 import {
   LayoutDashboard,
   MessageSquare,
@@ -116,6 +116,14 @@ const DEFAULT_PROFILE = {
   is_pro: false,
   subscription_plan: 'Free'
 };
+
+// --- KOMPONEN LOADING ---
+const LoadingFallback = () => (
+  <div className="flex flex-col items-center justify-center min-h-[50vh] h-full w-full">
+    <Loader2 className="animate-spin text-blue-500 mb-4" size={32} />
+    <p className="text-slate-500 font-medium animate-pulse text-sm">Memuat modul pintar...</p>
+  </div>
+);
 
 // --- MASTER PROMPT (RICHARDMEHA AI v5.0) ---
 const RICHARD_MASTER_PROMPT = (userProfile, currentTopic) => `

@@ -1,7 +1,6 @@
 {
   "name": "inggrisku-ai",
   "private": true,
-  "homepage": "https://rihard-cyber.github.io/app-Ai-RIchard-English",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
@@ -13,9 +12,6 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
-    "@capacitor/android": "^8.3.1",
-    "@capacitor/cli": "^8.3.1",
-    "@capacitor/core": "^8.3.1",
     "@supabase/supabase-js": "^2.105.1",
     "lucide-react": "^0.378.0",
     "react": "^18.2.0",
