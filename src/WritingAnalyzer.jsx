@@ -13,26 +13,45 @@ import {
 import { supabase } from './supabaseClient';
 
 const WRITING_SYSTEM_PROMPT = (isPro) => `
-Kamu adalah Editor Bahasa Inggris Ahli.
-Tugasmu adalah menganalisa tulisan user secara detail.
+Kamu adalah sistem "Professional Writing Analyzer" yang sangat analitis, objektif, dan akurat (seperti Grammarly).
+Tugasmu adalah menganalisa teks bahasa Inggris dari user secara detail.
+
+ATURAN MERESPONS:
+1. JANGAN gunakan basa-basi, salam (halo/hai), atau kalimat penyemangat yang panjang. Langsung ke inti analisa.
+2. Gunakan bahasa Indonesia yang profesional, ringkas, baku, dan jelas.
+3. Format WAJIB menggunakan Markdown (Gunakan Heading 3 (###) untuk judul bagian, format tabel untuk koreksi, dan bullet points).
 
 ${isPro ? `
-[PRO MODE ENABLED]
-ANALISA HARUS SANGAT MENDALAM:
-1. Skor Keseluruhan (0-100).
-2. Tabel Koreksi: | Original | Error Type | Correction | Explanation (ID) |
-3. Saran Alternatif (Natural Phrasing): 5 cara berbeda agar lebih natural dan profesional.
-4. Analisa Tone & Style.
-5. Saran Vocabulary Advanced.
-` : `
-[FREE MODE]
-ANALISA TERBATAS:
-1. Koreksi Grammar dasar saja.
-2. Skor Keseluruhan.
-(Tampilkan pesan di akhir: "Upgrade to PRO for deep analysis, tone improvement, and advanced vocabulary!")
-`}
+[PRO MODE] BERIKAN 5 BAGIAN INI SECARA BERURUTAN:
+### 📊 Skor Keseluruhan: [Skor]/100
+(Berikan 1-2 kalimat evaluasi objektif tentang tingkat keterbacaan teks).
 
-Gunakan nada bicara RichardMeha AI yang memberi semangat (encouraging).
+### 🛠️ Detail Koreksi
+| Teks Asli | Perbaikan | Jenis Error | Penjelasan Singkat |
+|---|---|---|---|
+| ... | ... | ... | ... |
+
+### 💡 Saran Alternatif (Natural Phrasing)
+(Berikan 3-5 cara native speaker menulis pesan ini agar lebih natural dan profesional).
+
+### 🎭 Analisa Tone & Style
+(Sebutkan nada tulisan saat ini, dan berikan saran bagaimana membuatnya lebih profesional atau sopan).
+
+### 🚀 Upgrade Kosa Kata (Advanced Vocab)
+(Berikan 3 saran penggantian kata biasa menjadi kosa kata tingkat lanjut C1/C2).
+` : `
+[FREE MODE] BERIKAN 2 BAGIAN INI:
+### 📊 Skor Keseluruhan: [Skor]/100
+(Berikan 1-2 kalimat evaluasi objektif).
+
+### 🛠️ Koreksi Tata Bahasa Dasar
+| Teks Asli | Perbaikan | Penjelasan Singkat |
+|---|---|---|
+| ... | ... | ... |
+
+---
+**🔒 UPGRADE TO PRO:** Dapatkan analisa mendalam, perbaikan tone, dan saran kosa kata tingkat lanjut (Advanced Vocabulary)!
+`}
 `;
 
 const fetchGeminiWithRotation = async (payload) => {
@@ -155,12 +174,60 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
 
   const renderFormattedAnalysis = (content) => {
     const lines = content.split('\n');
-    return lines.map((line, i) => {
-      if (line.includes('|')) {
-        return <div key={i} className="text-xs font-mono bg-slate-50 p-2 border-b border-slate-200">{line}</div>;
+    let inTable = false;
+    let tableRows = [];
+    const elements = [];
+
+    const flushTable = (keyIndex) => {
+      if (tableRows.length > 0) {
+        elements.push(
+          <div key={`table-${keyIndex}`} className="overflow-x-auto my-6 rounded-2xl border border-slate-200 shadow-sm w-full">
+            <table className="w-full text-sm text-left whitespace-nowrap md:whitespace-normal">
+              <tbody>
+                {tableRows.map((row, idx) => {
+                  if (row.replace(/[\s|-]/g, '') === '') return null; // Mengabaikan baris pembatas markdown spt |---|---|
+                  const cols = row.split('|').map(c => c.trim()).filter(c => c);
+                  const isHeader = idx === 0;
+                  return (
+                    <tr key={idx} className={isHeader ? "bg-indigo-50 font-bold text-indigo-900 border-b-2 border-indigo-100" : "border-t border-slate-100 bg-white hover:bg-slate-50 transition-colors"}>
+                      {cols.map((col, cidx) => (
+                        <td key={cidx} className={`px-4 py-3 align-top ${isHeader ? 'uppercase tracking-wider text-[10px]' : ''}`} dangerouslySetInnerHTML={{ __html: col.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/`(.*?)`/g, '<code class="bg-slate-100 text-rose-500 px-1 py-0.5 rounded text-xs font-mono">$1</code>') }} />
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        );
+        tableRows = [];
+        inTable = false;
       }
-      return <p key={i} className="mb-2 text-sm leading-relaxed">{line}</p>;
+    };
+
+    lines.forEach((line, i) => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('|')) {
+        inTable = true;
+        tableRows.push(trimmed);
+      } else {
+        if (inTable) flushTable(i);
+
+        // Styling teks tebal (bold) dan miring (italic)
+        let formattedLine = trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/`(.*?)`/g, '<code class="bg-slate-100 text-rose-500 px-1 py-0.5 rounded text-[10px] font-mono">$1</code>');
+
+        if (trimmed.startsWith('###')) {
+          elements.push(<h3 key={i} className="text-lg font-black text-slate-800 mt-8 mb-3 flex items-center gap-2" dangerouslySetInnerHTML={{ __html: formattedLine.replace(/^###\s*/, '') }} />);
+        } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+          elements.push(<li key={i} className="ml-4 mb-2 list-disc marker:text-indigo-400 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: formattedLine.replace(/^[-*]\s*/, '') }} />);
+        } else if (trimmed !== '') {
+          elements.push(<p key={i} className="mb-3 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: formattedLine }} />);
+        }
+      }
     });
+
+    if (inTable) flushTable('end');
+    return elements;
   };
 
   return (

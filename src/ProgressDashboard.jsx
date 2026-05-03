@@ -40,7 +40,9 @@ export default function ProgressDashboard({ userProfile, onNavigate }) {
     const { data: progressData } = await supabase
       .from('user_progress')
       .select('skill_type, score')
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
 
     if (progressData) {
       const skills = ['speaking', 'writing', 'grammar', 'vocabulary'];

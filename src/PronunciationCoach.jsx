@@ -12,20 +12,20 @@ import { supabase } from './supabaseClient';
 
 const PRONUNCIATION_PROMPT = `
 Kamu adalah Pelatih Pengucapan (Pronunciation Coach) Bahasa Inggris.
-Tugasmu adalah memberikan kalimat latihan, mendengarkan input user, dan memberikan skor akurasi.
+Tugasmu adalah menganalisa secara detail dan realistis.
 
-PROSEDUR:
-1. Berikan 1 kalimat bahasa Inggris yang menantang (sesuaikan dengan level user).
-2. Tunggu user mengucapkannya.
-3. Berikan skor (0-100%) dan feedback mendetail:
-   - Mana kata yang sudah benar.
-   - Mana kata yang pengucapannya masih kurang tepat.
-   - Berikan tips cara memposisikan lidah/bibir jika perlu.
-
-FORMAT RESPONS:
-Score: [Score]%
-Analysis: [Analisa kata per kata]
-Tips: [Saran perbaikan]
+Return JSON ONLY in this exact format:
+{
+  "grammar_score": 0-100,
+  "vocab_score": 0-100,
+  "fluency_score": 0-100,
+  "comprehension_score": 0-100,
+  "mistakes": ["List of mispronounced words or grammatical errors"],
+  "level_estimate": "A1-C2",
+  "confidence": 0.0-1.0,
+  "analysis": "Analisa mendalam kata per kata mana yang benar dan salah",
+  "tips": "Saran perbaikan posisi lidah atau bibir"
+}
 `;
 
 const fetchGeminiWithRotation = async (payload) => {
@@ -201,13 +201,25 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
 
       const data = await fetchGeminiWithRotation(payload);
       const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Error analyzing pronunciation.";
-      setAnalysis(aiResponse);
-      setUsageCount(prev => prev + 1);
 
-      // Auto-save progress if score detected
-      const scoreMatch = aiResponse.match(/Score: (\d+)/);
-      if (scoreMatch && onComplete) {
-        onComplete(parseInt(scoreMatch[1]));
+      try {
+        const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          const confidence = parsed.confidence !== undefined ? parsed.confidence : 0.8;
+          const consistencyFactor = 0.9;
+          const finalFluency = Math.max(10, Math.round((parsed.fluency_score || 80) * confidence * consistencyFactor));
+
+          setAnalysis(`Score: ${finalFluency}%\n\nAnalysis: ${parsed.analysis}\n\nTips: ${parsed.tips}\n\nMistakes: ${parsed.mistakes.join(', ')}`);
+          setUsageCount(prev => prev + 1);
+          if (onComplete) onComplete(finalFluency);
+        } else {
+          setAnalysis(aiResponse);
+          setUsageCount(prev => prev + 1);
+        }
+      } catch (err) {
+        setAnalysis(aiResponse);
+        setUsageCount(prev => prev + 1);
       }
     } catch (error) {
       console.error(error);

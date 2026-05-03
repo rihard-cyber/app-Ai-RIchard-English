@@ -148,10 +148,19 @@ You are Richard, a professional, highly encouraging, and friendly English tutor 
 
 == 📊 DATA TRACKING (HIDDEN) ==
 At the very end of your response, AFTER the separator "---", append a single JSON object for the app's system.
-Example: 
-... (natural message) ...
----
-{"grammar": 85, "vocab": 90, "fluency": 80, "feedback": "Good effort, just watch out for past tense verbs."}
+Analyze the user's input strictly based on performance.
+Return exactly in this JSON format:
+{
+  "grammar_score": 0-100,
+  "vocab_score": 0-100,
+  "fluency_score": 0-100,
+  "comprehension_score": 0-100,
+  "mistakes": ["mistake 1", "mistake 2"],
+  "level_estimate": "A1-C2",
+  "confidence": 0.0-1.0,
+  "feedback": "Short feedback message",
+  "phonetic": "phonetic spelling if relevant"
+}
 
 IMPORTANT: DO NOT USE BOLD (**), LISTS, OR WEIRD SYMBOLS. WRITE EXACTLY AS YOU WOULD SPEAK OUT LOUD.
 ---
@@ -231,11 +240,38 @@ export default function App() {
     if (!supabase) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data } = await supabase.from('user_progress').select('skill_type, score').eq('user_id', user.id);
+    const { data } = await supabase.from('user_progress')
+      .select('skill_type, score')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
     if (data && data.length > 0) {
+      let totalScore = 0;
       const stats = { speaking: 0, writing: 0, grammar: 0, vocabulary: 0 };
       const counts = { speaking: 0, writing: 0, grammar: 0, vocabulary: 0 };
-      data.forEach(p => { if (stats[p.skill_type] !== undefined) { stats[p.skill_type] += p.score; counts[p.skill_type]++; } });
+      data.forEach(p => {
+        totalScore += p.score;
+        if (stats[p.skill_type] !== undefined) { stats[p.skill_type] += p.score; counts[p.skill_type]++; }
+      });
+
+      const avgScore = Math.round(totalScore / data.length);
+      let newLevel = "Beginner (A1)";
+      if (avgScore <= 20) newLevel = "Beginner (A1)";
+      else if (avgScore <= 40) newLevel = "Elementary (A2)";
+      else if (avgScore <= 60) newLevel = "Intermediate (B1)";
+      else if (avgScore <= 75) newLevel = "Upper Intermediate (B2)";
+      else if (avgScore <= 90) newLevel = "Advanced (C1)";
+      else newLevel = "Proficient (C2)";
+
+      setUserProfile(prev => {
+        if (prev.level !== newLevel) {
+          supabase.from('user_profiles').update({ level: newLevel }).eq('id', user.id).then();
+          return { ...prev, level: newLevel };
+        }
+        return prev;
+      });
+
       let lowestSkill = 'vocabulary';
       let lowestScore = 101;
       Object.keys(stats).forEach(skill => {
@@ -1085,14 +1121,44 @@ function ChatModule({
       if (aiText.includes('---')) {
         const parts = aiText.split('---');
         const jsonPart = parts[parts.length - 1].trim();
+
+        const processScore = (scoreObj) => {
+          const confidence = scoreObj.confidence !== undefined ? scoreObj.confidence : 0.8;
+          const consistencyFactor = 0.9;
+
+          const baseGrammar = scoreObj.grammar_score ?? scoreObj.grammar ?? 80;
+          const baseVocab = scoreObj.vocab_score ?? scoreObj.vocab ?? 80;
+          const baseFluency = scoreObj.fluency_score ?? scoreObj.fluency ?? 80;
+          const baseComprehension = scoreObj.comprehension_score ?? 80;
+
+          const finalGrammar = Math.round(baseGrammar * confidence * consistencyFactor);
+          const finalVocab = Math.round(baseVocab * confidence * consistencyFactor);
+          const finalFluency = Math.round(baseFluency * confidence * consistencyFactor);
+          const finalComprehension = Math.round(baseComprehension * confidence * consistencyFactor);
+          const overallScore = Math.round((finalGrammar + finalVocab + finalFluency + finalComprehension) / 4);
+
+          const finalScoreObj = {
+            ...scoreObj,
+            grammar: finalGrammar,
+            vocab: finalVocab,
+            fluency: finalFluency,
+            comprehension: finalComprehension,
+            score: overallScore
+          };
+
+          setLastScore(finalScoreObj);
+
+          const difficultyMultiplier = 20;
+          const performanceMultiplier = overallScore / 100;
+          const earnedXP = Math.max(1, Math.round(difficultyMultiplier * performanceMultiplier * consistencyFactor));
+
+          updateXP(earnedXP);
+          if (onComplete) onComplete(overallScore);
+        };
+
         try {
           const scoreObj = JSON.parse(jsonPart);
-          setLastScore(scoreObj);
-          updateXP(15);
-          if (onComplete) {
-            onComplete(scoreObj.score || scoreObj.grammar || 80);
-          }
-
+          processScore(scoreObj);
           // Clean text for UI: remove everything from --- onwards
           aiText = parts.slice(0, -1).join('---').trim();
         } catch (e) {
@@ -1102,11 +1168,7 @@ function ChatModule({
           if (match) {
             try {
               const obj = JSON.parse(match[1]);
-              setLastScore(obj);
-              updateXP(15);
-              if (onComplete) {
-                onComplete(obj.score || obj.grammar || 80);
-              }
+              processScore(obj);
               aiText = aiText.replace(/---[\s\S]*/, '').trim();
             } catch (ee) { console.warn("JSON Parse failed", ee); }
           }
@@ -1408,18 +1470,22 @@ function ChatModule({
                       <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">RichardMeha Feedback</h4>
                       <div className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-md uppercase">Result Detected</div>
                     </div>
-                    <div className="grid grid-cols-3 gap-3 mb-4">
-                      <div className="text-center">
-                        <div className="text-lg font-black text-blue-600">{lastScore.grammar || lastScore.score}%</div>
-                        <div className="text-[9px] text-slate-400 uppercase font-bold">Grammar</div>
+                    <div className="grid grid-cols-4 gap-2 mb-4">
+                      <div className="text-center bg-blue-50 rounded-xl p-2">
+                        <div className="text-base font-black text-blue-600">{lastScore.grammar || 0}%</div>
+                        <div className="text-[8px] text-slate-500 uppercase font-bold mt-1">Grammar</div>
                       </div>
-                      <div className="text-center">
-                        <div className="text-lg font-black text-indigo-600">{lastScore.vocab || lastScore.vocabulary}%</div>
-                        <div className="text-[9px] text-slate-400 uppercase font-bold">Vocab</div>
+                      <div className="text-center bg-indigo-50 rounded-xl p-2">
+                        <div className="text-base font-black text-indigo-600">{lastScore.vocab || 0}%</div>
+                        <div className="text-[8px] text-slate-500 uppercase font-bold mt-1">Vocab</div>
                       </div>
-                      <div className="text-center">
+                      <div className="text-center bg-emerald-50 rounded-xl p-2">
                         <div className="text-lg font-black text-emerald-600">{lastScore.fluency}%</div>
-                        <div className="text-[9px] text-slate-400 uppercase font-bold">Fluency</div>
+                        <div className="text-[8px] text-slate-500 uppercase font-bold mt-1">Fluency</div>
+                      </div>
+                      <div className="text-center bg-amber-50 rounded-xl p-2">
+                        <div className="text-base font-black text-amber-600">{lastScore.comprehension || 0}%</div>
+                        <div className="text-[8px] text-slate-500 uppercase font-bold mt-1">Comprehend</div>
                       </div>
                     </div>
                     <p className="text-xs text-slate-600 italic border-l-2 border-blue-500 pl-3 py-1 mb-3">
