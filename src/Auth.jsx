@@ -113,7 +113,7 @@ export function LoginPage({ onLogin }) {
     setIsLoading(true);
     setErrorMsg('');
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -126,15 +126,10 @@ export function LoginPage({ onLogin }) {
     setIsLoading(false);
 
     if (error) {
-      if (error.message.includes('email') || error.message.includes('SMTP')) {
-        // Fallback untuk limit Supabase (biar user tidak macet)
-        setErrorMsg('Limit email tercapai. Gunakan kode simulasi: 11223344');
-        setMode('verify');
-      } else {
-        setErrorMsg(error.message);
-      }
+      setErrorMsg(error.message);
     } else {
-      setMode('verify');
+      // Confirm Email Supabase dimatikan, bisa langsung diarahkan ke Dashboard
+      onLogin('user');
     }
   };
 
@@ -146,14 +141,7 @@ export function LoginPage({ onLogin }) {
     setIsLoading(true);
     setErrorMsg('');
 
-    // 1. Bypass untuk simulasi jika email error
-    if (enteredCode === '11223344') {
-      setIsLoading(false);
-      onLogin('user');
-      return;
-    }
-
-    // 2. Real verification via Supabase
+    // Real verification via Supabase
     const { error } = await supabase.auth.verifyOtp({
       email,
       token: enteredCode,

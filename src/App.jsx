@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, Suspense } from 'react';
+import React, { useState, useRef, useEffect, Suspense, lazy } from 'react';
 import {
   LayoutDashboard,
   MessageSquare,
@@ -31,79 +31,21 @@ import {
   Lock,
   Shield
 } from 'lucide-react';
+import { TextToSpeech } from '@capacitor-community/text-to-speech';
 import { LoginPage, SubscriptionPage } from './Auth';
-import AchievementSystem from './AchievementSystem';
-import LevelTest from './LevelTest';
-import ProgressDashboard from './ProgressDashboard';
-import WritingAnalyzer from './WritingAnalyzer';
-import PronunciationCoach from './PronunciationCoach';
 import PaymentModal from './PaymentModal';
-import AdminDashboard from './AdminDashboard';
 import { supabase } from './supabaseClient';
 import { CURRICULUM } from './data/curriculum';
+import { fetchGeminiWithRotation } from './api';
 import { VOCABULARY_TOPICS as VOCAB_RAW, GRAMMAR_TOPICS as GRAMMAR_RAW, LISTENING_TOPICS as LISTENING_RAW, CONVERSATION_CHARACTERS as CHARS_RAW } from './data/topics';
 
-const fetchGeminiWithRotation = async (payload) => {
-  let rawKey = localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
-  try {
-    const { data } = await supabase.from('app_settings').select('value').eq('id', 'api_keys').single();
-    if (data && data.value) {
-      rawKey = data.value;
-      localStorage.setItem('gemini_api_key', rawKey);
-    }
-  } catch (err) { console.error("DB Key Error:", err); }
-
-  const apiKeys = rawKey.split(',').map(k => k.trim()).filter(k => k);
-  if (apiKeys.length === 0) throw new Error("API Key AI belum diatur.");
-
-  const translateToOpenAIFormat = (geminiPayload) => {
-    const messages = [];
-    if (geminiPayload.systemInstruction?.parts?.[0]?.text) {
-      messages.push({ role: "system", content: geminiPayload.systemInstruction.parts[0].text });
-    }
-    if (geminiPayload.contents) {
-      geminiPayload.contents.forEach(c => {
-        messages.push({ role: c.role === 'model' ? 'assistant' : 'user', content: c.parts[0].text });
-      });
-    }
-    return { messages, temperature: geminiPayload.generationConfig?.temperature || 0.7, max_tokens: geminiPayload.generationConfig?.maxOutputTokens || 1024 };
-  };
-
-  let lastError = "Unknown Error";
-
-  // Coba 2 putaran (Loop) jika semua key limit, istirahat 3.5 detik lalu mencoba lagi otomatis
-  for (let attempt = 0; attempt < 2; attempt++) {
-    for (const key of apiKeys) {
-      try {
-        if (key.startsWith('gsk_')) {
-          const groqPayload = { ...translateToOpenAIFormat(payload), model: "llama-3.3-70b-versatile" };
-          const res = await fetch(`https://api.groq.com/openai/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }, body: JSON.stringify(groqPayload) });
-          const data = await res.json();
-          if (!res.ok || data.error) throw new Error(data.error?.message || `Groq Error: ${res.status}`);
-          return { candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] };
-        } else if (key.startsWith('sk-')) {
-          const oaPayload = { ...translateToOpenAIFormat(payload), model: "gpt-4o-mini" };
-          const res = await fetch(`https://api.openai.com/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }, body: JSON.stringify(oaPayload) });
-          const data = await res.json();
-          if (!res.ok || data.error) throw new Error(data.error?.message || `OpenAI Error: ${res.status}`);
-          return { candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] };
-        } else {
-          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-          const data = await res.json();
-          if (!res.ok || data.error) throw new Error(data.error?.message || `Gemini Error: ${res.status}`);
-          return data;
-        }
-      } catch (err) {
-        lastError = err.message;
-        const lowerErr = lastError.toLowerCase();
-        if (lowerErr.includes('quota') || lowerErr.includes('limit') || lowerErr.includes('failed to fetch') || lowerErr.includes('429') || lowerErr.includes('insufficient') || lowerErr.includes('too many') || lowerErr.includes('leaked') || lowerErr.includes('api key')) continue;
-        throw err;
-      }
-    }
-    if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 3500)); // Tunggu 3.5 detik sebelum retry
-  }
-  throw new Error(`Sistem AI sedang sibuk/limit. Mohon tunggu dan coba lagi. (Pesan terakhir: ${lastError})`);
-};
+// --- LAZY LOADED COMPONENTS ---
+const AchievementSystem = lazy(() => import('./AchievementSystem'));
+const LevelTest = lazy(() => import('./LevelTest'));
+const ProgressDashboard = lazy(() => import('./ProgressDashboard'));
+const WritingAnalyzer = lazy(() => import('./WritingAnalyzer'));
+const PronunciationCoach = lazy(() => import('./PronunciationCoach'));
+const AdminDashboard = lazy(() => import('./AdminDashboard'));
 
 // --- DATA PROFIL DEFAULT ---
 const DEFAULT_PROFILE = {
@@ -522,14 +464,22 @@ export default function App() {
 
   if (isInitializing) return <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-6 text-white"><Loader2 className="animate-spin text-blue-500 mb-4" size={48} /><p className="text-slate-400 font-bold animate-pulse">Menyiapkan RichardMeha AI...</p></div>;
   if (authState === 'login') return <LoginPage onLogin={handleLogin} />;
-  if (authState === 'assessment') return <LevelTest onComplete={handleAssessmentComplete} />;
+  if (authState === 'assessment') return (
+    <Suspense fallback={<LoadingFallback />}>
+      <LevelTest onComplete={handleAssessmentComplete} />
+    </Suspense>
+  );
   if (authState === 'subscription') return (
     <>
       <SubscriptionPage onSelectPlan={handleSelectPlan} />
       <PaymentModal isOpen={isPaymentModalOpen} userName={userProfile.name} onClose={() => setIsPaymentModalOpen(false)} onPaymentSuccess={handlePaymentSuccess} planName={selectedPlan.name} price={selectedPlan.price} />
     </>
   );
-  if (authState === 'admin') return <AdminDashboard onLogout={handleLogout} onSwitchToUser={() => handleLogin('owner_user_bypass')} />;
+  if (authState === 'admin') return (
+    <Suspense fallback={<LoadingFallback />}>
+      <AdminDashboard onLogout={handleLogout} onSwitchToUser={() => handleLogin('owner_user_bypass')} />
+    </Suspense>
+  );
 
   return (
     <div className={`flex h-[100dvh] w-full font-sans overflow-hidden overscroll-none transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b1121] text-slate-200 dark-mode' : 'bg-slate-50 text-slate-800'}`}>
@@ -918,57 +868,78 @@ function ChatModule({
     fallbackTTS(cleanText);
   };
 
-  const fallbackTTS = (text) => {
+  const fallbackTTS = async (text) => {
     // Remove emojis and special characters for browser fallback TTS to prevent stuttering
     const cleanText = text.replace(/❌[\s\S]*?✅/g, '').replace(/[✅❌*#_\\]/g, '').replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim();
     if (!cleanText) {
       setIsSpeaking(false);
       return;
     }
-    const lang = detectLanguage(cleanText);
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = lang === 'id' ? 'id-ID' : 'en-US';
-    utterance.rate = 0.9; // Kecepatan diperlambat sedikit agar pengucapan bahasa Inggris lebih mulus
-    utterance.pitch = 1.0;
 
-    // --- CHARACTER VOICE & GENDER CUSTOMIZATION ---
-    const femaleCharacters = ["Taylor Swift", "Oprah Winfrey", "Emma Watson"];
-    const ukCharacters = ["Sherlock Holmes", "Emma Watson", "Gordon Ramsay"];
-    const isFemale = characterName ? femaleCharacters.includes(characterName) : false;
-    const isUK = characterName ? ukCharacters.includes(characterName) : false;
+    const isIndo = detectLanguage(cleanText) === 'id';
+    const langCode = isIndo ? 'id-ID' : 'en-US';
 
-    const voices = window.speechSynthesis.getVoices();
-    let preferredVoice;
-    if (lang === 'id') {
-      preferredVoice = voices.find(v => v.lang === 'id-ID' && v.name.toLowerCase().includes('google')) || voices.find(v => v.lang.startsWith('id'));
-    } else {
-      const targetLang = isUK ? 'en-GB' : 'en-US';
-      const genderStr = isFemale ? 'female' : 'male';
-      // Try to find Google voices with specific gender and region, otherwise fallback smoothly
-      preferredVoice = voices.find(v => v.lang.startsWith(targetLang) && v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes(genderStr))
-        || voices.find(v => v.lang.startsWith(targetLang) && v.name.toLowerCase().includes(genderStr))
-        || voices.find(v => v.lang.startsWith(targetLang) && v.name.toLowerCase().includes('google'))
-        || voices.find(v => v.lang.startsWith(targetLang))
-        || voices.find(v => v.lang.startsWith('en'));
-    }
-    if (preferredVoice) utterance.voice = preferredVoice;
+    let rate = 0.9; // Kecepatan diperlambat sedikit agar pengucapan bahasa Inggris lebih mulus
+    let pitch = 1.0;
 
     // Voice Tuning (Pitch & Speed) for Specific Characters
-    if (characterName === "Gordon Ramsay") { utterance.pitch = 0.8; utterance.rate = 1.05; }
-    else if (characterName === "Taylor Swift") { utterance.pitch = 1.2; utterance.rate = 0.95; }
-    else if (characterName === "Elon Musk") { utterance.pitch = 0.85; utterance.rate = 0.85; }
-    else if (characterName === "Barack Obama") { utterance.pitch = 0.6; utterance.rate = 0.8; }
-    else if (characterName === "Sherlock Holmes") { utterance.pitch = 0.8; utterance.rate = 1.1; }
-    else if (characterName === "Oprah Winfrey") { utterance.pitch = 0.9; utterance.rate = 0.9; }
-    else if (characterName === "Steve Jobs") { utterance.pitch = 0.9; utterance.rate = 0.9; }
-    else if (characterName === "Keanu Reeves") { utterance.pitch = 0.5; utterance.rate = 0.75; }
-    else if (characterName === "Emma Watson") { utterance.pitch = 1.1; utterance.rate = 0.95; }
-    else if (characterName === "Albert Einstein") { utterance.pitch = 0.7; utterance.rate = 0.85; }
+    if (characterName === "Gordon Ramsay") { pitch = 0.8; rate = 1.05; }
+    else if (characterName === "Taylor Swift") { pitch = 1.2; rate = 0.95; }
+    else if (characterName === "Elon Musk") { pitch = 0.85; rate = 0.85; }
+    else if (characterName === "Barack Obama") { pitch = 0.6; rate = 0.8; }
+    else if (characterName === "Sherlock Holmes") { pitch = 0.8; rate = 1.1; }
+    else if (characterName === "Oprah Winfrey") { pitch = 0.9; rate = 0.9; }
+    else if (characterName === "Steve Jobs") { pitch = 0.9; rate = 0.9; }
+    else if (characterName === "Keanu Reeves") { pitch = 0.5; rate = 0.75; }
+    else if (characterName === "Emma Watson") { pitch = 1.1; rate = 0.95; }
+    else if (characterName === "Albert Einstein") { pitch = 0.7; rate = 0.85; }
 
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
+    try {
+      await TextToSpeech.stop();
+      await TextToSpeech.speak({
+        text: cleanText,
+        lang: langCode,
+        rate: rate,
+        pitch: pitch,
+      });
+      setIsSpeaking(false);
+    } catch (err) {
+      console.warn("Capacitor TTS tidak tersedia, beralih ke Web API", err);
+      // Fallback aman untuk browser (Website PC)
+      if ('speechSynthesis' in window && 'SpeechSynthesisUtterance' in window) {
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = langCode;
+        utterance.rate = rate;
+        utterance.pitch = pitch;
+
+        const femaleCharacters = ["Taylor Swift", "Oprah Winfrey", "Emma Watson"];
+        const ukCharacters = ["Sherlock Holmes", "Emma Watson", "Gordon Ramsay"];
+        const isFemale = characterName ? femaleCharacters.includes(characterName) : false;
+        const isUK = characterName ? ukCharacters.includes(characterName) : false;
+
+        const voices = window.speechSynthesis.getVoices();
+        let preferredVoice;
+        if (isIndo) {
+          preferredVoice = voices.find(v => v.lang === 'id-ID' && v.name.toLowerCase().includes('google')) || voices.find(v => v.lang.startsWith('id'));
+        } else {
+          const targetLang = isUK ? 'en-GB' : 'en-US';
+          const genderStr = isFemale ? 'female' : 'male';
+          preferredVoice = voices.find(v => v.lang.startsWith(targetLang) && v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes(genderStr))
+            || voices.find(v => v.lang.startsWith(targetLang) && v.name.toLowerCase().includes(genderStr))
+            || voices.find(v => v.lang.startsWith(targetLang) && v.name.toLowerCase().includes('google'))
+            || voices.find(v => v.lang.startsWith(targetLang))
+            || voices.find(v => v.lang.startsWith('en'));
+        }
+        if (preferredVoice) utterance.voice = preferredVoice;
+
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = () => setIsSpeaking(false);
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+      } else {
+        setIsSpeaking(false);
+      }
+    }
   };
 
   const toggleRecording = () => {
