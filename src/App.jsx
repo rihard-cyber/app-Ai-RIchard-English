@@ -964,9 +964,15 @@ function ChatModule({
   const startRecording = async () => {
     try {
       // Native Capacitor Speech Recognition
-      const { speechRecognition } = await SpeechRecognition.checkPermissions();
-      if (speechRecognition !== 'granted') {
-        await SpeechRecognition.requestPermissions();
+      let perm = await SpeechRecognition.checkPermissions();
+      if (perm.speechRecognition !== 'granted') {
+        perm = await SpeechRecognition.requestPermissions();
+      }
+      if (perm.speechRecognition !== 'granted') {
+        alert("Izin mikrofon diperlukan untuk mendengarkan suaramu. Silakan izinkan di pengaturan aplikasi.");
+        setIsRecording(false);
+        setMicStatus('idle');
+        return;
       }
 
       setIsRecording(true);

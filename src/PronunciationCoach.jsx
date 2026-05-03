@@ -108,9 +108,14 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
 
     try {
       // Native Capacitor Speech Recognition
-      const { speechRecognition } = await SpeechRecognition.checkPermissions();
-      if (speechRecognition !== 'granted') {
-        await SpeechRecognition.requestPermissions();
+      let perm = await SpeechRecognition.checkPermissions();
+      if (perm.speechRecognition !== 'granted') {
+        perm = await SpeechRecognition.requestPermissions();
+      }
+      if (perm.speechRecognition !== 'granted') {
+        alert("Izin mikrofon ditolak. Buka pengaturan aplikasi Android kamu untuk mengizinkan.");
+        setIsRecording(false);
+        return;
       }
 
       setIsRecording(true);

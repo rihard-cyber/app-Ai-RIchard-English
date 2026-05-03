@@ -241,7 +241,7 @@ export function LoginPage({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#0f172a] flex items-center justify-center p-4 overflow-hidden relative overscroll-none">
+    <div className="min-h-screen w-full bg-[#0f172a] flex items-center justify-center p-4 overflow-hidden relative overscroll-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/30 rounded-full blur-[100px] pointer-events-none"></div>
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-[100px] pointer-events-none"></div>
 
