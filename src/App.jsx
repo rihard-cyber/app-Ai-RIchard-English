@@ -32,6 +32,7 @@ import {
   Shield,
   RefreshCw
 } from 'lucide-react';
+import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
 import { LoginPage, SubscriptionPage } from './Auth';
 import PaymentModal from './PaymentModal';
@@ -943,8 +944,9 @@ function ChatModule({
     }
   };
 
-  const toggleRecording = () => {
+  const toggleRecording = async () => {
     if (isRecording) {
+      try { await SpeechRecognition.stop(); } catch (e) { }
       recognitionRef.current?.stop();
       setIsRecording(false);
       setMicStatus('processing');
@@ -959,70 +961,88 @@ function ChatModule({
     }
   };
 
-  const startRecording = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Browser atau perangkat Anda tidak mendukung fitur mikrofon (Gunakan Chrome atau pastikan koneksi menggunakan HTTPS).");
-      return;
-    }
+  const startRecording = async () => {
+    try {
+      // Native Capacitor Speech Recognition
+      const { speechRecognition } = await SpeechRecognition.checkPermissions();
+      if (speechRecognition !== 'granted') {
+        await SpeechRecognition.requestPermissions();
+      }
 
-    recognitionRef.current = new SpeechRecognition();
-    recognitionRef.current.lang = 'en-US';
-    recognitionRef.current.continuous = true;
-    recognitionRef.current.interimResults = true;
-
-    recognitionRef.current.onstart = () => {
       setIsRecording(true);
       setMicStatus('listening');
-    };
 
-    recognitionRef.current.onresult = (event) => {
-      let finalTranscript = '';
-      let interimTranscript = '';
-
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-        } else {
-          interimTranscript += event.results[i][0].transcript;
+      await SpeechRecognition.removeAllListeners();
+      SpeechRecognition.addListener('partialResults', (data) => {
+        if (data.matches && data.matches.length > 0) {
+          const transcript = data.matches[0];
+          currentTranscriptRef.current = transcript;
+          setInputValue(transcript);
+          setMicStatus('detected');
         }
-      }
+      });
 
-      setMicStatus('detected');
-      currentTranscriptRef.current = finalTranscript || interimTranscript;
+      const result = await SpeechRecognition.start({
+        language: 'en-US',
+        maxResults: 1,
+        prompt: "RichardMeha AI mendengarkan...",
+        partialResults: true,
+        popup: false,
+      });
 
-      if (interimTranscript) {
-        setInputValue(interimTranscript);
-      }
-
-      if (finalTranscript) {
+      if (result && result.matches && result.matches.length > 0) {
+        const finalTranscript = result.matches[0];
         setInputValue(finalTranscript);
         sendMessage(finalTranscript, false, true);
         currentTranscriptRef.current = '';
       }
-    };
 
-    recognitionRef.current.onerror = (event) => {
-      setIsRecording(false);
-      setMicStatus('idle');
-      if (event.error === 'not-allowed') {
-        alert("Akses mikrofon ditolak. Izinkan mikrofon di pengaturan perangkat/browser Anda.");
-      } else if (event.error === 'network') {
-        alert("Error jaringan pada Speech Recognition. Jika menggunakan APK WebView sederhana, fitur ini mungkin diblokir oleh sistem.");
-      }
-    };
-
-    recognitionRef.current.onend = () => {
       setIsRecording(false);
       if (micStatus === 'listening') setMicStatus('idle');
-    };
 
-    try {
-      recognitionRef.current.start();
     } catch (error) {
-      console.error("Mic start error:", error);
-      setIsRecording(false);
-      setMicStatus('idle');
+      console.warn("Native Mic error, fallback to Web API", error);
+
+      // Web Fallback
+      const WebSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!WebSpeechRecognition) {
+        alert("Browser atau perangkat Anda tidak mendukung fitur mikrofon.");
+        setIsRecording(false);
+        setMicStatus('idle');
+        return;
+      }
+
+      recognitionRef.current = new WebSpeechRecognition();
+      recognitionRef.current.lang = 'en-US';
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+
+      recognitionRef.current.onstart = () => {
+        setIsRecording(true);
+        setMicStatus('listening');
+      };
+
+      recognitionRef.current.onresult = (event) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+          else interimTranscript += event.results[i][0].transcript;
+        }
+        setMicStatus('detected');
+        currentTranscriptRef.current = finalTranscript || interimTranscript;
+        if (interimTranscript) setInputValue(interimTranscript);
+        if (finalTranscript) {
+          setInputValue(finalTranscript);
+          sendMessage(finalTranscript, false, true);
+          currentTranscriptRef.current = '';
+        }
+      };
+
+      recognitionRef.current.onerror = () => { setIsRecording(false); setMicStatus('idle'); };
+      recognitionRef.current.onend = () => { setIsRecording(false); if (micStatus === 'listening') setMicStatus('idle'); };
+
+      try { recognitionRef.current.start(); } catch (err) { setIsRecording(false); setMicStatus('idle'); }
     }
   };
 

@@ -8,6 +8,7 @@ import {
   Sparkles,
   Crown
 } from 'lucide-react';
+import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
 import { supabase } from './supabaseClient';
 import { fetchGeminiWithRotation } from './api';
@@ -97,43 +98,69 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
     }
   };
 
-  const toggleRecording = () => {
+  const toggleRecording = async () => {
     if (isRecording) {
+      try { await SpeechRecognition.stop(); } catch (e) { }
       recognitionRef.current?.stop();
       setIsRecording(false);
       return;
     }
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Browser atau perangkat Anda tidak mendukung fitur mikrofon (Gunakan Chrome atau pastikan koneksi menggunakan HTTPS).");
-      return;
-    }
-
     try {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.lang = 'en-US';
-      recognitionRef.current.onresult = (event) => {
-        const result = event.results[0][0].transcript;
-        setTranscript(result);
-        analyzePronunciation(result);
-      };
-      recognitionRef.current.onerror = (event) => {
-        console.error("Speech recognition error:", event.error);
-        setIsRecording(false);
-        if (event.error === 'not-allowed') {
-          alert("Akses mikrofon ditolak. Izinkan mikrofon di pengaturan perangkat/browser Anda.");
-        } else if (event.error === 'network') {
-          alert("Error jaringan pada Speech Recognition. Pastikan koneksi internet stabil atau gunakan browser Chrome standar.");
-        }
-      };
-      recognitionRef.current.onend = () => setIsRecording(false);
-      recognitionRef.current.start();
+      // Native Capacitor Speech Recognition
+      const { speechRecognition } = await SpeechRecognition.checkPermissions();
+      if (speechRecognition !== 'granted') {
+        await SpeechRecognition.requestPermissions();
+      }
+
       setIsRecording(true);
-    } catch (error) {
-      console.error("Mic start error:", error);
+      await SpeechRecognition.removeAllListeners();
+
+      SpeechRecognition.addListener('partialResults', (data) => {
+        if (data.matches && data.matches.length > 0) {
+          setTranscript(data.matches[0]);
+        }
+      });
+
+      const result = await SpeechRecognition.start({
+        language: 'en-US',
+        maxResults: 1,
+        prompt: "Ucapkan kalimatnya...",
+        partialResults: false,
+        popup: true,
+      });
+
+      if (result && result.matches && result.matches.length > 0) {
+        const text = result.matches[0];
+        setTranscript(text);
+        analyzePronunciation(text);
+      }
       setIsRecording(false);
-      alert("Terjadi kesalahan saat memulai mikrofon.");
+    } catch (error) {
+      console.warn("Native Mic error, fallback to Web API", error);
+
+      const WebSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!WebSpeechRecognition) {
+        alert("Browser atau perangkat Anda tidak mendukung fitur mikrofon.");
+        setIsRecording(false);
+        return;
+      }
+
+      try {
+        recognitionRef.current = new WebSpeechRecognition();
+        recognitionRef.current.lang = 'en-US';
+        recognitionRef.current.onresult = (event) => {
+          const result = event.results[0][0].transcript;
+          setTranscript(result);
+          analyzePronunciation(result);
+        };
+        recognitionRef.current.onerror = (e) => { setIsRecording(false); };
+        recognitionRef.current.onend = () => setIsRecording(false);
+        recognitionRef.current.start();
+        setIsRecording(true);
+      } catch (err) {
+        setIsRecording(false);
+      }
     }
   };
 

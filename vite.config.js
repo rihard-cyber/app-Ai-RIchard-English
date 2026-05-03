@@ -6,7 +6,6 @@ export default defineConfig({
   base: './', // Mengubah path menjadi relatif agar support di GitHub Pages & Android APK
   build: {
     target: 'esnext',
-    minify: 'esbuild',
     cssMinify: true,
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
