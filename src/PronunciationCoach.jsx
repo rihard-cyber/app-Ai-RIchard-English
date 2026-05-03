@@ -86,7 +86,7 @@ const fetchGeminiWithRotation = async (payload) => {
     }
     if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 3500));
   }
-  throw new Error(`Sistem AI sedang sibuk/limit. Mohon tunggu beberapa detik dan coba lagi.`);
+  throw new Error(`Sistem AI sedang sibuk/limit. Mohon tunggu dan coba lagi. (Pesan terakhir: ${lastError})`);
 };
 
 export default function PronunciationCoach({ userProfile, onComplete, isPro, onUpgrade }) {
