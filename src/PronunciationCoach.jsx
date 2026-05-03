@@ -11,14 +11,10 @@ import {
 import { supabase } from './supabaseClient';
 
 const PRONUNCIATION_PROMPT = `
-Kamu adalah Richard, seorang Pelatih Pengucapan (Pronunciation Coach) Bahasa Inggris yang sangat ahli, profesional, dan akurat.
-Tugasmu adalah menganalisis rekaman suara dari user, mendeteksi kesalahan pengucapan, dan memberikan feedback yang sangat konstruktif.
-Bahasamu harus ramah, profesional, dan menggunakan Bahasa Indonesia yang baik agar mudah dipahami.
 Kamu adalah Richard, Pelatih Pengucapan (Pronunciation Coach) Bahasa Inggris level Native & Profesional.
 Tugasmu adalah menganalisis rekaman suara user secara mendalam, mendeteksi kesalahan pengucapan (mispronunciation) sekecil apapun, dan memberikan feedback yang sangat konstruktif, akurat, dan profesional.
 Bahasamu harus ramah, memotivasi, namun tegas dalam memperbaiki kesalahan. Gunakan Bahasa Indonesia yang profesional.
 
-Return JSON ONLY in this exact format. DO NOT wrap with markdown tags like \`\`\`json:
 ATURAN WAJIB:
 1. Output WAJIB 100% JSON valid. Tidak boleh ada teks apa pun di luar JSON.
 2. JANGAN gunakan karakter baris baru (enter/newline) asli di dalam teks JSON. Gunakan "\\n" untuk membuat baris baru.
@@ -26,16 +22,10 @@ ATURAN WAJIB:
 
 Format JSON:
 {
-  "grammar_score": 0-100,
-  "vocab_score": 0-100,
   "fluency_score": 0-100,
-  "comprehension_score": 0-100,
-  "mistakes": ["Kata salah 1 (seharusnya X)", "Kata salah 2 (seharusnya Y)"],
   "mistakes": ["Kata salah 1 (diucapkan X, seharusnya Y)", "Kata salah 2 (diucapkan A, seharusnya B)"],
   "level_estimate": "A1-C2",
   "confidence": 0.0-1.0,
-  "analysis": "Analisa mendalam kata per kata mana yang benar dan salah",
-  "tips": "Saran perbaikan posisi lidah atau bibir"
   "analysis": "Analisa profesional kata per kata. Jelaskan mengapa salah dan bagaimana bunyinya. Gunakan \\n\\n untuk paragraf.",
   "tips": "Saran perbaikan posisi lidah, gigi, atau bibir yang sangat spesifik dan mudah diikuti."
 }
@@ -223,7 +213,6 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
       try {
         const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
           let jsonStr = jsonMatch[0];
           jsonStr = jsonStr.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"/g, (match) => {
             return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
