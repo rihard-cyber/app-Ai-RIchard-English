@@ -32,7 +32,10 @@ const fetchGeminiWithRotation = async (payload) => {
   let rawKey = localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
   try {
     const { data } = await supabase.from('app_settings').select('value').eq('id', 'api_keys').single();
-    if (data && data.value) rawKey = data.value;
+    if (data && data.value) {
+      rawKey = data.value;
+      localStorage.setItem('gemini_api_key', rawKey);
+    }
   } catch (err) { console.error("DB Key Error:", err); }
 
   const apiKeys = rawKey.split(',').map(k => k.trim()).filter(k => k);
@@ -77,7 +80,7 @@ const fetchGeminiWithRotation = async (payload) => {
       } catch (err) {
         lastError = err.message;
         const lowerErr = lastError.toLowerCase();
-        if (lowerErr.includes('quota') || lowerErr.includes('limit') || lowerErr.includes('failed to fetch') || lowerErr.includes('429') || lowerErr.includes('insufficient') || lowerErr.includes('too many')) continue;
+        if (lowerErr.includes('quota') || lowerErr.includes('limit') || lowerErr.includes('failed to fetch') || lowerErr.includes('429') || lowerErr.includes('insufficient') || lowerErr.includes('too many') || lowerErr.includes('leaked') || lowerErr.includes('api key')) continue;
         throw err;
       }
     }
