@@ -108,21 +108,21 @@ export default function ProgressDashboard({ userProfile, onNavigate }) {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-24">
+    <div className="p-4 md:p-8 w-full max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-[calc(96px+env(safe-area-inset-bottom))] overflow-x-hidden">
 
       {/* HEADER STATS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
         <StatCard icon={<Zap size={20} />} label="Total XP" value={userProfile.xp} color="text-yellow-500" bg="bg-yellow-50" />
         <StatCard icon={<TrendingUp size={20} />} label="Current Level" value={userProfile.level.split(' ')[0]} color="text-blue-500" bg="bg-blue-50" />
         <StatCard icon={<Calendar size={20} />} label="Day Streak" value={`${userProfile.streak} Days`} color="text-orange-500" bg="bg-orange-50" />
         <StatCard icon={<Target size={20} />} label="Daily Goal" value="85%" color="text-emerald-500" bg="bg-emerald-50" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full">
 
         {/* SKILL PROGRESS */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm">
+        <div className="lg:col-span-2 space-y-6 w-full">
+          <div className="bg-white w-full max-w-full p-6 md:p-8 rounded-3xl border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                 <BarChart2 className="text-blue-600" /> Skill Analysis
@@ -171,8 +171,8 @@ export default function ProgressDashboard({ userProfile, onNavigate }) {
         </div>
 
         {/* RECENT SESSIONS */}
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <div className="space-y-6 w-full">
+          <div className="bg-white w-full max-w-full p-6 rounded-3xl border border-slate-200 shadow-sm">
             <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
               <Award className="text-yellow-500" /> Recent Success
             </h3>
@@ -203,11 +203,11 @@ export default function ProgressDashboard({ userProfile, onNavigate }) {
           </div>
 
           {/* AI RECOMMENDATION MINI */}
-          <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-6 rounded-3xl text-white shadow-lg shadow-indigo-200/50">
+          <div className="bg-gradient-to-br from-indigo-600 to-blue-700 w-full max-w-full p-6 rounded-3xl text-white shadow-lg shadow-indigo-200/50">
             <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-widest mb-2">AI Recommendation</p>
             <h4 className="text-lg font-bold mb-4 leading-tight">Fokus ke "Past Tense" untuk menaikkan skor Writing!</h4>
             <div className="space-y-3">
-              <div className="bg-white/10 backdrop-blur-sm p-3 rounded-xl flex items-center gap-3 border border-white/10">
+              <div className="bg-white/10 backdrop-blur-sm p-3 rounded-xl flex items-center gap-3 border border-white/10 w-full overflow-hidden">
                 <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center"><BookOpen size={16} /></div>
                 <p className="text-xs font-medium">Daily Grammar #12</p>
               </div>

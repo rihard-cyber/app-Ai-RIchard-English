@@ -11,20 +11,33 @@ import {
 import { supabase } from './supabaseClient';
 
 const PRONUNCIATION_PROMPT = `
-Kamu adalah Pelatih Pengucapan (Pronunciation Coach) Bahasa Inggris.
-Tugasmu adalah menganalisa secara detail dan realistis.
+Kamu adalah Richard, seorang Pelatih Pengucapan (Pronunciation Coach) Bahasa Inggris yang sangat ahli, profesional, dan akurat.
+Tugasmu adalah menganalisis rekaman suara dari user, mendeteksi kesalahan pengucapan, dan memberikan feedback yang sangat konstruktif.
+Bahasamu harus ramah, profesional, dan menggunakan Bahasa Indonesia yang baik agar mudah dipahami.
+Kamu adalah Richard, Pelatih Pengucapan (Pronunciation Coach) Bahasa Inggris level Native & Profesional.
+Tugasmu adalah menganalisis rekaman suara user secara mendalam, mendeteksi kesalahan pengucapan (mispronunciation) sekecil apapun, dan memberikan feedback yang sangat konstruktif, akurat, dan profesional.
+Bahasamu harus ramah, memotivasi, namun tegas dalam memperbaiki kesalahan. Gunakan Bahasa Indonesia yang profesional.
 
-Return JSON ONLY in this exact format:
+Return JSON ONLY in this exact format. DO NOT wrap with markdown tags like \`\`\`json:
+ATURAN WAJIB:
+1. Output WAJIB 100% JSON valid. Tidak boleh ada teks apa pun di luar JSON.
+2. JANGAN gunakan karakter baris baru (enter/newline) asli di dalam teks JSON. Gunakan "\\n" untuk membuat baris baru.
+3. Jangan gunakan format markdown seperti \`\`\`json. Langsung mulai dengan { dan akhiri dengan }.
+
+Format JSON:
 {
   "grammar_score": 0-100,
   "vocab_score": 0-100,
   "fluency_score": 0-100,
   "comprehension_score": 0-100,
-  "mistakes": ["List of mispronounced words or grammatical errors"],
+  "mistakes": ["Kata salah 1 (seharusnya X)", "Kata salah 2 (seharusnya Y)"],
+  "mistakes": ["Kata salah 1 (diucapkan X, seharusnya Y)", "Kata salah 2 (diucapkan A, seharusnya B)"],
   "level_estimate": "A1-C2",
   "confidence": 0.0-1.0,
   "analysis": "Analisa mendalam kata per kata mana yang benar dan salah",
   "tips": "Saran perbaikan posisi lidah atau bibir"
+  "analysis": "Analisa profesional kata per kata. Jelaskan mengapa salah dan bagaimana bunyinya. Gunakan \\n\\n untuk paragraf.",
+  "tips": "Saran perbaikan posisi lidah, gigi, atau bibir yang sangat spesifik dan mudah diikuti."
 }
 `;
 
@@ -179,6 +192,8 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
         setIsRecording(false);
         if (event.error === 'not-allowed') {
           alert("Akses mikrofon ditolak. Izinkan mikrofon di pengaturan perangkat/browser Anda.");
+        } else if (event.error === 'network') {
+          alert("Error jaringan pada Speech Recognition. Pastikan koneksi internet stabil atau gunakan browser Chrome standar.");
         }
       };
       recognitionRef.current.onend = () => setIsRecording(false);
@@ -202,28 +217,36 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
       const data = await fetchGeminiWithRotation(payload);
       const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Error analyzing pronunciation.";
 
+      // Bersihkan text dari format markdown (```json ... ```) jika AI tetap mengirimkannya
+      const cleanText = aiResponse.replace(/```json/gi, '').replace(/```/g, '').trim();
+
       try {
-        const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+        const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
+          let jsonStr = jsonMatch[0];
+          jsonStr = jsonStr.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"/g, (match) => {
+            return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
+          });
+          const parsed = JSON.parse(jsonStr);
           const confidence = parsed.confidence !== undefined ? parsed.confidence : 0.8;
           const consistencyFactor = 0.9;
           const finalFluency = Math.max(10, Math.round((parsed.fluency_score || 80) * confidence * consistencyFactor));
 
-          setAnalysis(`Score: ${finalFluency}%\n\nAnalysis: ${parsed.analysis}\n\nTips: ${parsed.tips}\n\nMistakes: ${parsed.mistakes.join(', ')}`);
+          setAnalysis({ score: finalFluency, ...parsed, raw: aiResponse });
           setUsageCount(prev => prev + 1);
           if (onComplete) onComplete(finalFluency);
         } else {
-          setAnalysis(aiResponse);
+          setAnalysis({ raw: aiResponse });
           setUsageCount(prev => prev + 1);
         }
       } catch (err) {
-        setAnalysis(aiResponse);
+        setAnalysis({ raw: aiResponse });
         setUsageCount(prev => prev + 1);
       }
     } catch (error) {
       console.error(error);
-      setAnalysis("Maaf, koneksi ke RichardMeha terputus. Coba lagi ya!");
+      setAnalysis({ raw: `⚠️ Maaf, terjadi kesalahan sistem: ${error.message}` });
     } finally {
       setIsLoading(false);
     }
@@ -237,7 +260,7 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500 pb-24">
+    <div className="p-4 md:p-8 w-full max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500 pb-[calc(96px+env(safe-area-inset-bottom))] overflow-x-hidden">
       <div className="flex items-center gap-3 mb-2">
         <div className="p-3 bg-rose-100 text-rose-600 rounded-2xl">
           <Mic size={24} />
@@ -248,13 +271,13 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 md:p-10 text-center space-y-8 relative overflow-hidden">
+      <div className="bg-white w-full max-w-full rounded-3xl border border-slate-200 shadow-xl p-6 md:p-10 text-center space-y-8 relative overflow-hidden">
         {/* Progress background decoration */}
         <div className="absolute inset-0 bg-gradient-to-b from-rose-50/30 to-transparent pointer-events-none"></div>
 
         <div className="relative">
           <p className="text-xs font-bold text-rose-400 uppercase tracking-widest mb-4">Ucapkan Kalimat Ini:</p>
-          <h3 className="text-2xl md:text-4xl font-extrabold text-slate-800 leading-tight">
+          <h3 className="text-2xl md:text-4xl font-extrabold text-slate-800 leading-tight break-words">
             {isLoading && !targetSentence ? <Loader2 className="animate-spin mx-auto text-slate-300" size={40} /> : `"${targetSentence}"`}
           </h3>
         </div>
@@ -289,29 +312,48 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
         {transcript && (
           <div className="animate-in fade-in slide-in-from-top-2">
             <p className="text-xs font-bold text-slate-400 uppercase mb-2">Deteksi Suara Anda:</p>
-            <p className="text-lg font-medium text-slate-600 italic">"{transcript}"</p>
+            <p className="text-lg font-medium text-slate-600 italic break-words">"{transcript}"</p>
           </div>
         )}
       </div>
 
       {analysis && (
-        <div className="bg-white rounded-3xl border border-rose-100 shadow-xl p-6 md:p-8 animate-in zoom-in-95 duration-500">
+        <div className="bg-white w-full max-w-full rounded-3xl border border-rose-100 shadow-xl p-6 md:p-8 animate-in zoom-in-95 duration-500">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
               <Sparkles className="text-yellow-500" /> Hasil Penilaian
             </h3>
-            {analysis.match(/Score: (\d+)/) && (
+            {analysis.score !== undefined && (
               <div className="text-2xl font-black text-rose-500 bg-rose-50 px-4 py-2 rounded-2xl border border-rose-100">
-                {analysis.match(/Score: (\d+)/)[1]}%
+                {analysis.score}%
               </div>
             )}
           </div>
 
-          <div className="space-y-4 text-slate-600 leading-relaxed">
-            {analysis.split('\n').map((line, i) => (
-              <p key={i} className="text-sm md:text-base">{line}</p>
-            ))}
-          </div>
+          {analysis.analysis ? (
+            <div className="space-y-6 text-slate-600 leading-relaxed text-sm md:text-base">
+              <div className="bg-blue-50 p-4 md:p-6 rounded-2xl border border-blue-100">
+                <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2">💡 Analisis Pengucapan</h4>
+                <p className="whitespace-pre-wrap break-words">{analysis.analysis}</p>
+              </div>
+              {analysis.mistakes && analysis.mistakes.length > 0 && (
+                <div className="bg-rose-50 p-4 md:p-6 rounded-2xl border border-rose-100">
+                  <h4 className="font-bold text-rose-800 mb-3 flex items-center gap-2">⚠️ Kesalahan Utama</h4>
+                  <ul className="list-disc pl-5 space-y-1.5 text-rose-700 font-medium break-words">
+                    {analysis.mistakes.map((m, i) => <li key={i}>{m}</li>)}
+                  </ul>
+                </div>
+              )}
+              <div className="bg-emerald-50 p-4 md:p-6 rounded-2xl border border-emerald-100">
+                <h4 className="font-bold text-emerald-800 mb-2 flex items-center gap-2">🎯 Tips Perbaikan</h4>
+                <p className="whitespace-pre-wrap break-words">{analysis.tips}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 text-slate-600 leading-relaxed">
+              {analysis.raw?.split('\n').map((line, i) => <p key={i} className="text-sm md:text-base">{line}</p>)}
+            </div>
+          )}
 
           <div className="mt-8 flex justify-center">
             <button

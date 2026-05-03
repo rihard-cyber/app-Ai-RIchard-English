@@ -123,11 +123,10 @@ SYSTEM: RichardMeha AI – Professional & Friendly English Tutor
 
 You are Richard, a professional, highly encouraging, and friendly English tutor teaching ${userProfile.name}.
 
-== 🧠 STRICT LANGUAGE RULE (80% ENGLISH / 20% INDONESIAN) ==
-- You MUST speak PRIMARILY in English (at least 80%) in EVERY response to immerse the user in the language.
-- NEVER respond fully in Indonesian. Even if the user speaks Indonesian, your reply MUST be mostly in English.
-- Use Indonesian (20%) ONLY to explain difficult concepts, translate complex words, or if the user is struggling.
-- Example: "That's a great effort! However, remember that we use 'was' for the past tense. Jadi, kalau kejadiannya kemarin, pakai 'was' ya."
+== 🗣️ ADAPTIVE LANGUAGE RULE ==
+- If the user speaks in INDONESIAN: Reply gracefully in Indonesian. Explain concepts, grammar, and give feedback clearly in Indonesian, but always provide English examples and encourage them to try speaking English.
+- If the user speaks in ENGLISH: Reply fully in English. Act as a native speaker.
+- Do not force English if the user is asking a question or struggling in Indonesian. Adapt to their language perfectly like a professional teacher to ensure they understand.
 
 == 🗣️ CONVERSATION STYLE ==
 - Speak in SHORT, clear, and natural sentences.
@@ -525,10 +524,10 @@ export default function App() {
   if (authState === 'admin') return <AdminDashboard onLogout={handleLogout} onSwitchToUser={() => handleLogin('owner_user_bypass')} />;
 
   return (
-    <div className={`flex h-[100dvh] font-sans overflow-hidden transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b1121] text-slate-200 dark-mode' : 'bg-slate-50 text-slate-800'}`}>
+    <div className={`flex h-[100dvh] w-full font-sans overflow-hidden overscroll-none transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b1121] text-slate-200 dark-mode' : 'bg-slate-50 text-slate-800'}`}>
       {isSidebarOpen && <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300" onClick={() => setIsSidebarOpen(false)} />}
       <aside className={`fixed md:relative inset-y-0 left-0 z-50 w-72 md:w-64 bg-[#0f172a] text-slate-300 shadow-2xl md:shadow-none transform transition-transform duration-300 ease-in-out flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <div className="h-16 flex items-center justify-between px-6 bg-[#0b1121]"><h1 onClick={handleLogoClick} title={(localStorage.getItem('owner_mode') === 'user' || localStorage.getItem('owner_bypass') === 'true') ? 'Klik 2x untuk ke Admin' : ''} className="text-xl font-bold tracking-wider flex items-center gap-2 text-white cursor-pointer select-none active:scale-95 transition-transform touch-manipulation"><Sparkles className="text-blue-500" /> RichardMeha<span className="text-blue-500"> AI</span></h1><button className="md:hidden text-slate-400 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button></div>
+        <div className="h-16 flex items-center justify-between px-6 bg-[#0b1121] pt-[env(safe-area-inset-top)]"><h1 onClick={handleLogoClick} title={(localStorage.getItem('owner_mode') === 'user' || localStorage.getItem('owner_bypass') === 'true') ? 'Klik 2x untuk ke Admin' : ''} className="text-xl font-bold tracking-wider flex items-center gap-2 text-white cursor-pointer select-none active:scale-95 transition-transform touch-manipulation"><Sparkles className="text-blue-500" /> RichardMeha<span className="text-blue-500"> AI</span></h1><button className="md:hidden text-slate-400 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button></div>
         <div className="p-6 border-b border-slate-800 flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-blue-500/20">{userProfile.name.charAt(0)}</div><div className="flex flex-col"><span className="text-base font-semibold text-white">{userProfile.name}</span><span className="text-xs text-blue-400 flex items-center gap-1"><Trophy size={12} /> {userProfile.level}</span></div></div>
         <nav className="flex-1 py-4 px-4 space-y-1 overflow-y-auto custom-scrollbar transform-gpu overscroll-contain">
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-2">Menu Utama</p>
@@ -553,11 +552,15 @@ export default function App() {
         </nav>
       </aside>
       <main className="flex-1 flex flex-col h-full w-full relative overflow-hidden">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30 shrink-0 md:hidden shadow-sm">
+        <header className="h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30 shrink-0 md:hidden shadow-sm">
           <div className="flex items-center gap-3"><button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors"><Menu size={24} /></button><h2 onClick={handleLogoClick} title={(localStorage.getItem('owner_mode') === 'user' || localStorage.getItem('owner_bypass') === 'true') ? 'Klik 2x untuk ke Admin' : ''} className="text-lg font-semibold text-slate-800 flex items-center gap-2 cursor-pointer select-none active:scale-95 transition-transform touch-manipulation">RichardMeha<span className="text-blue-600"> AI</span></h2></div>
           <div className="flex items-center gap-2"><div className="flex items-center gap-1 text-sm font-bold text-orange-500 bg-orange-50 px-3 py-1 rounded-full"><Flame size={16} className="fill-orange-500" /> {userProfile.streak}</div></div>
         </header>
-        <div className="flex-1 overflow-y-auto w-full relative bg-slate-50/50 transform-gpu overscroll-y-contain scroll-smooth">{renderContent()}</div>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden w-full relative bg-slate-50/50 transform-gpu overscroll-none scroll-smooth pb-[env(safe-area-inset-bottom)]" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <Suspense fallback={<LoadingFallback />}>
+            {renderContent()}
+          </Suspense>
+        </div>
       </main>
       <PaymentModal isOpen={isPaymentModalOpen} userName={userProfile.name} onClose={() => setIsPaymentModalOpen(false)} onPaymentSuccess={handlePaymentSuccess} planName={selectedPlan.name} price={selectedPlan.price} />
     </div>
@@ -588,30 +591,30 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, o
   const levelData = CURRICULUM[safeLevel] || CURRICULUM['Pemula Dasar (A1)'];
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-gradient-to-br from-indigo-600 via-blue-600 to-blue-500 rounded-[2.5rem] p-8 md:p-12 text-white shadow-2xl relative overflow-hidden group">
+    <div className="p-4 md:p-8 w-full max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 overflow-x-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
+        <div className="lg:col-span-2 bg-gradient-to-br from-indigo-600 via-blue-600 to-blue-500 rounded-[2.5rem] p-6 md:p-12 text-white shadow-2xl relative overflow-hidden group w-full max-w-full">
           <div className="absolute -bottom-10 -right-10 opacity-10 group-hover:scale-110 transition-transform duration-700">
             <GraduationCap size={240} />
           </div>
-          <div className="relative z-10">
+          <div className="relative z-10 w-full">
             <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-2 rounded-full mb-6 border border-white/30">
               <Sparkles size={16} className="text-yellow-300" />
               <span className="text-xs font-black uppercase tracking-widest">Level: {userProfile.level}</span>
             </div>
-            <h2 className="text-3xl md:text-5xl font-black mb-4 leading-tight">Lanjut Belajar,<br />{userProfile.name}!</h2>
-            <p className="text-blue-100 mb-8 md:text-lg max-w-md opacity-90 leading-relaxed">
+            <h2 className="text-3xl md:text-5xl font-black mb-4 leading-tight break-words">Lanjut Belajar,<br />{userProfile.name}!</h2>
+            <p className="text-blue-100 mb-8 md:text-lg max-w-md opacity-90 leading-relaxed break-words">
               Target kamu hari ini: **{levelData?.goals?.[0]?.name || levelData?.goals?.[0] || 'Mulai belajar'}**. RichardMeha AI sudah siapkan materinya!
             </p>
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 w-full">
               <button
                 onClick={() => onNavigate(recommendation)}
-                className="bg-white text-blue-700 font-black px-8 py-4 rounded-2xl shadow-xl hover:bg-blue-50 transition-all active:scale-95 flex items-center justify-center gap-2 group"
+                className="w-full sm:w-auto bg-white text-blue-700 font-black px-8 py-4 rounded-2xl shadow-xl hover:bg-blue-50 transition-all active:scale-95 flex items-center justify-center gap-2 group"
               >
                 <Zap size={20} className="fill-blue-700 group-hover:scale-125 transition-transform" />
                 Mulai {recommendation.toUpperCase()}
               </button>
-              <div className="flex gap-4 items-center">
+              <div className="flex flex-wrap gap-4 items-center w-full">
                 <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-3 flex items-center gap-3">
                   <div className="bg-orange-500 p-2 rounded-xl shadow-lg shadow-orange-500/20"><Flame size={18} className="text-white fill-white" /></div>
                   <div><p className="text-[10px] text-blue-200 font-bold uppercase tracking-tighter">Streak</p><p className="text-lg font-black leading-none">{userProfile.streak} Hari</p></div>
@@ -625,9 +628,9 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, o
           </div>
         </div>
 
-        <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-xl flex flex-col">
+        <div className="bg-white rounded-[2.5rem] p-6 md:p-8 border border-slate-200 shadow-xl flex flex-col w-full max-w-full">
           <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2"><Trophy size={24} className="text-yellow-500" /> Goals Level {userProfile.level.split(' ')[0]}</h3>
-          <div className="space-y-4 flex-1">
+          <div className="space-y-4 flex-1 w-full overflow-hidden">
             {(() => {
               const goals = levelData?.lessons || levelData?.goals || [];
               const freeCount = Math.ceil(goals.length * 0.4);
@@ -648,8 +651,8 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, o
                     <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 mt-0.5 shadow-sm transition-colors ${isLocked ? 'bg-slate-200 text-slate-400' : 'bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'}`}>
                       {isLocked ? <Lock size={12} /> : i + 1}
                     </div>
-                    <div className="flex-1">
-                      <p className={`text-sm font-black transition-colors ${isLocked ? 'text-slate-500' : 'text-slate-700 group-hover:text-blue-700'}`}>{goal.title || goal.name || goal}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-black truncate transition-colors ${isLocked ? 'text-slate-500' : 'text-slate-700 group-hover:text-blue-700'}`}>{goal.title || goal.name || goal}</p>
                       {goal.id && <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{isLocked ? 'PRO FEATURE' : (goal.topic || 'Klik untuk mulai latihan')}</p>}
                     </div>
                     {isLocked ? (
@@ -667,7 +670,7 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, o
       </div>
 
       <h3 className="text-2xl font-black text-slate-800 mt-12 mb-6 px-2">Modul Belajar Pintar</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 w-full">
         <DashboardCard title="Vocabulary" desc="Perkaya kosa kata dengan Box of Words." icon={<BookA size={24} />} color="bg-indigo-50 text-indigo-600" hover="hover:border-indigo-300 hover:shadow-indigo-200" onClick={() => onNavigate('vocabulary')} />
         <DashboardCard title="Speaking" desc="Latih pelafalan dan keberanian bicara." icon={<Mic size={24} />} color="bg-rose-50 text-rose-600" hover="hover:border-rose-300 hover:shadow-rose-200" onClick={() => onNavigate('speaking')} />
         <DashboardCard title="Grammar" desc="Pahami struktur kalimat untuk speaking." icon={<LayoutDashboard size={24} />} color="bg-emerald-50 text-emerald-600" hover="hover:border-emerald-300 hover:shadow-emerald-200" onClick={() => onNavigate('grammar')} />
@@ -675,14 +678,18 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, o
         <DashboardCard title="Writing Analyzer" desc="Koreksi tulisanmu secara detail." icon={<PenTool size={24} />} color="bg-blue-50 text-blue-600" hover="hover:border-blue-300 hover:shadow-blue-200" onClick={() => onNavigate('writing_analyzer')} />
         <DashboardCard title="Conversation" desc="Simulasi ngobrol bareng tokoh idola." icon={<MessageSquare size={24} />} color="bg-purple-50 text-purple-600" hover="hover:border-purple-300 hover:shadow-purple-200" onClick={() => onNavigate('conversation')} />
       </div>
-      <div className="mt-12"><AchievementSystem userProfile={userProfile} /></div>
+      <div className="mt-12">
+        <Suspense fallback={<div className="h-32 flex items-center justify-center bg-slate-50 rounded-3xl border border-slate-100"><Loader2 className="animate-spin text-blue-400" /></div>}>
+          <AchievementSystem userProfile={userProfile} />
+        </Suspense>
+      </div>
     </div>
   );
 }
 
 function DashboardCard({ title, desc, icon, color, hover, onClick }) {
   return (
-    <div onClick={onClick} className={`bg-white p-6 rounded-3xl border border-slate-200 shadow-sm cursor-pointer transition-all duration-300 ${hover} group hover:-translate-y-1`}>
+    <div onClick={onClick} className={`bg-white p-6 rounded-3xl border border-slate-200 shadow-sm cursor-pointer transition-all duration-300 ${hover} group hover:-translate-y-1 w-full max-w-full overflow-hidden`}>
       <div className={`w-14 h-14 rounded-2xl ${color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm`}>{icon}</div>
       <h4 className="text-lg font-bold text-slate-800 mb-1">{title}</h4>
       <p className="text-sm text-slate-500 mb-4">{desc}</p>
@@ -707,7 +714,7 @@ function SetupModule({ userProfile, setUserProfile, module, basePrompt, icon, co
   if (isStarted) return <ChatModule userProfile={userProfile} setUserProfile={setUserProfile} module={module} basePrompt={basePrompt} topic={topic} onComplete={onComplete} onBack={() => setIsStarted(false)} />;
 
   return (
-    <div className="p-4 md:p-10 max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="p-4 md:p-10 w-full max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-x-hidden">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div><h2 className="text-4xl font-black text-slate-800 mb-2 flex items-center gap-3">{icon} {module}</h2><p className="text-slate-500 font-medium">Pilih topik yang ingin kamu kuasai hari ini.</p></div>
         {!isPro && <div className="bg-amber-100 text-amber-700 px-6 py-3 rounded-2xl border border-amber-200 flex items-center gap-3 shadow-sm"><Crown size={20} className="fill-amber-700" /><div><p className="text-[10px] font-black uppercase tracking-wider">Akses Terbatas</p><p className="text-xs font-bold">Dapatkan 100+ topik dengan Pro!</p></div></div>}
@@ -739,7 +746,7 @@ function ConversationModule({ userProfile, setUserProfile, basePrompt, isPro, ch
   if (isStarted) return <ChatModule userProfile={userProfile} setUserProfile={setUserProfile} module={`Chat with ${character.name}`} basePrompt={`${basePrompt}\n${character.prompt}`} topic={`Chat with ${character.name}`} characterName={character.name} onBack={() => setIsStarted(false)} />;
 
   return (
-    <div className="p-4 md:p-10 max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="p-4 md:p-10 w-full max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-x-hidden">
       <h2 className="text-4xl font-black text-slate-800 mb-2 flex items-center gap-3"><MessageSquare size={36} className="text-purple-600" /> Conversation Mode</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {charactersList.map((c, i) => (
@@ -1020,6 +1027,8 @@ function ChatModule({
       setMicStatus('idle');
       if (event.error === 'not-allowed') {
         alert("Akses mikrofon ditolak. Izinkan mikrofon di pengaturan perangkat/browser Anda.");
+      } else if (event.error === 'network') {
+        alert("Error jaringan pada Speech Recognition. Jika menggunakan APK WebView sederhana, fitur ini mungkin diblokir oleh sistem.");
       }
     };
 
@@ -1060,8 +1069,8 @@ function ChatModule({
 
     const lang = detectLanguage(text);
     const modeInstruction = lang === 'id'
-      ? "\n(Note: User used Indonesian. You MUST REPLY PRIMARILY IN ENGLISH. Encourage them to try answering in English, and provide the English translation for what they just said.)"
-      : "\n(Note: User used English. You MUST REPLY IN ENGLISH. If they made grammatical or phrasing mistakes, gently correct them using ❌/✅ format before continuing.)";
+      ? "\n[SYSTEM: User is speaking Indonesian. You MUST reply in Indonesian. Be a professional and friendly English teacher. Explain clearly, correct their English if they made mistakes, and provide natural English equivalents.]"
+      : "\n[SYSTEM: User is speaking English. You MUST reply fully in English. Act as a professional native English teacher. If there are mistakes, correct them gently using ❌/✅ format.]";
 
     const newUserMsg = { role: 'user', content: text, isHidden: isSystemInitiated && hideInputAtStart };
     const updatedMessages = [...messages, newUserMsg];
@@ -1120,7 +1129,7 @@ function ChatModule({
       // Extract Hidden Score Data for XP/Dashboard
       if (aiText.includes('---')) {
         const parts = aiText.split('---');
-        const jsonPart = parts[parts.length - 1].trim();
+        const jsonPart = parts[parts.length - 1].replace(/```json/gi, '').replace(/```/g, '').trim();
 
         const processScore = (scoreObj) => {
           const confidence = scoreObj.confidence !== undefined ? scoreObj.confidence : 0.8;
@@ -1159,7 +1168,6 @@ function ChatModule({
         try {
           const scoreObj = JSON.parse(jsonPart);
           processScore(scoreObj);
-          // Clean text for UI: remove everything from --- onwards
           aiText = parts.slice(0, -1).join('---').trim();
         } catch (e) {
           console.warn("JSON Parse direct failed", e);
@@ -1260,7 +1268,7 @@ function ChatModule({
       } else {
         if (inTable) flushTable(i);
         if (line.trim()) {
-          elements.push(<p key={i} className="mb-2 last:mb-0 leading-relaxed" dangerouslySetInnerHTML={{ __html: parseInline(line) }} />);
+          elements.push(<p key={i} className="mb-2 last:mb-0 leading-relaxed break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: parseInline(line) }} />);
         } else {
           elements.push(<div key={i} className="h-2" />);
         }
@@ -1411,7 +1419,7 @@ function ChatModule({
       </div>
 
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-32 space-y-6 transform-gpu overscroll-y-contain scroll-smooth">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 pb-[calc(120px+env(safe-area-inset-bottom))] space-y-6 transform-gpu overscroll-none scroll-smooth w-full">
         {messages.map((msg, idx) => (
           !msg.isHidden && (
             <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} gap-2 w-full`}>
@@ -1421,7 +1429,7 @@ function ChatModule({
                     <Bot size={16} />
                   </div>
                 )}
-                <div className={`relative max-w-[85%] px-4 py-3 rounded-2xl shadow-sm text-sm md:text-base ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none'}`}>
+                <div className={`relative max-w-[85%] px-4 py-3 rounded-2xl shadow-sm text-sm md:text-base break-words ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none'}`}>
                   {renderFormattedText(msg.content)}
 
                   {msg.role === 'ai' && (
@@ -1515,7 +1523,7 @@ function ChatModule({
       </div>
 
       {/* Input Form */}
-      <div className="p-4 md:p-6 bg-white border-t border-slate-200 shrink-0">
+      <div className="p-4 md:p-6 bg-white border-t border-slate-200 shrink-0 w-full pb-[calc(16px+env(safe-area-inset-bottom))]">
         <form onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue, false, false); }} className="max-w-4xl mx-auto w-full flex gap-2">
           <input
             value={inputValue}

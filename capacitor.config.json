@@ -1,0 +1,6 @@
+{
+    "appId": "com.richardmeha.englishku",
+    "appName": "RichardMeha AI",
+    "webDir": "dist",
+    "bundledWebRuntime": false
+}

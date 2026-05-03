@@ -58,8 +58,8 @@ export default function PaymentModal({ isOpen, onClose, onPaymentSuccess, planNa
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-      <div className="bg-white max-w-md w-full rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in overscroll-none overflow-hidden">
+      <div className="bg-white max-w-md w-full rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] mx-2">
         <div className="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between sticky top-0 z-10">
           <div>
             <h2 className="text-xl font-black text-slate-800">Selesaikan Pembayaran</h2>
@@ -77,10 +77,10 @@ export default function PaymentModal({ isOpen, onClose, onPaymentSuccess, planNa
           <div className="space-y-3">
             <h4 className="font-bold text-slate-700 flex items-center gap-2"><CreditCard size={18} /> Rekening Tujuan</h4>
             {banks.length === 0 ? <p className="text-sm text-slate-400">Memuat rekening...</p> : banks.map(bank => (
-              <div key={bank.id} className="border border-slate-200 rounded-2xl p-4 flex items-center justify-between hover:border-blue-300 transition-colors">
-                <div>
+              <div key={bank.id} className="border border-slate-200 rounded-2xl p-4 flex items-center justify-between hover:border-blue-300 transition-colors w-full">
+                <div className="min-w-0 flex-1">
                   <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{bank.provider}</p>
-                  <p className="text-lg font-black text-slate-800">{bank.account_number}</p>
+                  <p className="text-lg font-black text-slate-800 break-words">{bank.account_number}</p>
                   <p className="text-xs font-medium text-slate-500">A.N. {bank.account_name}</p>
                 </div>
                 <button onClick={() => handleCopy(bank.account_number, bank.id)} className={`p-2.5 rounded-xl transition-all ${copied === bank.id ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>

@@ -253,12 +253,12 @@ export function LoginPage({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 overflow-hidden relative">
+    <div className="min-h-screen w-full bg-[#0f172a] flex items-center justify-center p-4 overflow-hidden relative overscroll-none">
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/30 rounded-full blur-[100px] pointer-events-none"></div>
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-[100px] pointer-events-none"></div>
 
-      <div className="w-full max-w-md running-border rounded-3xl p-[3px] animate-in zoom-in-95 duration-500">
-        <div className="running-border-inner rounded-[22px] bg-[#0f172a]/90 backdrop-blur-xl p-8 flex flex-col relative z-10 overflow-hidden min-h-[480px]">
+      <div className="w-full max-w-md running-border rounded-3xl p-[3px] animate-in zoom-in-95 duration-500 mx-2">
+        <div className="running-border-inner rounded-[22px] bg-[#0f172a]/90 backdrop-blur-xl p-6 md:p-8 flex flex-col relative z-10 overflow-hidden min-h-[480px] w-full">
 
           <div className="flex justify-center mb-6">
             <div onClick={handleLogoClick} className="cursor-pointer select-none w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20 transition-transform active:scale-95 touch-manipulation">
@@ -492,14 +492,14 @@ export function LoginPage({ onLogin }) {
 
 export function SubscriptionPage({ onSelectPlan }) {
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 md:p-8">
-      <div className="max-w-7xl w-full">
+    <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center p-4 md:p-8 overflow-x-hidden overscroll-none pb-[calc(16px+env(safe-area-inset-bottom))] pt-[calc(16px+env(safe-area-inset-top))]">
+      <div className="max-w-7xl w-full mx-auto">
         <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h1 className="text-3xl md:text-5xl font-black text-slate-800 mb-4 tracking-tight">Pilih Paket Belajarmu</h1>
           <p className="text-slate-500 md:text-lg max-w-2xl mx-auto">Tingkatkan pengalaman belajarmu dengan akses tanpa batas ke fitur RichardMeha AI. Pilih paket yang paling sesuai dengan ambisi masa depanmu.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 w-full max-w-6xl mx-auto">
           {/* Free Plan */}
           <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm flex flex-col hover:shadow-lg transition-shadow animate-in zoom-in-95 duration-500 delay-100">
             <div className="w-12 h-12 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center mb-6">
