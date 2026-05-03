@@ -459,6 +459,15 @@ export default function App() {
                 <div><h4 className="font-bold text-slate-800">Status Akun</h4><p className="text-xs text-slate-500">Paket langganan aktif Anda.</p></div>
                 <span className={`text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest ${userProfile.is_pro ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-600'}`}>{userProfile.is_pro ? '👑 Pro' : 'Free'}</span>
               </div>
+
+              {/* Tambahan: Tombol Clear Cache untuk HP Android */}
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <div><h4 className="font-bold text-slate-800">Refresh Sistem</h4><p className="text-xs text-slate-500">Hapus cache API & muat ulang aplikasi.</p></div>
+                <button onClick={() => { localStorage.removeItem('gemini_api_key'); window.location.reload(true); }} className="px-5 py-2.5 bg-blue-50 text-blue-600 font-black rounded-xl hover:bg-blue-100 transition-all active:scale-95 text-xs shadow-sm">
+                  <RefreshCw size={14} className="inline-block mr-1" /> CLEAR CACHE
+                </button>
+              </div>
+
               <div className="p-6"><button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 py-4 bg-rose-50 text-rose-600 font-bold rounded-2xl hover:bg-rose-100 transition-all active:scale-95"><LogOut size={18} /> Keluar dari Akun</button></div>
             </div>
           </div>
