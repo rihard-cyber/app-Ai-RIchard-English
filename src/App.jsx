@@ -29,7 +29,8 @@ import {
   LogOut,
   Lightbulb,
   Lock,
-  Shield
+  Shield,
+  RefreshCw
 } from 'lucide-react';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
 import { LoginPage, SubscriptionPage } from './Auth';
