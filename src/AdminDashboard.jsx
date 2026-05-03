@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw, Menu, X, User, Zap, Crown
 } from 'lucide-react';
+import { supabase } from './supabaseClient';
 
 export default function AdminDashboard({ onLogout, onSwitchToUser }) {
     const [activeTab, setActiveTab] = useState('overview');
@@ -255,17 +256,16 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
 
                             <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm mt-8">
                                 <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Zap className="text-blue-500" /> Konfigurasi AI (API Key)</h3>
-                                <p className="text-xs text-slate-500 mb-4">Masukkan API Key dari <b>Google Gemini</b> (AIza...), <b>Groq</b> (gsk_...), atau <b>OpenAI</b> (sk-...).<br /><b>Tips Lintas-AI:</b> Masukkan banyak API Key sekaligus pisahkan dengan koma (,). Sistem otomatis mengubah koneksi model/AI provider saat limit habis.</p>
-                                <div className="flex flex-col sm:flex-row gap-2">
-                                    <input
-                                        type="password"
+                                <p className="text-xs text-slate-500 mb-4">Masukkan kumpulan API Key Anda.<br /><b>Penting:</b> Jangan tambahkan keterangan apapun pada key. Langsung masukkan API Key asli dan pisahkan dengan koma (,). Sistem otomatis loncat ganti AI saat limit habis.</p>
+                                <div className="flex flex-col gap-3">
+                                    <textarea
                                         value={apiKeyInput}
                                         onChange={(e) => setApiKeyInput(e.target.value)}
-                                        placeholder="AIzaSy..., gsk_..., sk-..."
-                                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono"
-                                    />
-                                    <button onClick={handleSaveApiKey} className={`${saveKeySuccess ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-blue-600 hover:bg-blue-700'} text-white px-6 py-3 rounded-xl font-bold active:scale-95 transition-all min-w-[120px] flex justify-center items-center`}>
-                                        {saveKeySuccess ? 'Tersimpan ✅' : 'Simpan'}
+                                        placeholder="AIzaSy...,gsk_...,sk-..."
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono resize-y min-h-[120px]"
+                                    ></textarea>
+                                    <button onClick={handleSaveApiKey} className={`${saveKeySuccess ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-blue-600 hover:bg-blue-700'} text-white px-6 py-3 rounded-xl font-bold active:scale-95 transition-all w-full sm:w-auto sm:self-end flex justify-center items-center`}>
+                                        {saveKeySuccess ? 'Tersimpan ✅' : 'Simpan Semua Key'}
                                     </button>
                                 </div>
                             </div>

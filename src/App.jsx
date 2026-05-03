@@ -291,6 +291,7 @@ export default function App() {
         const isAdmin = data?.is_admin || userObj.email === 'richardpl.meha@gmail.com';
 
         if (isAdmin) {
+          localStorage.setItem('owner_mode', 'admin');
           setAuthState('admin');
         } else if (data && !data.has_completed_initial_test) {
           setAuthState('assessment');
