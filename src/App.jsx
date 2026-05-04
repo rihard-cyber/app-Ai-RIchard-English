@@ -73,11 +73,11 @@ const LoadingFallback = () => (
 const RICHARD_MASTER_PROMPT = (userProfile, currentTopic) => `
 SYSTEM: RichardMeha AI – The Ultimate Private English Tutor & Global Professional Mentor
 
-You are Richard. You are NOT an AI assistant. You are a REAL human private tutor and a high-level professional mentor for ${userProfile.name}.
-Your personality: Smart, highly professional, super friendly, and straight to the point (Singkat, Padat, Jelas).
+You are a highly empathetic, helpful, and friendly English Tutor AI. You talk to the user like a close, supportive friend (you can use casual, affectionate Indonesian terms like "beb" or "kamu" when speaking in Indonesian). You are highly responsive to their needs, always correct their mistakes gently, encourage them enthusiastically, and adapt your tone to match their energy. Never sound like a rigid robot.
+Your name is Richard. You are a high-level professional mentor for ${userProfile.name}.
 
 == 💎 CORE PERSONALITY RULES ==
-- NEVER say "As an AI model..." or "I am an artificial intelligence." Talk like a real human friend.
+- NEVER say "As an AI model..." Talk like a real human friend.
 - BE CONCISE: Keep your main response between 1 to 3 sentences only. NO long-winded explanations unless specifically asked.
 - NO BOT-LIKE LISTS: Do not use bullet points or numbered lists in daily conversation. Just natural paragraphs.
 - VOICE OPTIMIZATION: Your sentences must be easy to read out loud. No weird symbols or complicated formatting.
@@ -531,11 +531,15 @@ const mapTopics = (arr) => arr.map(t => ({ name: t, level: "Semua Level" }));
 const VOCABULARY_TOPICS = mapTopics(VOCAB_RAW);
 const GRAMMAR_TOPICS = mapTopics(GRAMMAR_RAW);
 const LISTENING_TOPICS = mapTopics(LISTENING_RAW);
-const CONVERSATION_CHARACTERS = CHARS_RAW.map(c => ({
-  name: c.name,
-  role: c.topic,
-  prompt: `Act as ${c.name} and talk about ${c.topic}. YOU MUST SPEAK PRIMARILY IN ENGLISH, just like the real person.`
-}));
+const CONVERSATION_CHARACTERS = CHARS_RAW.map(c => {
+  const femaleNames = ["Taylor Swift", "Oprah Winfrey", "Emma Watson", "Rina"];
+  return {
+    name: c.name,
+    role: c.topic,
+    gender: femaleNames.includes(c.name) ? 'female' : 'male',
+    prompt: `Act as ${c.name} and talk about ${c.topic}. YOU MUST SPEAK PRIMARILY IN ENGLISH, just like the real person.`
+  };
+});
 
 
 // ==========================================
@@ -635,7 +639,7 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, o
       </div>
       <div className="mt-12">
         <Suspense fallback={<div className="h-32 flex items-center justify-center bg-slate-50 rounded-3xl border border-slate-100"><Loader2 className="animate-spin text-blue-400" /></div>}>
-          <AchievementSystem userProfile={userProfile} />
+          <AchievementSystem userProfile={userProfile} onNavigate={onNavigate} />
         </Suspense>
       </div>
     </div>
@@ -698,7 +702,7 @@ function ConversationModule({ userProfile, setUserProfile, basePrompt, isPro, ch
     setCharacter(char); setIsStarted(true);
   };
 
-  if (isStarted) return <ChatModule userProfile={userProfile} setUserProfile={setUserProfile} module={`Chat with ${character.name}`} basePrompt={`${basePrompt}\n${character.prompt}`} topic={`Chat with ${character.name}`} characterName={character.name} onBack={() => setIsStarted(false)} />;
+  if (isStarted) return <ChatModule userProfile={userProfile} setUserProfile={setUserProfile} module={`Chat with ${character.name}`} basePrompt={`${basePrompt}\n${character.prompt}`} topic={`Chat with ${character.name}`} characterName={character.name} characterGender={character.gender} onBack={() => setIsStarted(false)} />;
 
   return (
     <div className="p-4 md:p-10 w-full max-w-6xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-x-hidden">
@@ -735,7 +739,8 @@ function ChatModule({
   onBack,
   initialCallMode = false,
   initialSuggestions = [],
-  characterName = ''
+  characterName = '',
+  characterGender = 'male'
 }) {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
@@ -750,6 +755,7 @@ function ChatModule({
   const [isTypingEffect, setIsTypingEffect] = useState(false);
   const [micStatus, setMicStatus] = useState('idle'); // 'idle', 'listening', 'processing', 'detected'
   const [voicePersonality, setVoicePersonality] = useState('friendly'); // 'friendly', 'strict', 'buddy'
+  const [sttLang, setSttLang] = useState('en-US');
   const idleTimerRef = useRef(null);
 
   // Voice recording states
@@ -890,6 +896,7 @@ function ChatModule({
     else if (characterName === "Keanu Reeves") { pitch = 0.5; rate = 0.75; }
     else if (characterName === "Emma Watson") { pitch = 1.1; rate = 0.95; }
     else if (characterName === "Albert Einstein") { pitch = 0.7; rate = 0.85; }
+    else if (characterGender === 'female' && pitch === 1.0) { pitch = 1.2; }
 
     try {
       await TextToSpeech.stop();
@@ -911,7 +918,7 @@ function ChatModule({
 
         const femaleCharacters = ["Taylor Swift", "Oprah Winfrey", "Emma Watson"];
         const ukCharacters = ["Sherlock Holmes", "Emma Watson", "Gordon Ramsay"];
-        const isFemale = characterName ? femaleCharacters.includes(characterName) : false;
+        const isFemale = characterGender === 'female' || (characterName && femaleCharacters.includes(characterName));
         const isUK = characterName ? ukCharacters.includes(characterName) : false;
 
         const voices = window.speechSynthesis.getVoices();
@@ -1004,7 +1011,7 @@ function ChatModule({
         });
 
         await SpeechRecognition.start({
-          language: 'en-US',
+          language: sttLang,
           maxResults: 1,
           prompt: "RichardMeha AI mendengarkan...",
           partialResults: true,
@@ -1026,7 +1033,7 @@ function ChatModule({
 
       if (!recognitionRef.current) {
         recognitionRef.current = new WebSpeechRecognition();
-        recognitionRef.current.lang = 'en-US';
+        recognitionRef.current.lang = sttLang;
         recognitionRef.current.continuous = true;
         recognitionRef.current.interimResults = true;
       }
@@ -1460,6 +1467,13 @@ function ChatModule({
                   {msg.role === 'ai' && (
                     <div className="mt-2 flex justify-end gap-1 border-t border-slate-100 pt-1">
                       <button
+                        onClick={() => handleTTS(msg.content)}
+                        className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
+                        title="Dengarkan (TTS)"
+                      >
+                        <Volume2 size={14} />
+                      </button>
+                      <button
                         onClick={() => handleTranslate(idx)}
                         className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
                       >
@@ -1562,6 +1576,15 @@ function ChatModule({
             className={`p-4 rounded-2xl transition-all active:scale-90 flex items-center justify-center shadow-md ${isRecording ? 'bg-rose-500 text-white animate-pulse shadow-rose-500/30' : 'bg-slate-100 text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200'}`}
           >
             {isRecording ? <MicOff size={22} /> : <Mic size={22} />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSttLang(prev => prev === 'en-US' ? 'id-ID' : 'en-US')}
+            className="p-4 rounded-2xl font-black text-xs transition-all flex items-center justify-center bg-slate-100 text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200 w-14 shadow-md shrink-0"
+            title="Ubah Bahasa STT (Mic)"
+          >
+            {sttLang === 'en-US' ? 'EN' : 'ID'}
           </button>
 
           <button
