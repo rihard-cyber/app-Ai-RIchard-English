@@ -55,33 +55,6 @@ export function LoginPage({ onLogin }) {
     const safeEmail = email.trim().toLowerCase();
     const safePassword = password.trim();
 
-    const isBypassUserPassword = safePassword === '@Meha112296';
-    const isAdminPassword =
-      safePassword === 'meha112296' ||
-      safePassword === '@Meha2024' ||
-      safePassword === 'p24' ||
-      safePassword === 'admin' ||
-      safePassword === 'admin123';
-
-    // Otomatis beralih ke Dasbor Owner atau Admin (Bypass) HANYA dengan password khusus
-    if (isBypassUserPassword) {
-      setIsLoading(false);
-      onLogin('owner_user_bypass');
-      return;
-    }
-    if (isAdminPassword) {
-      setIsLoading(false);
-      onLogin('admin');
-      return;
-    }
-
-    // Blokir jika mencoba login admin melalui form rahasia tanpa password yang benar
-    if (mode === 'admin_login') {
-      setIsLoading(false);
-      setErrorMsg('Akses Admin Ditolak. Password tidak valid.');
-      return;
-    }
-
     const { error } = await supabase.auth.signInWithPassword({
       email: safeEmail,
       password,
@@ -99,8 +72,12 @@ export function LoginPage({ onLogin }) {
         setErrorMsg(error.message);
       }
     } else {
-      // This part is now only for regular user login
-      onLogin('user');
+      // Deteksi jika login dipicu dari form Admin Portal
+      if (mode === 'admin_login') {
+        onLogin('admin');
+      } else {
+        onLogin('user');
+      }
     }
   };
 
