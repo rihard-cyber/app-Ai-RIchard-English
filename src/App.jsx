@@ -944,7 +944,10 @@ function ChatModule({
       setMicStatus('processing');
       setIsRecording(false);
       try {
-        await SpeechRecognition.stop();
+        const checkAvail = await SpeechRecognition.available().catch(() => ({ available: false }));
+        if (checkAvail.available) {
+          await SpeechRecognition.stop();
+        }
         recognitionRef.current?.stop();
       } catch (e) { console.error("Stop error", e); }
 
@@ -968,47 +971,48 @@ function ChatModule({
     currentTranscriptRef.current = '';
 
     try {
-      // Cek izin (biasanya sangat cepat jika sudah pernah diberikan)
-      const perm = await SpeechRecognition.checkPermissions();
-      if (perm.speechRecognition !== 'granted') {
-        const req = await SpeechRecognition.requestPermissions();
-        if (req.speechRecognition !== 'granted') {
-          alert("Izin mikrofon diperlukan.");
-          setIsRecording(false);
-          setMicStatus('idle');
-          return;
+      const checkAvail = await SpeechRecognition.available().catch(() => ({ available: false }));
+
+      if (checkAvail.available) {
+        const perm = await SpeechRecognition.checkPermissions();
+        if (perm.speechRecognition !== 'granted') {
+          const req = await SpeechRecognition.requestPermissions();
+          if (req.speechRecognition !== 'granted') {
+            alert("Izin mikrofon diperlukan.");
+            setIsRecording(false);
+            setMicStatus('idle');
+            return;
+          }
         }
+
+        await SpeechRecognition.removeAllListeners();
+
+        SpeechRecognition.addListener('listeningState', (data) => {
+          if (data.status === 'stopped') {
+            setIsRecording(false);
+            setMicStatus('idle');
+          }
+        });
+
+        SpeechRecognition.addListener('partialResults', (data) => {
+          if (data.matches && data.matches.length > 0) {
+            const transcript = data.matches[0];
+            currentTranscriptRef.current = transcript;
+            setInputValue(transcript);
+            setMicStatus('detected');
+          }
+        });
+
+        await SpeechRecognition.start({
+          language: 'en-US',
+          maxResults: 1,
+          prompt: "RichardMeha AI mendengarkan...",
+          partialResults: true,
+          popup: false,
+        });
+        return;
       }
-
-      await SpeechRecognition.removeAllListeners();
-
-      // Listener untuk status sistem agar sinkron
-      SpeechRecognition.addListener('listeningState', (data) => {
-        if (data.status === 'stopped') {
-          setIsRecording(false);
-          setMicStatus('idle');
-        }
-      });
-
-      // Listener untuk hasil sementara agar UI responsif
-      SpeechRecognition.addListener('partialResults', (data) => {
-        if (data.matches && data.matches.length > 0) {
-          const transcript = data.matches[0];
-          currentTranscriptRef.current = transcript;
-          setInputValue(transcript);
-          setMicStatus('detected');
-        }
-      });
-
-      // Mulai mendengarkan secara native
-      await SpeechRecognition.start({
-        language: 'en-US',
-        maxResults: 1,
-        prompt: "RichardMeha AI mendengarkan...",
-        partialResults: true,
-        popup: false,
-      });
-
+      throw new Error("Native API tidak tersedia");
     } catch (error) {
       console.warn("Native Mic error, fallback to Web API", error);
 
@@ -1534,23 +1538,21 @@ function ChatModule({
       </div>
 
       {/* Input Form */}
-      <div className="p-4 md:p-6 bg-white border-t border-slate-200 shrink-0 w-full pb-[calc(16px+env(safe-area-inset-bottom))]">
-        <form onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue, false, false); }} className="max-w-4xl mx-auto w-full flex items-center gap-3">
-          <div className="relative flex-1 group">
-            <input
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder={isRecording ? "Mendengarkan..." : "Ketik pesan atau tanya Richard..."}
-              className="w-full bg-slate-100 border border-slate-200 rounded-2xl pl-5 pr-12 py-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-base shadow-inner"
-            />
-            <button
-              type="button"
-              onClick={toggleRecording}
-              className={`absolute right-2 top-1/2 -translate-y-1/2 p-2.5 rounded-xl transition-all active:scale-90 ${isRecording ? 'bg-rose-500 text-white shadow-lg animate-pulse' : 'text-slate-400 hover:text-blue-600'}`}
-            >
-              {isRecording ? <MicOff size={22} /> : <Mic size={22} />}
-            </button>
-          </div>
+      <div className="sticky bottom-0 z-30 p-4 md:p-6 bg-white border-t border-slate-200 w-full pb-[calc(16px+env(safe-area-inset-bottom))]">
+        <form onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue, false, false); }} className="max-w-4xl mx-auto w-full flex items-center gap-2 md:gap-3">
+          <input
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            placeholder={isRecording ? "Mendengarkan..." : "Ketik pesan atau tanya Richard..."}
+            className="flex-1 w-full bg-slate-100 border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-base shadow-inner"
+          />
+          <button
+            type="button"
+            onClick={toggleRecording}
+            className={`p-4 rounded-2xl transition-all active:scale-90 flex items-center justify-center shadow-md ${isRecording ? 'bg-rose-500 text-white animate-pulse shadow-rose-500/30' : 'bg-slate-100 text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200'}`}
+          >
+            {isRecording ? <MicOff size={22} /> : <Mic size={22} />}
+          </button>
 
           <button
             type="submit"
