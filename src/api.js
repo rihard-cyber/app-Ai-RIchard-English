@@ -2,13 +2,18 @@ import { supabase } from './supabaseClient';
 
 export const fetchGeminiWithRotation = async (payload) => {
     let rawKey = localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
-    try {
-        const { data } = await supabase.from('app_settings').select('value').eq('id', 'api_keys').single();
-        if (data && data.value) {
-            rawKey = data.value;
-            localStorage.setItem('gemini_api_key', rawKey);
-        }
-    } catch (err) { console.error("DB Key Error:", err); }
+
+    // Sinkronisasi background (tidak ditunggu/await) agar tidak menambah latency pemanggilan AI
+    const syncApiKeyFromDB = async () => {
+        if (!supabase) return;
+        try {
+            const { data } = await supabase.from('app_settings').select('value').eq('id', 'api_keys').maybeSingle();
+            if (data && data.value) {
+                localStorage.setItem('gemini_api_key', data.value);
+            }
+        } catch (err) { }
+    };
+    syncApiKeyFromDB();
 
     const apiKeys = rawKey.split(',').map(k => k.trim()).filter(k => k);
     if (apiKeys.length === 0) throw new Error("API Key AI belum diatur.");

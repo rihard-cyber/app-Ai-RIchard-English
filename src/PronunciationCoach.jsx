@@ -100,26 +100,42 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
 
   const toggleRecording = async () => {
     if (isRecording) {
-      try { await SpeechRecognition.stop(); } catch (e) { }
-      recognitionRef.current?.stop();
       setIsRecording(false);
+      try {
+        await SpeechRecognition.stop();
+        recognitionRef.current?.stop();
+      } catch (e) { }
+
+      // Kirim untuk dianalisa segera setelah berhenti
+      if (transcript.trim()) {
+        analyzePronunciation(transcript);
+      }
       return;
     }
 
     try {
+      setIsRecording(true);
+      setTranscript('');
+
       // Native Capacitor Speech Recognition
-      let perm = await SpeechRecognition.checkPermissions();
+      const perm = await SpeechRecognition.checkPermissions();
       if (perm.speechRecognition !== 'granted') {
-        perm = await SpeechRecognition.requestPermissions();
-      }
-      if (perm.speechRecognition !== 'granted') {
-        alert("Izin mikrofon ditolak. Buka pengaturan aplikasi Android kamu untuk mengizinkan.");
-        setIsRecording(false);
-        return;
+        const req = await SpeechRecognition.requestPermissions();
+        if (req.speechRecognition !== 'granted') {
+          alert("Izin mikrofon diperlukan.");
+          setIsRecording(false);
+          return;
+        }
       }
 
-      setIsRecording(true);
       await SpeechRecognition.removeAllListeners();
+
+      // Listener untuk status sistem agar sinkron
+      SpeechRecognition.addListener('listeningState', (data) => {
+        if (data.status === 'stopped') {
+          setIsRecording(false);
+        }
+      });
 
       SpeechRecognition.addListener('partialResults', (data) => {
         if (data.matches && data.matches.length > 0) {
@@ -127,45 +143,47 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
         }
       });
 
-      const result = await SpeechRecognition.start({
+      await SpeechRecognition.start({
         language: 'en-US',
         maxResults: 1,
         prompt: "Ucapkan kalimatnya...",
-        partialResults: false,
-        popup: true,
+        partialResults: true,
+        popup: false,
       });
 
-      if (result && result.matches && result.matches.length > 0) {
-        const text = result.matches[0];
-        setTranscript(text);
-        analyzePronunciation(text);
-      }
-      setIsRecording(false);
     } catch (error) {
       console.warn("Native Mic error, fallback to Web API", error);
 
       const WebSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!WebSpeechRecognition) {
-        alert("Browser atau perangkat Anda tidak mendukung fitur mikrofon.");
+        alert("Browser tidak mendukung fitur mikrofon.");
         setIsRecording(false);
         return;
       }
 
-      try {
+      if (!recognitionRef.current) {
         recognitionRef.current = new WebSpeechRecognition();
         recognitionRef.current.lang = 'en-US';
-        recognitionRef.current.onresult = (event) => {
-          const result = event.results[0][0].transcript;
-          setTranscript(result);
-          analyzePronunciation(result);
-        };
-        recognitionRef.current.onerror = (e) => { setIsRecording(false); };
-        recognitionRef.current.onend = () => setIsRecording(false);
-        recognitionRef.current.start();
-        setIsRecording(true);
-      } catch (err) {
-        setIsRecording(false);
+        recognitionRef.current.continuous = true;
+        recognitionRef.current.interimResults = true;
       }
+
+      recognitionRef.current.onresult = (event) => {
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            setTranscript(event.results[i][0].transcript);
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        if (interimTranscript) setTranscript(interimTranscript);
+      };
+
+      recognitionRef.current.onerror = () => setIsRecording(false);
+      recognitionRef.current.onend = () => setIsRecording(false);
+
+      try { recognitionRef.current.start(); } catch (err) { }
     }
   };
 

@@ -69,54 +69,49 @@ const LoadingFallback = () => (
   </div>
 );
 
-// --- MASTER PROMPT (RICHARDMEHA AI v5.0) ---
+// --- MASTER PROMPT (RICHARDMEHA AI v6.0 - HUMAN PRO) ---
 const RICHARD_MASTER_PROMPT = (userProfile, currentTopic) => `
-SYSTEM: RichardMeha AI – Professional & Friendly English Tutor
+SYSTEM: RichardMeha AI – The Ultimate Private English Tutor & Global Professional Mentor
 
-You are Richard, a professional, highly encouraging, and friendly English tutor teaching ${userProfile.name}.
+You are Richard. You are NOT an AI assistant. You are a REAL human private tutor and a high-level professional mentor for ${userProfile.name}.
+Your personality: Smart, highly professional, super friendly, and straight to the point (Singkat, Padat, Jelas).
 
-== 🗣️ ADAPTIVE LANGUAGE RULE ==
-- If the user speaks in INDONESIAN: Reply gracefully in Indonesian. Explain concepts, grammar, and give feedback clearly in Indonesian, but always provide English examples and encourage them to try speaking English.
-- If the user speaks in ENGLISH: Reply fully in English. Act as a native speaker.
-- Do not force English if the user is asking a question or struggling in Indonesian. Adapt to their language perfectly like a professional teacher to ensure they understand.
+== 💎 CORE PERSONALITY RULES ==
+- NEVER say "As an AI model..." or "I am an artificial intelligence." Talk like a real human friend.
+- BE CONCISE: Keep your main response between 1 to 3 sentences only. NO long-winded explanations unless specifically asked.
+- NO BOT-LIKE LISTS: Do not use bullet points or numbered lists in daily conversation. Just natural paragraphs.
+- VOICE OPTIMIZATION: Your sentences must be easy to read out loud. No weird symbols or complicated formatting.
 
-== 🗣️ CONVERSATION STYLE ==
-- Speak in SHORT, clear, and natural sentences.
-- Be professional yet warm and friendly.
-- NO bullet points, NO lists, NO asterisks (*), NO emojis in the middle of sentences. Only words and simple punctuation.
+== 🗣️ LANGUAGE FLOW ==
+- BILINGUAL EXPERT: If the user uses Indonesian, you are a master at explaining English concepts in clear, professional Indonesian, but always push them back to English politely.
+- If the user uses English, stay 100% in English like a native speaker.
 
-== ✅ HOW TO CORRECT ==
-- Correct mistakes smoothly and politely: "Almost perfect! Native speakers usually say it like this: [Correction] ✅"
-- If the user's sentence is completely correct, compliment them!
+== ✅ CORRECTION STYLE (THE FRIENDLY PRO) ==
+- COMPLIMENT FIRST: If they did well, say "Nice! Perfect English." or "Cool, that's natural."
+- CORRECT SMOOTHLY: Only correct if there's a real mistake. Use: "Just a small tip, we usually say: [Correction] ✅"
+- Jargon-free: Explain like a friend, not a textbook.
 
-== 🧑‍🏫 TEACHING FLOW ==
-1. Acknowledge and encourage ${userProfile.name}'s response.
-2. Give brief feedback or continue the topic.
-3. Ask 1 short follow-up question in English to keep the conversation engaging.
-
-== 🆘 IF STUCK ==
-- Give a gentle hint in Indonesian: "Kalau bingung, mungkin bisa jawab seperti ini..."
+== 🧑‍🏫 TEACHING & CONTENT ==
+- Stay relevant to the topic: ${currentTopic}.
+- Use modern, trendy, and professional examples (Remote work, AI tools, Startups, Personal Branding, Global Networking).
+- Always end with 1 short, engaging question in English to keep them talking.
 
 == 📊 DATA TRACKING (HIDDEN) ==
-At the very end of your response, AFTER the separator "---", append a single JSON object for the app's system.
-Analyze the user's input strictly based on performance.
-Return exactly in this JSON format:
+At the very end of your response, AFTER the separator "---", append a single JSON object.
 {
   "grammar_score": 0-100,
   "vocab_score": 0-100,
   "fluency_score": 0-100,
   "comprehension_score": 0-100,
-  "mistakes": ["mistake 1", "mistake 2"],
+  "mistakes": ["mistake 1"],
   "level_estimate": "A1-C2",
   "confidence": 0.0-1.0,
-  "feedback": "Short feedback message",
-  "phonetic": "phonetic spelling if relevant"
+  "feedback": "Short encouraging feedback",
+  "phonetic": "phonetic help if needed"
 }
-
-IMPORTANT: DO NOT USE BOLD (**), LISTS, OR WEIRD SYMBOLS. WRITE EXACTLY AS YOU WOULD SPEAK OUT LOUD.
 ---
-== USER PROFILE ==
-Name: ${userProfile.name} | Level: ${userProfile.level} | Topic: ${currentTopic}
+== USER CONTEXT ==
+Name: ${userProfile.name} | Level: ${userProfile.level} | Current Focus: ${currentTopic}
 `;
 
 
@@ -946,15 +941,20 @@ function ChatModule({
 
   const toggleRecording = async () => {
     if (isRecording) {
-      try { await SpeechRecognition.stop(); } catch (e) { }
-      recognitionRef.current?.stop();
-      setIsRecording(false);
       setMicStatus('processing');
-      if (currentTranscriptRef.current.trim()) {
-        sendMessage(currentTranscriptRef.current, false, true);
+      setIsRecording(false);
+      try {
+        await SpeechRecognition.stop();
+        recognitionRef.current?.stop();
+      } catch (e) { console.error("Stop error", e); }
+
+      // Kirim pesan segera setelah dihentikan
+      const textToSend = currentTranscriptRef.current.trim() || inputValue.trim();
+      if (textToSend) {
+        sendMessage(textToSend, false, true);
         currentTranscriptRef.current = '';
-      } else if (inputValue.trim()) {
-        sendMessage(inputValue, false, true);
+      } else {
+        setMicStatus('idle');
       }
     } else {
       startRecording();
@@ -962,23 +962,35 @@ function ChatModule({
   };
 
   const startRecording = async () => {
-    try {
-      // Native Capacitor Speech Recognition
-      let perm = await SpeechRecognition.checkPermissions();
-      if (perm.speechRecognition !== 'granted') {
-        perm = await SpeechRecognition.requestPermissions();
-      }
-      if (perm.speechRecognition !== 'granted') {
-        alert("Izin mikrofon diperlukan untuk mendengarkan suaramu. Silakan izinkan di pengaturan aplikasi.");
-        setIsRecording(false);
-        setMicStatus('idle');
-        return;
-      }
+    // UI Feedback Instan
+    setIsRecording(true);
+    setMicStatus('listening');
+    currentTranscriptRef.current = '';
 
-      setIsRecording(true);
-      setMicStatus('listening');
+    try {
+      // Cek izin (biasanya sangat cepat jika sudah pernah diberikan)
+      const perm = await SpeechRecognition.checkPermissions();
+      if (perm.speechRecognition !== 'granted') {
+        const req = await SpeechRecognition.requestPermissions();
+        if (req.speechRecognition !== 'granted') {
+          alert("Izin mikrofon diperlukan.");
+          setIsRecording(false);
+          setMicStatus('idle');
+          return;
+        }
+      }
 
       await SpeechRecognition.removeAllListeners();
+
+      // Listener untuk status sistem agar sinkron
+      SpeechRecognition.addListener('listeningState', (data) => {
+        if (data.status === 'stopped') {
+          setIsRecording(false);
+          setMicStatus('idle');
+        }
+      });
+
+      // Listener untuk hasil sementara agar UI responsif
       SpeechRecognition.addListener('partialResults', (data) => {
         if (data.matches && data.matches.length > 0) {
           const transcript = data.matches[0];
@@ -988,7 +1000,8 @@ function ChatModule({
         }
       });
 
-      const result = await SpeechRecognition.start({
+      // Mulai mendengarkan secara native
+      await SpeechRecognition.start({
         language: 'en-US',
         maxResults: 1,
         prompt: "RichardMeha AI mendengarkan...",
@@ -996,57 +1009,50 @@ function ChatModule({
         popup: false,
       });
 
-      if (result && result.matches && result.matches.length > 0) {
-        const finalTranscript = result.matches[0];
-        setInputValue(finalTranscript);
-        sendMessage(finalTranscript, false, true);
-        currentTranscriptRef.current = '';
-      }
-
-      setIsRecording(false);
-      if (micStatus === 'listening') setMicStatus('idle');
-
     } catch (error) {
       console.warn("Native Mic error, fallback to Web API", error);
 
-      // Web Fallback
       const WebSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!WebSpeechRecognition) {
-        alert("Browser atau perangkat Anda tidak mendukung fitur mikrofon.");
+        alert("Browser tidak mendukung fitur mikrofon.");
         setIsRecording(false);
         setMicStatus('idle');
         return;
       }
 
-      recognitionRef.current = new WebSpeechRecognition();
-      recognitionRef.current.lang = 'en-US';
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-
-      recognitionRef.current.onstart = () => {
-        setIsRecording(true);
-        setMicStatus('listening');
-      };
+      if (!recognitionRef.current) {
+        recognitionRef.current = new WebSpeechRecognition();
+        recognitionRef.current.lang = 'en-US';
+        recognitionRef.current.continuous = true;
+        recognitionRef.current.interimResults = true;
+      }
 
       recognitionRef.current.onresult = (event) => {
-        let finalTranscript = '';
         let interimTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
-          else interimTranscript += event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            const final = event.results[i][0].transcript;
+            currentTranscriptRef.current = final;
+            setInputValue(final);
+            // Optional: Auto-send on final result in Web API if needed,
+            // but user wants click-to-stop, so we just store it.
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
         }
-        setMicStatus('detected');
-        currentTranscriptRef.current = finalTranscript || interimTranscript;
-        if (interimTranscript) setInputValue(interimTranscript);
-        if (finalTranscript) {
-          setInputValue(finalTranscript);
-          sendMessage(finalTranscript, false, true);
-          currentTranscriptRef.current = '';
+        if (interimTranscript) {
+          currentTranscriptRef.current = interimTranscript;
+          setInputValue(interimTranscript);
+          setMicStatus('detected');
         }
       };
 
       recognitionRef.current.onerror = () => { setIsRecording(false); setMicStatus('idle'); };
-      recognitionRef.current.onend = () => { setIsRecording(false); if (micStatus === 'listening') setMicStatus('idle'); };
+      recognitionRef.current.onend = () => { /* User stops manually */ };
+
+      try { recognitionRef.current.start(); } catch (err) { }
+    }
+  };
 
       try { recognitionRef.current.start(); } catch (err) { setIsRecording(false); setMicStatus('idle'); }
     }
@@ -1189,14 +1195,20 @@ function ChatModule({
         }
       }
 
+      // Start TTS and Typing Effect in parallel for better responsiveness
+      if (isVoiceInput || callMode) {
+        handleTTS(aiText);
+      }
+
       if (callMode) {
         setIsTypingEffect(true);
         let currentText = "";
         const words = aiText.split(" ");
+        // Typing effect speed optimized (30ms per word)
         for (let i = 0; i < words.length; i++) {
           currentText += words[i] + " ";
           setSubtitle(currentText);
-          await new Promise(r => setTimeout(r, 60));
+          await new Promise(r => setTimeout(r, 30));
         }
         setIsTypingEffect(false);
       }
@@ -1206,9 +1218,6 @@ function ChatModule({
         setTimeout(() => handleSuggest(newMsgs.length - 1), 100);
         return newMsgs;
       });
-      if (isVoiceInput || callMode) {
-        handleTTS(aiText);
-      }
     } catch (err) {
       console.error("Gemini API Error:", err);
       setMessages(prev => [...prev, { role: 'system', content: `⚠️ Connection failed: ${err.message}` }]);
@@ -1530,18 +1539,29 @@ function ChatModule({
 
       {/* Input Form */}
       <div className="p-4 md:p-6 bg-white border-t border-slate-200 shrink-0 w-full pb-[calc(16px+env(safe-area-inset-bottom))]">
-        <form onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue, false, false); }} className="max-w-4xl mx-auto w-full flex gap-2">
-          <input
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder={isRecording ? "Mendengarkan..." : "Ketik pesan atau tanya RichardMeha AI..."}
-            className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 outline-none focus:border-blue-500 transition-all text-base"
-          />
-          <button type="button" onClick={toggleRecording} className={`p-3 rounded-2xl transition-all ${isRecording ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-500'}`}>
-            {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
-          </button>
-          <button disabled={!inputValue.trim() || isLoading} className="p-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 disabled:bg-slate-200 active:scale-90 transition-all">
-            <Send size={20} />
+        <form onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue, false, false); }} className="max-w-4xl mx-auto w-full flex items-center gap-3">
+          <div className="relative flex-1 group">
+            <input
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder={isRecording ? "Mendengarkan..." : "Ketik pesan atau tanya Richard..."}
+              className="w-full bg-slate-100 border border-slate-200 rounded-2xl pl-5 pr-12 py-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-base shadow-inner"
+            />
+            <button
+              type="button"
+              onClick={toggleRecording}
+              className={`absolute right-2 top-1/2 -translate-y-1/2 p-2.5 rounded-xl transition-all active:scale-90 ${isRecording ? 'bg-rose-500 text-white shadow-lg animate-pulse' : 'text-slate-400 hover:text-blue-600'}`}
+            >
+              {isRecording ? <MicOff size={22} /> : <Mic size={22} />}
+            </button>
+          </div>
+
+          <button
+            type="submit"
+            disabled={!inputValue.trim() || isLoading}
+            className={`p-4 rounded-2xl shadow-xl transition-all active:scale-90 flex items-center justify-center ${!inputValue.trim() || isLoading ? 'bg-slate-100 text-slate-300 shadow-none' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20'}`}
+          >
+            <Send size={22} />
           </button>
         </form>
       </div>
