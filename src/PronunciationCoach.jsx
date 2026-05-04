@@ -42,6 +42,8 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
   const [isRecording, setIsRecording] = useState(false);
   const [usageCount, setUsageCount] = useState(() => parseInt(localStorage.getItem('speaking_coach_usage') || '0'));
   const recognitionRef = useRef(null);
+  const manualStopRef = useRef(false);
+  const currentTranscriptRef = useRef('');
 
   useEffect(() => {
     localStorage.setItem('speaking_coach_usage', usageCount.toString());
@@ -100,57 +102,76 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
 
   const toggleRecording = async () => {
     if (isRecording) {
+      manualStopRef.current = true;
       setIsRecording(false);
       try {
-        await SpeechRecognition.stop();
+        const checkAvail = await SpeechRecognition.available().catch(() => ({ available: false }));
+        if (checkAvail.available) {
+          await SpeechRecognition.stop();
+        }
         recognitionRef.current?.stop();
       } catch (e) { }
 
       // Kirim untuk dianalisa segera setelah berhenti
-      if (transcript.trim()) {
-        analyzePronunciation(transcript);
+      const textToSend = currentTranscriptRef.current.trim();
+      if (textToSend) {
+        analyzePronunciation(textToSend);
       }
+      currentTranscriptRef.current = '';
       return;
     }
 
     try {
+      manualStopRef.current = false;
       setIsRecording(true);
       setTranscript('');
+      currentTranscriptRef.current = '';
 
       // Native Capacitor Speech Recognition
-      const perm = await SpeechRecognition.checkPermissions();
-      if (perm.speechRecognition !== 'granted') {
-        const req = await SpeechRecognition.requestPermissions();
-        if (req.speechRecognition !== 'granted') {
-          alert("Izin mikrofon diperlukan.");
-          setIsRecording(false);
-          return;
+      const checkAvail = await SpeechRecognition.available().catch(() => ({ available: false }));
+      if (checkAvail.available) {
+        const perm = await SpeechRecognition.checkPermissions();
+        if (perm.speechRecognition !== 'granted') {
+          const req = await SpeechRecognition.requestPermissions();
+          if (req.speechRecognition !== 'granted') {
+            alert("Izin mikrofon diperlukan.");
+            setIsRecording(false);
+            return;
+          }
         }
+
+        await SpeechRecognition.removeAllListeners();
+
+        // Listener untuk status sistem agar sinkron
+        SpeechRecognition.addListener('listeningState', (data) => {
+          if (data.status === 'stopped') {
+            setIsRecording(false);
+            if (!manualStopRef.current) {
+              const textToSend = currentTranscriptRef.current.trim();
+              if (textToSend) analyzePronunciation(textToSend);
+              currentTranscriptRef.current = '';
+            }
+          }
+        });
+
+        SpeechRecognition.addListener('partialResults', (data) => {
+          if (data.matches && data.matches.length > 0) {
+            const t = data.matches[0];
+            currentTranscriptRef.current = t;
+            setTranscript(t);
+          }
+        });
+
+        await SpeechRecognition.start({
+          language: 'en-US',
+          maxResults: 1,
+          prompt: "Ucapkan kalimatnya...",
+          partialResults: true,
+          popup: false,
+        });
+        return;
       }
-
-      await SpeechRecognition.removeAllListeners();
-
-      // Listener untuk status sistem agar sinkron
-      SpeechRecognition.addListener('listeningState', (data) => {
-        if (data.status === 'stopped') {
-          setIsRecording(false);
-        }
-      });
-
-      SpeechRecognition.addListener('partialResults', (data) => {
-        if (data.matches && data.matches.length > 0) {
-          setTranscript(data.matches[0]);
-        }
-      });
-
-      await SpeechRecognition.start({
-        language: 'en-US',
-        maxResults: 1,
-        prompt: "Ucapkan kalimatnya...",
-        partialResults: true,
-        popup: false,
-      });
-
+      throw new Error("Native API unavailable");
     } catch (error) {
       console.warn("Native Mic error, fallback to Web API", error);
 
@@ -170,18 +191,30 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
 
       recognitionRef.current.onresult = (event) => {
         let interimTranscript = '';
+        let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
-            setTranscript(event.results[i][0].transcript);
+            finalTranscript += event.results[i][0].transcript;
           } else {
             interimTranscript += event.results[i][0].transcript;
           }
         }
-        if (interimTranscript) setTranscript(interimTranscript);
+        const current = finalTranscript || interimTranscript;
+        if (current) {
+          currentTranscriptRef.current = current;
+          setTranscript(current);
+        }
       };
 
       recognitionRef.current.onerror = () => setIsRecording(false);
-      recognitionRef.current.onend = () => setIsRecording(false);
+      recognitionRef.current.onend = () => {
+        setIsRecording(false);
+        if (!manualStopRef.current) {
+          const textToSend = currentTranscriptRef.current.trim();
+          if (textToSend) analyzePronunciation(textToSend);
+          currentTranscriptRef.current = '';
+        }
+      };
 
       try { recognitionRef.current.start(); } catch (err) { }
     }
@@ -251,32 +284,93 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
   };
 
   return (
-    <div className="p-4 md:p-8 w-full max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500 pb-[calc(96px+env(safe-area-inset-bottom))] overflow-x-hidden">
-      <div className="flex items-center gap-3 mb-2">
-        <div className="p-3 bg-rose-100 text-rose-600 rounded-2xl">
-          <Mic size={24} />
+    <div className="flex flex-col h-full w-full animate-in fade-in duration-500">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 w-full max-w-4xl mx-auto space-y-6 pb-12">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-3 bg-rose-100 text-rose-600 rounded-2xl">
+            <Mic size={24} />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">Pronunciation Coach</h2>
+            <p className="text-sm text-slate-500">Dengarkan kalimatnya, lalu ulangi untuk mendapatkan skor akurasi.</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">Pronunciation Coach</h2>
-          <p className="text-sm text-slate-500">Dengarkan kalimatnya, lalu ulangi untuk mendapatkan skor akurasi.</p>
+
+        <div className="bg-white w-full max-w-full rounded-3xl border border-slate-200 shadow-xl p-6 md:p-10 text-center space-y-8 relative overflow-hidden">
+          {/* Progress background decoration */}
+          <div className="absolute inset-0 bg-gradient-to-b from-rose-50/30 to-transparent pointer-events-none"></div>
+
+          <div className="relative">
+            <p className="text-xs font-bold text-rose-400 uppercase tracking-widest mb-4">Ucapkan Kalimat Ini:</p>
+            <h3 className="text-2xl md:text-4xl font-extrabold text-slate-800 leading-tight break-words">
+              {isLoading && !targetSentence ? <Loader2 className="animate-spin mx-auto text-slate-300" size={40} /> : `"${targetSentence}"`}
+            </h3>
+          </div>
+
+          {transcript && (
+            <div className="animate-in fade-in slide-in-from-top-2">
+              <p className="text-xs font-bold text-slate-400 uppercase mb-2">Deteksi Suara Anda:</p>
+              <p className="text-lg font-medium text-slate-600 italic break-words">"{transcript}"</p>
+            </div>
+          )}
         </div>
+
+        {analysis && (
+          <div className="bg-white w-full max-w-full rounded-3xl border border-rose-100 shadow-xl p-6 md:p-8 animate-in zoom-in-95 duration-500">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Sparkles className="text-yellow-500" /> Hasil Penilaian
+              </h3>
+              {analysis.score !== undefined && (
+                <div className="text-2xl font-black text-rose-500 bg-rose-50 px-4 py-2 rounded-2xl border border-rose-100">
+                  {analysis.score}%
+                </div>
+              )}
+            </div>
+
+            {analysis.analysis ? (
+              <div className="space-y-6 text-slate-600 leading-relaxed text-sm md:text-base">
+                <div className="bg-blue-50 p-4 md:p-6 rounded-2xl border border-blue-100">
+                  <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2">💡 Analisis Pengucapan</h4>
+                  <p className="whitespace-pre-wrap break-words">{analysis.analysis}</p>
+                </div>
+                {analysis.mistakes && analysis.mistakes.length > 0 && (
+                  <div className="bg-rose-50 p-4 md:p-6 rounded-2xl border border-rose-100">
+                    <h4 className="font-bold text-rose-800 mb-3 flex items-center gap-2">⚠️ Kesalahan Utama</h4>
+                    <ul className="list-disc pl-5 space-y-1.5 text-rose-700 font-medium break-words">
+                      {analysis.mistakes.map((m, i) => <li key={i}>{m}</li>)}
+                    </ul>
+                  </div>
+                )}
+                <div className="bg-emerald-50 p-4 md:p-6 rounded-2xl border border-emerald-100">
+                  <h4 className="font-bold text-emerald-800 mb-2 flex items-center gap-2">🎯 Tips Perbaikan</h4>
+                  <p className="whitespace-pre-wrap break-words">{analysis.tips}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4 text-slate-600 leading-relaxed">
+                {analysis.raw?.split('\n').map((line, i) => <p key={i} className="text-sm md:text-base">{line}</p>)}
+              </div>
+            )}
+
+            <div className="mt-8 flex justify-center">
+              <button
+                onClick={generateNewSentence}
+                className="bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 px-10 rounded-2xl transition-all shadow-lg shadow-rose-500/20 active:scale-95"
+              >
+                Latihan Kalimat Lain
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="bg-white w-full max-w-full rounded-3xl border border-slate-200 shadow-xl p-6 md:p-10 text-center space-y-8 relative overflow-hidden">
-        {/* Progress background decoration */}
-        <div className="absolute inset-0 bg-gradient-to-b from-rose-50/30 to-transparent pointer-events-none"></div>
-
-        <div className="relative">
-          <p className="text-xs font-bold text-rose-400 uppercase tracking-widest mb-4">Ucapkan Kalimat Ini:</p>
-          <h3 className="text-2xl md:text-4xl font-extrabold text-slate-800 leading-tight break-words">
-            {isLoading && !targetSentence ? <Loader2 className="animate-spin mx-auto text-slate-300" size={40} /> : `"${targetSentence}"`}
-          </h3>
-        </div>
-
-        <div className="flex justify-center gap-4">
+      {/* Global Standardized Input Bar for Pronunciation Coach */}
+      <div className="relative z-50 bg-white border-t border-slate-200 w-full p-4 md:p-6 shadow-[0_-10px_30px_rgba(0,0,0,0.06)] shrink-0" style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}>
+        <div className="max-w-4xl mx-auto w-full flex justify-center items-center gap-4 md:gap-8">
           <button
             onClick={speakSentence}
-            className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all active:scale-95"
+            className="p-4 md:p-5 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all active:scale-95 shadow-sm"
             title="Dengarkan Contoh"
           >
             <Volume2 size={24} />
@@ -284,78 +378,19 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
           <button
             onClick={toggleRecording}
             disabled={isLoading}
-            className={`p-8 rounded-full transition-all active:scale-90 shadow-2xl ${isRecording
-              ? 'bg-rose-500 text-white animate-pulse ring-8 ring-rose-100'
-              : 'bg-white border-4 border-rose-500 text-rose-500 hover:bg-rose-50'
-              }`}
+            className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-xl active:scale-90 ${isRecording ? 'bg-rose-500 text-white animate-pulse shadow-rose-500/50' : 'bg-white border-4 border-rose-500 text-rose-500 hover:bg-rose-50'}`}
           >
             {isRecording ? <MicOff size={32} /> : <Mic size={32} />}
           </button>
           <button
             onClick={generateNewSentence}
-            className="p-4 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all active:scale-95"
+            className="p-4 md:p-5 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all active:scale-95 shadow-sm"
             title="Kalimat Baru"
           >
             <RefreshCw size={24} className={isLoading ? 'animate-spin' : ''} />
           </button>
         </div>
-
-        {transcript && (
-          <div className="animate-in fade-in slide-in-from-top-2">
-            <p className="text-xs font-bold text-slate-400 uppercase mb-2">Deteksi Suara Anda:</p>
-            <p className="text-lg font-medium text-slate-600 italic break-words">"{transcript}"</p>
-          </div>
-        )}
       </div>
-
-      {analysis && (
-        <div className="bg-white w-full max-w-full rounded-3xl border border-rose-100 shadow-xl p-6 md:p-8 animate-in zoom-in-95 duration-500">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-              <Sparkles className="text-yellow-500" /> Hasil Penilaian
-            </h3>
-            {analysis.score !== undefined && (
-              <div className="text-2xl font-black text-rose-500 bg-rose-50 px-4 py-2 rounded-2xl border border-rose-100">
-                {analysis.score}%
-              </div>
-            )}
-          </div>
-
-          {analysis.analysis ? (
-            <div className="space-y-6 text-slate-600 leading-relaxed text-sm md:text-base">
-              <div className="bg-blue-50 p-4 md:p-6 rounded-2xl border border-blue-100">
-                <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2">💡 Analisis Pengucapan</h4>
-                <p className="whitespace-pre-wrap break-words">{analysis.analysis}</p>
-              </div>
-              {analysis.mistakes && analysis.mistakes.length > 0 && (
-                <div className="bg-rose-50 p-4 md:p-6 rounded-2xl border border-rose-100">
-                  <h4 className="font-bold text-rose-800 mb-3 flex items-center gap-2">⚠️ Kesalahan Utama</h4>
-                  <ul className="list-disc pl-5 space-y-1.5 text-rose-700 font-medium break-words">
-                    {analysis.mistakes.map((m, i) => <li key={i}>{m}</li>)}
-                  </ul>
-                </div>
-              )}
-              <div className="bg-emerald-50 p-4 md:p-6 rounded-2xl border border-emerald-100">
-                <h4 className="font-bold text-emerald-800 mb-2 flex items-center gap-2">🎯 Tips Perbaikan</h4>
-                <p className="whitespace-pre-wrap break-words">{analysis.tips}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4 text-slate-600 leading-relaxed">
-              {analysis.raw?.split('\n').map((line, i) => <p key={i} className="text-sm md:text-base">{line}</p>)}
-            </div>
-          )}
-
-          <div className="mt-8 flex justify-center">
-            <button
-              onClick={generateNewSentence}
-              className="bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 px-10 rounded-2xl transition-all shadow-lg shadow-rose-500/20 active:scale-95"
-            >
-              Latihan Kalimat Lain
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

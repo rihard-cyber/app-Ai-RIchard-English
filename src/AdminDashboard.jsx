@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
-export default function AdminDashboard({ onLogout, onSwitchToUser }) {
+export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) {
     const [activeTab, setActiveTab] = useState('overview');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [stats, setStats] = useState({ totalUsers: 0, proUsers: 0, revenue: 0, totalTx: 0 });
@@ -254,21 +254,23 @@ export default function AdminDashboard({ onLogout, onSwitchToUser }) {
                                 <div className="flex justify-between text-xs text-slate-400 mt-2 font-bold uppercase"><span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span><span>Min</span></div>
                             </div>
 
-                            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm mt-8">
-                                <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Zap className="text-blue-500" /> Konfigurasi AI (API Key)</h3>
-                                <p className="text-xs text-slate-500 mb-4">Masukkan kumpulan API Key Anda.<br /><b>Penting:</b> Jangan tambahkan keterangan apapun pada key. Langsung masukkan API Key asli dan pisahkan dengan koma (,). Sistem otomatis loncat ganti AI saat limit habis.</p>
-                                <div className="flex flex-col gap-3">
-                                    <textarea
-                                        value={apiKeyInput}
-                                        onChange={(e) => setApiKeyInput(e.target.value)}
-                                        placeholder="AIzaSy...,gsk_...,sk-..."
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono resize-y min-h-[120px]"
-                                    ></textarea>
-                                    <button onClick={handleSaveApiKey} className={`${saveKeySuccess ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-blue-600 hover:bg-blue-700'} text-white px-6 py-3 rounded-xl font-bold active:scale-95 transition-all w-full sm:w-auto sm:self-end flex justify-center items-center`}>
-                                        {saveKeySuccess ? 'Tersimpan ✅' : 'Simpan Semua Key'}
-                                    </button>
+                            {userEmail === 'richardpl.meha@gmail.com' && (
+                                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm mt-8 border-rose-200 shadow-rose-100">
+                                    <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Zap className="text-blue-500" /> Konfigurasi AI (API Key)</h3>
+                                    <p className="text-xs text-slate-500 mb-4">Masukkan kumpulan API Key Anda.<br /><b>Penting:</b> Jangan tambahkan keterangan apapun pada key. Langsung masukkan API Key asli dan pisahkan dengan koma (,). Sistem otomatis loncat ganti AI saat limit habis.</p>
+                                    <div className="flex flex-col gap-3">
+                                        <textarea
+                                            value={apiKeyInput}
+                                            onChange={(e) => setApiKeyInput(e.target.value)}
+                                            placeholder="AIzaSy...,gsk_...,sk-..."
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono resize-y min-h-[120px]"
+                                        ></textarea>
+                                        <button onClick={handleSaveApiKey} className={`${saveKeySuccess ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-blue-600 hover:bg-blue-700'} text-white px-6 py-3 rounded-xl font-bold active:scale-95 transition-all w-full sm:w-auto sm:self-end flex justify-center items-center`}>
+                                            {saveKeySuccess ? 'Tersimpan ✅' : 'Simpan Semua Key'}
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     )}
 

@@ -1,17 +1,17 @@
 import React from 'react';
 import { Award, Star, Zap, Flame, Trophy, Heart, GraduationCap, Lock } from 'lucide-react';
 
-export default function AchievementSystem({ userProfile = {}, onNavigate }) {
+export default function AchievementSystem({ userProfile = {}, onNavigate, onUpgrade }) {
   const xp = userProfile.xp || 0;
   const streak = userProfile.streak || 0;
   const isPro = userProfile.is_pro || false;
 
   const ALL_ACHIEVEMENTS = [
-    { id: 1, title: 'First Step', icon: <GraduationCap size={20} />, color: 'bg-blue-100 text-blue-600', earned: xp > 0, desc: 'Completed your first lesson.', path: 'grammar' },
+    { id: 1, title: 'First Step', icon: <GraduationCap size={20} />, color: 'bg-blue-100 text-blue-600', earned: xp > 0, desc: 'Completed your first lesson.', path: 'assessment' },
     { id: 2, title: 'Speaking Pro', icon: <Zap size={20} />, color: 'bg-rose-100 text-rose-600', earned: xp > 50, desc: 'Earned more than 50 XP in speaking.', path: 'speaking' },
     { id: 3, title: 'Streak King', icon: <Flame size={20} />, color: 'bg-orange-100 text-orange-600', earned: streak >= 3, desc: 'Maintain a 3-day learning streak.', path: 'home' },
     { id: 4, title: 'XP Hunter', icon: <Star size={20} />, color: 'bg-amber-100 text-amber-600', earned: xp >= 200, desc: 'Reach 200 total XP.', path: 'progress' },
-    { id: 5, title: 'Pro Member', icon: <Trophy size={20} />, color: 'bg-purple-100 text-purple-600', earned: isPro, desc: 'Unlocked the Ultimate Pro features.', path: 'settings' },
+    { id: 5, title: 'Pro Member', icon: <Trophy size={20} />, color: 'bg-purple-100 text-purple-600', earned: isPro, desc: 'Unlocked the Ultimate Pro features.', path: 'upgrade' },
     { id: 6, title: 'Polyglot', icon: <Heart size={20} />, color: 'bg-emerald-100 text-emerald-600', earned: xp >= 500, desc: 'Reach 500 total XP.', path: 'vocabulary' },
   ];
 
@@ -38,7 +38,10 @@ export default function AchievementSystem({ userProfile = {}, onNavigate }) {
         {ALL_ACHIEVEMENTS.map((ach) => (
           <div
             key={ach.id}
-            onClick={() => ach.path && onNavigate && onNavigate(ach.path)}
+            onClick={() => {
+              if (ach.path === 'upgrade' && onUpgrade) onUpgrade();
+              else if (ach.path && onNavigate) onNavigate(ach.path);
+            }}
             className={`relative group p-5 rounded-[2rem] border transition-all duration-500 flex flex-col items-center text-center gap-3
               ${ach.earned
                 ? 'bg-white border-slate-200 shadow-xl shadow-slate-200/50 hover:-translate-y-1 cursor-pointer'

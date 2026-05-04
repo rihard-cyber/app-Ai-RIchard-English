@@ -11,6 +11,7 @@ import {
   Lock
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
+import { GlobalContext } from './App';
 
 const WRITING_SYSTEM_PROMPT = (isPro) => `
 Kamu adalah sistem "Professional Writing Analyzer" yang sangat analitis, objektif, dan akurat (seperti Grammarly).
@@ -54,8 +55,8 @@ ${isPro ? `
 `}
 `;
 
-const fetchGeminiWithRotation = async (payload) => {
-  let rawKey = localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
+const fetchGeminiWithRotation = async (payload, contextApiKey = '') => {
+  let rawKey = contextApiKey || localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
   try {
     const { data } = await supabase.from('app_settings').select('value').eq('id', 'api_keys').single();
     if (data && data.value) {
@@ -121,6 +122,8 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
   const [isLoading, setIsLoading] = useState(false);
   const [usageCount, setUsageCount] = useState(() => parseInt(localStorage.getItem('writing_analyzer_usage') || '0'));
   const isPro = userProfile?.is_pro;
+  
+  const { globalApiKey } = React.useContext(GlobalContext) || {};
 
   const isLocked = !isPro && usageCount >= 3;
 
@@ -134,7 +137,7 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
         systemInstruction: { parts: [{ text: WRITING_SYSTEM_PROMPT(isPro) }] }
       };
 
-      const data = await fetchGeminiWithRotation(payload);
+      const data = await fetchGeminiWithRotation(payload, globalApiKey);
       const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Maaf, Richard sedang sibuk. Coba sebentar lagi ya!";
       setAnalysis(aiResponse);
       setUsageCount(prev => {

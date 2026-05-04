@@ -58,7 +58,9 @@ const DEFAULT_PROFILE = {
   streak: 0,
   has_completed_initial_test: false,
   is_pro: false,
-  subscription_plan: 'Free'
+  subscription_plan: 'Free',
+  is_admin: false,
+  email: ''
 };
 
 // --- KOMPONEN LOADING ---
@@ -133,6 +135,9 @@ const getPrompts = (userProfile) => {
   };
 };
 
+// --- GLOBAL STATE CONTEXT ---
+export const GlobalContext = React.createContext(null);
+
 export default function App() {
   const [authState, setAuthState] = useState('login'); // 'login', 'subscription', 'assessment', 'app', 'admin'
   const [userProfile, setUserProfile] = useState(DEFAULT_PROFILE);
@@ -155,6 +160,7 @@ export default function App() {
   const [recommendation, setRecommendation] = useState('vocabulary');
   const [isInitializing, setIsInitializing] = useState(true);
   const [theme, setTheme] = useState(() => localStorage.getItem('richard_theme') || 'light');
+  const [globalApiKey, setGlobalApiKey] = useState('');
 
   useEffect(() => {
     // Sinkronisasi otomatis API Key terbaru dari Database (Supabase) untuk pengguna HP
@@ -164,21 +170,14 @@ export default function App() {
         const { data } = await supabase.from('app_settings').select('value').eq('id', 'api_keys').maybeSingle();
         if (data && data.value) {
           localStorage.setItem('gemini_api_key', data.value);
+          setGlobalApiKey(data.value);
         }
       } catch (err) { }
     };
     syncApiKeyFromDB();
 
     const ownerMode = localStorage.getItem('owner_mode');
-    if (ownerMode === 'admin') {
-      setIsInitializing(false);
-      handleLogin('admin');
-    } else if (ownerMode === 'user' || localStorage.getItem('owner_bypass') === 'true') {
-      setIsInitializing(false);
-      handleLogin('owner_user_bypass');
-    } else {
-      checkUser();
-    }
+    checkUser();
   }, []);
   useEffect(() => { if (authState === 'app') fetchStats(); }, [authState]);
 
@@ -254,10 +253,13 @@ export default function App() {
     if (!supabase) return;
     try {
       const userId = typeof userObj === 'string' ? userObj : userObj.id;
+      const userEmail = typeof userObj === 'object' ? userObj.email : '';
       const metaName = typeof userObj === 'object' ? (userObj.user_metadata?.full_name || '') : '';
       const { data, error } = await supabase.from('user_profiles').select('*').eq('id', userId).maybeSingle();
 
       if (error) throw error;
+
+      const isAdmin = data?.is_admin || userEmail === 'richardpl.meha@gmail.com';
 
       if (data) {
         setUserProfile({
@@ -268,20 +270,20 @@ export default function App() {
           streak: data.streak || 0,
           has_completed_initial_test: data.has_completed_initial_test || false,
           is_pro: data.is_pro || false,
-          subscription_plan: data.subscription_plan || 'Free'
+          subscription_plan: data.subscription_plan || 'Free',
+          is_admin: isAdmin,
+          email: userEmail
         });
-        const isAdmin = data?.is_admin || userObj.email === 'richardpl.meha@gmail.com';
 
-        if (isAdmin) {
-          localStorage.setItem('owner_mode', 'admin');
+        if (isAdmin && localStorage.getItem('owner_mode') === 'admin') {
           setAuthState('admin');
-        } else if (data && !data.has_completed_initial_test) {
+        } else if (!data.has_completed_initial_test) {
           setAuthState('assessment');
         } else {
           setAuthState('app');
         }
       } else {
-        if (metaName) setUserProfile(prev => ({ ...prev, name: metaName }));
+        setUserProfile(prev => ({ ...prev, name: metaName || 'User', is_admin: isAdmin, email: userEmail }));
         setAuthState('app');
       }
     } catch (err) {
@@ -291,27 +293,8 @@ export default function App() {
     }
   };
 
-  const handleLogin = (role) => {
-    if (role === 'admin') {
-      localStorage.setItem('owner_mode', 'admin');
-      setAuthState('admin');
-    } else if (role === 'owner_user_bypass') {
-      localStorage.setItem('owner_bypass', 'true');
-      localStorage.setItem('owner_mode', 'user');
-      setUserProfile({
-        name: "Richard (Owner)",
-        gender: "male",
-        level: "Advanced (C1-C2)",
-        xp: 9999,
-        streak: 999,
-        has_completed_initial_test: true,
-        is_pro: true,
-        subscription_plan: 'Lifetime Pro'
-      });
-      setAuthState('app');
-    } else {
-      checkUser();
-    }
+  const handleLogin = () => {
+    checkUser();
   };
 
   const handleSelectPlan = (plan) => {
@@ -366,11 +349,12 @@ export default function App() {
   const handleTabChange = (tab) => { setActiveTab(tab); setIsSidebarOpen(false); };
 
   const handleLogoClick = () => {
-    if (localStorage.getItem('owner_mode') === 'user' || localStorage.getItem('owner_bypass') === 'true') {
+    if (userProfile.is_admin) {
       logoClickCount.current += 1;
       if (logoClickCount.current >= 2) {
         logoClickCount.current = 0;
-        handleLogin('admin');
+        localStorage.setItem('owner_mode', 'admin');
+        setAuthState('admin');
       }
       clearTimeout(logoClickTimeout.current);
       logoClickTimeout.current = setTimeout(() => {
@@ -474,51 +458,53 @@ export default function App() {
   );
   if (authState === 'admin') return (
     <Suspense fallback={<LoadingFallback />}>
-      <AdminDashboard onLogout={handleLogout} onSwitchToUser={() => handleLogin('owner_user_bypass')} />
+      <AdminDashboard onLogout={handleLogout} onSwitchToUser={() => { localStorage.setItem('owner_mode', 'user'); setAuthState('app'); }} userEmail={userProfile.email} />
     </Suspense>
   );
 
   return (
-    <div className={`flex h-[100dvh] w-full font-sans overflow-hidden overscroll-none transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b1121] text-slate-200 dark-mode' : 'bg-slate-50 text-slate-800'}`}>
-      {isSidebarOpen && <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300" onClick={() => setIsSidebarOpen(false)} />}
-      <aside className={`fixed md:relative inset-y-0 left-0 z-50 w-72 md:w-64 bg-[#0f172a] text-slate-300 shadow-2xl md:shadow-none transform transition-transform duration-300 ease-in-out flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <div className="h-16 flex items-center justify-between px-6 bg-[#0b1121] pt-[env(safe-area-inset-top)]"><h1 onClick={handleLogoClick} title={(localStorage.getItem('owner_mode') === 'user' || localStorage.getItem('owner_bypass') === 'true') ? 'Klik 2x untuk ke Admin' : ''} className="text-xl font-bold tracking-wider flex items-center gap-2 text-white cursor-pointer select-none active:scale-95 transition-transform touch-manipulation"><Sparkles className="text-blue-500" /> RichardMeha<span className="text-blue-500"> AI</span></h1><button className="md:hidden text-slate-400 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button></div>
-        <div className="p-6 border-b border-slate-800 flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-blue-500/20">{userProfile.name.charAt(0)}</div><div className="flex flex-col"><span className="text-base font-semibold text-white">{userProfile.name}</span><span className="text-xs text-blue-400 flex items-center gap-1"><Trophy size={12} /> {userProfile.level}</span></div></div>
-        <nav className="flex-1 py-4 px-4 space-y-1 overflow-y-auto custom-scrollbar transform-gpu overscroll-contain">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-2">Menu Utama</p>
-          <NavItem icon={<LayoutDashboard />} label="Dasbor Belajar" isActive={activeTab === 'home'} onClick={() => handleTabChange('home')} />
-          <NavItem icon={<BarChart2 />} label="Statistik Progres" isActive={activeTab === 'progress'} onClick={() => handleTabChange('progress')} />
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-6">Modul Pembelajaran</p>
-          <NavItem icon={<GraduationCap />} label="Test CEFR (Awal)" isActive={activeTab === 'assessment'} onClick={() => handleTabChange('assessment')} />
-          <NavItem icon={<BookA />} label="📚 Belajar (Vocab)" isActive={activeTab === 'vocabulary'} onClick={() => handleTabChange('vocabulary')} />
-          <NavItem icon={<Headphones />} label="🎧 Call Tutor" isActive={activeTab === 'call_tutor'} onClick={() => handleTabChange('call_tutor')} />
-          <NavItem icon={<MessageSquare />} label="💬 Chat Tutor" isActive={activeTab === 'conversation'} onClick={() => handleTabChange('conversation')} />
-          <NavItem icon={<Zap />} label="🧠 Quiz & Challenge" isActive={activeTab === 'quiz'} onClick={() => handleTabChange('quiz')} />
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-6">Praktek & Analisa</p>
-          <NavItem icon={<Mic />} label="Speaking Coach" isActive={activeTab === 'speaking'} onClick={() => handleTabChange('speaking')} />
-          <NavItem icon={<PenTool />} label="Writing Analyzer" isActive={activeTab === 'writing_analyzer'} onClick={() => handleTabChange('writing_analyzer')} />
-          <NavItem icon={<GraduationCap />} label="Grammar Speaking" isActive={activeTab === 'grammar'} onClick={() => handleTabChange('grammar')} />
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-6">Akun</p>
-          <NavItem icon={<Settings />} label="Pengaturan" isActive={activeTab === 'settings'} onClick={() => handleTabChange('settings')} />
-          {(localStorage.getItem('owner_mode') === 'user' || localStorage.getItem('owner_bypass') === 'true') && (
-            <button onClick={() => handleLogin('admin')} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-emerald-400 hover:bg-emerald-900/20 hover:text-emerald-300 transition-all font-medium"><Shield size={18} /> <span className="text-sm">Beralih ke Admin</span></button>
-          )}
-          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-rose-400 hover:bg-rose-900/20 hover:text-rose-300 transition-all"><LogOut size={18} /> <span className="text-sm">Log Out</span></button>
-        </nav>
-      </aside>
-      <main className="flex-1 flex flex-col h-full w-full relative overflow-hidden">
-        <header className="h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30 shrink-0 md:hidden shadow-sm">
-          <div className="flex items-center gap-3"><button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors"><Menu size={24} /></button><h2 onClick={handleLogoClick} title={(localStorage.getItem('owner_mode') === 'user' || localStorage.getItem('owner_bypass') === 'true') ? 'Klik 2x untuk ke Admin' : ''} className="text-lg font-semibold text-slate-800 flex items-center gap-2 cursor-pointer select-none active:scale-95 transition-transform touch-manipulation">RichardMeha<span className="text-blue-600"> AI</span></h2></div>
-          <div className="flex items-center gap-2"><div className="flex items-center gap-1 text-sm font-bold text-orange-500 bg-orange-50 px-3 py-1 rounded-full"><Flame size={16} className="fill-orange-500" /> {userProfile.streak}</div></div>
-        </header>
-        <div className="flex-1 overflow-y-auto overflow-x-hidden w-full relative bg-slate-50/50 transform-gpu overscroll-none scroll-smooth pb-[env(safe-area-inset-bottom)]" style={{ WebkitOverflowScrolling: 'touch' }}>
-          <Suspense fallback={<LoadingFallback />}>
-            {renderContent()}
-          </Suspense>
-        </div>
-      </main>
-      <PaymentModal isOpen={isPaymentModalOpen} userName={userProfile.name} onClose={() => setIsPaymentModalOpen(false)} onPaymentSuccess={handlePaymentSuccess} planName={selectedPlan.name} price={selectedPlan.price} />
-    </div>
+    <GlobalContext.Provider value={{ globalApiKey, userProfile }}>
+      <div className={`flex h-[100dvh] w-full font-sans overflow-hidden overscroll-none transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b1121] text-slate-200 dark-mode' : 'bg-slate-50 text-slate-800'}`}>
+        {isSidebarOpen && <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300" onClick={() => setIsSidebarOpen(false)} />}
+        <aside className={`fixed md:relative inset-y-0 left-0 z-50 w-72 md:w-64 bg-[#0f172a] text-slate-300 shadow-2xl md:shadow-none transform transition-transform duration-300 ease-in-out flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+          <div className="h-16 flex items-center justify-between px-6 bg-[#0b1121] pt-[env(safe-area-inset-top)]"><h1 onClick={handleLogoClick} title={userProfile.is_admin ? 'Klik 2x untuk ke Admin' : ''} className="text-xl font-bold tracking-wider flex items-center gap-2 text-white cursor-pointer select-none active:scale-95 transition-transform touch-manipulation"><Sparkles className="text-blue-500" /> RichardMeha<span className="text-blue-500"> AI</span></h1><button className="md:hidden text-slate-400 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button></div>
+          <div className="p-6 border-b border-slate-800 flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-blue-500/20">{userProfile.name.charAt(0)}</div><div className="flex flex-col"><span className="text-base font-semibold text-white">{userProfile.name}</span><span className="text-xs text-blue-400 flex items-center gap-1"><Trophy size={12} /> {userProfile.level}</span></div></div>
+          <nav className="flex-1 py-4 px-4 space-y-1 overflow-y-auto custom-scrollbar transform-gpu overscroll-contain">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-2">Menu Utama</p>
+            <NavItem icon={<LayoutDashboard />} label="Dasbor Belajar" isActive={activeTab === 'home'} onClick={() => handleTabChange('home')} />
+            <NavItem icon={<BarChart2 />} label="Statistik Progres" isActive={activeTab === 'progress'} onClick={() => handleTabChange('progress')} />
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-6">Modul Pembelajaran</p>
+            <NavItem icon={<GraduationCap />} label="Test CEFR (Awal)" isActive={activeTab === 'assessment'} onClick={() => handleTabChange('assessment')} />
+            <NavItem icon={<BookA />} label="📚 Belajar (Vocab)" isActive={activeTab === 'vocabulary'} onClick={() => handleTabChange('vocabulary')} />
+            <NavItem icon={<Headphones />} label="🎧 Call Tutor" isActive={activeTab === 'call_tutor'} onClick={() => handleTabChange('call_tutor')} />
+            <NavItem icon={<MessageSquare />} label="💬 Chat Tutor" isActive={activeTab === 'conversation'} onClick={() => handleTabChange('conversation')} />
+            <NavItem icon={<Zap />} label="🧠 Quiz & Challenge" isActive={activeTab === 'quiz'} onClick={() => handleTabChange('quiz')} />
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-6">Praktek & Analisa</p>
+            <NavItem icon={<Mic />} label="Speaking Coach" isActive={activeTab === 'speaking'} onClick={() => handleTabChange('speaking')} />
+            <NavItem icon={<PenTool />} label="Writing Analyzer" isActive={activeTab === 'writing_analyzer'} onClick={() => handleTabChange('writing_analyzer')} />
+            <NavItem icon={<GraduationCap />} label="Grammar Speaking" isActive={activeTab === 'grammar'} onClick={() => handleTabChange('grammar')} />
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-6">Akun</p>
+            <NavItem icon={<Settings />} label="Pengaturan" isActive={activeTab === 'settings'} onClick={() => handleTabChange('settings')} />
+            {userProfile.is_admin && (
+              <button onClick={() => { localStorage.setItem('owner_mode', 'admin'); setAuthState('admin'); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-emerald-400 hover:bg-emerald-900/20 hover:text-emerald-300 transition-all font-medium"><Shield size={18} /> <span className="text-sm">Beralih ke Admin</span></button>
+            )}
+            <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-rose-400 hover:bg-rose-900/20 hover:text-rose-300 transition-all"><LogOut size={18} /> <span className="text-sm">Log Out</span></button>
+          </nav>
+        </aside>
+        <main className="flex-1 flex flex-col h-full w-full relative overflow-hidden">
+          <header className="h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30 shrink-0 md:hidden shadow-sm">
+            <div className="flex items-center gap-3"><button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors"><Menu size={24} /></button><h2 onClick={handleLogoClick} title={userProfile.is_admin ? 'Klik 2x untuk ke Admin' : ''} className="text-lg font-semibold text-slate-800 flex items-center gap-2 cursor-pointer select-none active:scale-95 transition-transform touch-manipulation">RichardMeha<span className="text-blue-600"> AI</span></h2></div>
+            <div className="flex items-center gap-2"><div className="flex items-center gap-1 text-sm font-bold text-orange-500 bg-orange-50 px-3 py-1 rounded-full"><Flame size={16} className="fill-orange-500" /> {userProfile.streak}</div></div>
+          </header>
+          <div className="flex-1 overflow-y-auto overflow-x-hidden w-full relative bg-slate-50/50 transform-gpu overscroll-none scroll-smooth pb-[env(safe-area-inset-bottom)]" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <Suspense fallback={<LoadingFallback />}>
+              {renderContent()}
+            </Suspense>
+          </div>
+        </main>
+        <PaymentModal isOpen={isPaymentModalOpen} userName={userProfile.name} onClose={() => setIsPaymentModalOpen(false)} onPaymentSuccess={handlePaymentSuccess} planName={selectedPlan.name} price={selectedPlan.price} />
+      </div>
+    </GlobalContext.Provider>
   );
 }
 
@@ -639,7 +625,7 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, o
       </div>
       <div className="mt-12">
         <Suspense fallback={<div className="h-32 flex items-center justify-center bg-slate-50 rounded-3xl border border-slate-100"><Loader2 className="animate-spin text-blue-400" /></div>}>
-          <AchievementSystem userProfile={userProfile} onNavigate={onNavigate} />
+          <AchievementSystem userProfile={userProfile} onNavigate={onNavigate} onUpgrade={onUpgrade} />
         </Suspense>
       </div>
     </div>
@@ -762,6 +748,7 @@ function ChatModule({
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const recognitionRef = useRef(null);
+  const manualStopRef = useRef(false);
   const hasInitialized = useRef(false);
 
   const lastSentTextRef = useRef('');
@@ -948,6 +935,7 @@ function ChatModule({
 
   const toggleRecording = async () => {
     if (isRecording) {
+      manualStopRef.current = true;
       setMicStatus('processing');
       setIsRecording(false);
       try {
@@ -998,6 +986,14 @@ function ChatModule({
           if (data.status === 'stopped') {
             setIsRecording(false);
             setMicStatus('idle');
+
+            if (!manualStopRef.current) {
+              const textToSend = currentTranscriptRef.current.trim();
+              if (textToSend) {
+                sendMessage(textToSend, false, true);
+              }
+              currentTranscriptRef.current = '';
+            }
           }
         });
 
@@ -1465,25 +1461,25 @@ function ChatModule({
                   {renderFormattedText(msg.content)}
 
                   {msg.role === 'ai' && (
-                    <div className="mt-2 flex justify-end gap-1 border-t border-slate-100 pt-1">
+                    <div className="mt-2 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-2 shrink-0 relative z-50">
                       <button
                         onClick={() => handleTTS(msg.content)}
-                        className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
+                        className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors shrink-0 touch-manipulation shadow-sm border border-transparent hover:border-slate-200"
                         title="Dengarkan (TTS)"
                       >
-                        <Volume2 size={14} />
+                        <Volume2 size={18} />
                       </button>
                       <button
                         onClick={() => handleTranslate(idx)}
-                        className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
+                        className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors shrink-0 touch-manipulation shadow-sm border border-transparent hover:border-slate-200"
                       >
-                        <Languages size={14} />
+                        <Languages size={18} />
                       </button>
                       <button
                         onClick={() => handleSuggest(idx)}
-                        className="p-1.5 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
+                        className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors shrink-0 touch-manipulation shadow-sm border border-transparent hover:border-slate-200"
                       >
-                        <Lightbulb size={14} />
+                        <Lightbulb size={18} />
                       </button>
                     </div>
                   )}
@@ -1562,18 +1558,18 @@ function ChatModule({
       </div>
 
       {/* Input Form */}
-      <div className="relative z-40 bg-white border-t border-slate-200 w-full p-4 md:p-6 shadow-[0_-10px_30px_rgba(0,0,0,0.06)] shrink-0" style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom))' }}>
+      <div className="relative z-50 bg-white border-t border-slate-200 w-full p-4 md:p-6 shadow-[0_-10px_30px_rgba(0,0,0,0.06)] shrink-0" style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}>
         <form onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue, false, false); }} className="max-w-4xl mx-auto w-full flex items-center gap-2 md:gap-3">
           <input
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder={isRecording ? "Mendengarkan..." : "Ketik pesan atau tanya Richard..."}
-            className="flex-1 w-full bg-slate-100 border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-base shadow-inner"
+            className="flex-1 min-w-0 w-full bg-slate-100 border border-slate-200 rounded-2xl px-4 py-4 outline-none focus:border-blue-500 focus:bg-white transition-all text-sm md:text-base shadow-inner"
           />
           <button
             type="button"
             onClick={toggleRecording}
-            className={`p-4 rounded-2xl transition-all active:scale-90 flex items-center justify-center shadow-md ${isRecording ? 'bg-rose-500 text-white animate-pulse shadow-rose-500/30' : 'bg-slate-100 text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200'}`}
+            className={`p-3 md:p-4 rounded-2xl transition-all active:scale-90 flex items-center justify-center shadow-md shrink-0 ${isRecording ? 'bg-rose-500 text-white animate-pulse shadow-rose-500/30' : 'bg-slate-100 text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200'}`}
           >
             {isRecording ? <MicOff size={22} /> : <Mic size={22} />}
           </button>
@@ -1581,7 +1577,7 @@ function ChatModule({
           <button
             type="button"
             onClick={() => setSttLang(prev => prev === 'en-US' ? 'id-ID' : 'en-US')}
-            className="p-4 rounded-2xl font-black text-xs transition-all flex items-center justify-center bg-slate-100 text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200 w-14 shadow-md shrink-0"
+            className="p-3 md:p-4 rounded-2xl font-black text-xs transition-all flex items-center justify-center bg-slate-100 text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200 w-12 md:w-14 shadow-md shrink-0"
             title="Ubah Bahasa STT (Mic)"
           >
             {sttLang === 'en-US' ? 'EN' : 'ID'}
@@ -1590,7 +1586,7 @@ function ChatModule({
           <button
             type="submit"
             disabled={!inputValue.trim() || isLoading}
-            className={`p-4 rounded-2xl shadow-xl transition-all active:scale-90 flex items-center justify-center ${!inputValue.trim() || isLoading ? 'bg-slate-100 text-slate-300 shadow-none' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20'}`}
+            className={`p-3 md:p-4 rounded-2xl shadow-xl transition-all active:scale-90 flex items-center justify-center shrink-0 ${!inputValue.trim() || isLoading ? 'bg-slate-100 text-slate-300 shadow-none' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20'}`}
           >
             <Send size={22} />
           </button>
