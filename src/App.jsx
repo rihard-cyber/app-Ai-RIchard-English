@@ -955,10 +955,10 @@ function ChatModule({
       const textToSend = currentTranscriptRef.current.trim() || inputValue.trim();
       if (textToSend) {
         sendMessage(textToSend, false, true);
-        currentTranscriptRef.current = '';
       } else {
         setMicStatus('idle');
       }
+      currentTranscriptRef.current = '';
     } else {
       startRecording();
     }
@@ -1382,10 +1382,20 @@ function ChatModule({
             </div>
           )}
 
-          <div className="flex gap-8">
+          {/* Transkripsi Live User di Call Mode */}
+          <div className={`w-full max-w-md px-6 mb-8 transition-all duration-500 ${isRecording || inputValue ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+            <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-2 text-left">Pesan Anda:</p>
+            <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-4 min-h-[60px] flex items-center justify-center backdrop-blur-md shadow-inner">
+              <p className="text-white text-sm text-center italic">
+                {inputValue || "Mendengarkan suara Anda..."}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-8 pb-[env(safe-area-inset-bottom)]">
             <button
               onClick={toggleRecording}
-              className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-xl active:scale-90 ${isRecording ? 'bg-rose-500 animate-pulse' : 'bg-blue-600 hover:bg-blue-700'}`}
+              className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-xl active:scale-90 ${isRecording ? 'bg-rose-500 animate-pulse shadow-rose-500/50' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/30'}`}
             >
               {isRecording ? <MicOff size={32} /> : <Mic size={32} />}
             </button>
@@ -1434,7 +1444,7 @@ function ChatModule({
       </div>
 
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 pb-[calc(120px+env(safe-area-inset-bottom))] space-y-6 transform-gpu overscroll-none scroll-smooth w-full">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 space-y-6 transform-gpu overscroll-none scroll-smooth w-full" style={{ paddingBottom: '120px' }}>
         {messages.map((msg, idx) => (
           !msg.isHidden && (
             <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} gap-2 w-full`}>
@@ -1538,7 +1548,7 @@ function ChatModule({
       </div>
 
       {/* Input Form */}
-      <div className="sticky bottom-0 z-30 p-4 md:p-6 bg-white border-t border-slate-200 w-full pb-[calc(16px+env(safe-area-inset-bottom))]">
+      <div className="relative z-40 bg-white border-t border-slate-200 w-full p-4 md:p-6 shadow-[0_-10px_30px_rgba(0,0,0,0.06)] shrink-0" style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom))' }}>
         <form onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue, false, false); }} className="max-w-4xl mx-auto w-full flex items-center gap-2 md:gap-3">
           <input
             value={inputValue}
