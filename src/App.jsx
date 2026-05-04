@@ -1050,10 +1050,6 @@ function ChatModule({
       recognitionRef.current.onerror = () => { setIsRecording(false); setMicStatus('idle'); };
       recognitionRef.current.onend = () => { /* User stops manually */ };
 
-      try { recognitionRef.current.start(); } catch (err) { }
-    }
-  };
-
       try { recognitionRef.current.start(); } catch (err) { setIsRecording(false); setMicStatus('idle'); }
     }
   };
