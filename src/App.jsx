@@ -176,8 +176,21 @@ export default function App() {
     };
     syncApiKeyFromDB();
 
-    const ownerMode = localStorage.getItem('owner_mode');
+    // Listener proaktif agar transisi sesi berjalan mulus tanpa looping
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (session?.user) fetchProfile(session.user);
+      } else if (event === 'SIGNED_OUT') {
+        setAuthState('login');
+        setUserProfile(DEFAULT_PROFILE);
+      }
+    });
+
     checkUser();
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
   }, []);
   useEffect(() => { if (authState === 'app') fetchStats(); }, [authState]);
 
@@ -261,29 +274,31 @@ export default function App() {
 
       const isAdmin = data?.is_admin || userEmail === 'richardpl.meha@gmail.com';
 
-      if (data) {
-        setUserProfile({
-          name: data.full_name || metaName || 'User',
-          gender: data.gender || "male",
-          level: data.level || "Beginner (A1)",
-          xp: data.xp || 0,
-          streak: data.streak || 0,
-          has_completed_initial_test: data.has_completed_initial_test || false,
-          is_pro: data.is_pro || false,
-          subscription_plan: data.subscription_plan || 'Free',
-          is_admin: isAdmin,
-          email: userEmail
-        });
+      setUserProfile(prev => ({
+        ...prev,
+        name: data?.full_name || metaName || 'User',
+        gender: data?.gender || "male",
+        level: data?.level || "Beginner (A1)",
+        xp: data?.xp || 0,
+        streak: data?.streak || 0,
+        has_completed_initial_test: data?.has_completed_initial_test || false,
+        is_pro: data?.is_pro || false,
+        subscription_plan: data?.subscription_plan || 'Free',
+        is_admin: isAdmin,
+        email: userEmail
+      }));
 
-        if (isAdmin && localStorage.getItem('owner_mode') === 'admin') {
-          setAuthState('admin');
-        } else if (!data.has_completed_initial_test) {
-          setAuthState('assessment');
-        } else {
+      // PERBAIKAN: Logika Redirect Eksplisit Setelah Login Berhasil
+      if (isAdmin) {
+        if (localStorage.getItem('owner_mode') === 'user') {
           setAuthState('app');
+        } else {
+          localStorage.setItem('owner_mode', 'admin');
+          setAuthState('admin');
         }
+      } else if (data && !data.has_completed_initial_test) {
+        setAuthState('assessment');
       } else {
-        setUserProfile(prev => ({ ...prev, name: metaName || 'User', is_admin: isAdmin, email: userEmail }));
         setAuthState('app');
       }
     } catch (err) {
@@ -293,7 +308,12 @@ export default function App() {
     }
   };
 
-  const handleLogin = () => {
+  const handleLogin = (role) => {
+    if (role === 'admin') {
+      localStorage.setItem('owner_mode', 'admin');
+    } else if (role === 'owner_user_bypass') {
+      localStorage.setItem('owner_mode', 'user');
+    }
     checkUser();
   };
 
@@ -456,11 +476,26 @@ export default function App() {
       <PaymentModal isOpen={isPaymentModalOpen} userName={userProfile.name} onClose={() => setIsPaymentModalOpen(false)} onPaymentSuccess={handlePaymentSuccess} planName={selectedPlan.name} price={selectedPlan.price} />
     </>
   );
-  if (authState === 'admin') return (
-    <Suspense fallback={<LoadingFallback />}>
-      <AdminDashboard onLogout={handleLogout} onSwitchToUser={() => { localStorage.setItem('owner_mode', 'user'); setAuthState('app'); }} userEmail={userProfile.email} />
-    </Suspense>
-  );
+  if (authState === 'admin') {
+    // PROTECTED ROUTE GUARD: Kunci halaman Admin
+    if (!isInitializing && !userProfile.is_admin && userProfile.email !== 'richardpl.meha@gmail.com') {
+      return (
+        <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center">
+          <Shield className="text-rose-500 mb-4" size={64} />
+          <h2 className="text-3xl font-black mb-2">Akses Ditolak</h2>
+          <p className="text-slate-400 mb-8">Halaman ini dilindungi secara ketat. Anda akan dialihkan kembali.</p>
+          <button onClick={() => setAuthState('app')} className="px-8 py-4 bg-blue-600 hover:bg-blue-700 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-blue-500/30">
+            Kembali ke Aplikasi
+          </button>
+        </div>
+      );
+    }
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <AdminDashboard onLogout={handleLogout} onSwitchToUser={() => { localStorage.setItem('owner_mode', 'user'); setAuthState('app'); }} userEmail={userProfile.email} />
+      </Suspense>
+    );
+  }
 
   return (
     <GlobalContext.Provider value={{ globalApiKey, userProfile }}>
