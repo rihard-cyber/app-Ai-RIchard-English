@@ -288,8 +288,10 @@ export default function App() {
         email: userEmail
       }));
 
-      // PERBAIKAN: Logika Redirect Eksplisit Setelah Login Berhasil
-      if (isAdmin) {
+      // PERBAIKAN: Routing Anti-Flicker untuk Admin
+      if (localStorage.getItem('owner_mode') === 'admin') {
+        setAuthState('admin');
+      } else if (isAdmin) {
         if (localStorage.getItem('owner_mode') === 'user') {
           setAuthState('app');
         } else {
@@ -303,8 +305,22 @@ export default function App() {
       }
     } catch (err) {
       console.error("Profile fetch failed", err);
-      // Fallback to minimal profile if DB fails
-      setAuthState('app');
+
+      const fallbackEmail = typeof userObj === 'object' ? userObj.email : '';
+      const isFallbackAdmin = fallbackEmail === 'richardpl.meha@gmail.com';
+
+      setUserProfile(prev => ({
+        ...prev,
+        name: typeof userObj === 'object' ? (userObj.user_metadata?.full_name || 'User') : 'User',
+        is_admin: isFallbackAdmin,
+        email: fallbackEmail
+      }));
+
+      if (localStorage.getItem('owner_mode') === 'admin' || (isFallbackAdmin && localStorage.getItem('owner_mode') !== 'user')) {
+        setAuthState('admin');
+      } else {
+        setAuthState('app');
+      }
     }
   };
 
