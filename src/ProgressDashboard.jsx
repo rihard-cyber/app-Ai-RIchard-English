@@ -30,6 +30,18 @@ export default function ProgressDashboard({ userProfile, onNavigate }) {
   const [filterCategory, setFilterCategory] = useState('all');
   const [heatmapData, setHeatmapData] = useState([]);
 
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+
+    if (diffMins < 60) return `${diffMins} menit yang lalu`;
+    if (diffHours < 24) return `${diffHours} jam yang lalu`;
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  };
+
   useEffect(() => {
     fetchProgress();
   }, [filterPeriod, filterCategory]);
@@ -47,7 +59,7 @@ export default function ProgressDashboard({ userProfile, onNavigate }) {
       .from('user_progress')
       .select('skill_type, score')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false });
 
     if (filterCategory !== 'all') {
       progressQuery = progressQuery.eq('skill_type', filterCategory);
@@ -82,7 +94,7 @@ export default function ProgressDashboard({ userProfile, onNavigate }) {
       .from('user_progress')
       .select('*')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false });
 
     if (filterCategory !== 'all') {
       activityQuery = activityQuery.eq('skill_type', filterCategory);
@@ -148,18 +160,6 @@ export default function ProgressDashboard({ userProfile, onNavigate }) {
     setHeatmapData(generatedHeatmap);
 
     setIsLoading(false);
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-
-    if (diffMins < 60) return `${diffMins} menit yang lalu`;
-    if (diffHours < 24) return `${diffHours} jam yang lalu`;
-    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
   };
 
   return (

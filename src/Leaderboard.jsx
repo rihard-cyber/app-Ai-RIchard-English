@@ -6,6 +6,7 @@ export default function Leaderboard({ userProfile, onNavigate }) {
     const [leaders, setLeaders] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [period, setPeriod] = useState('all-time'); // 'all-time' / 'weekly'
+    const [selectedUser, setSelectedUser] = useState(null);
 
     useEffect(() => {
         fetchLeaderboard();
