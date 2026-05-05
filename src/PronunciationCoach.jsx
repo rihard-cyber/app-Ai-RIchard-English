@@ -11,7 +11,8 @@ import {
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
 import { supabase } from './supabaseClient';
-import { fetchGeminiWithRotation } from './api';
+import { AiOrchestrator } from './services/AiOrchestrator';
+import { GlobalContext } from './App';
 
 const PRONUNCIATION_PROMPT = `
 Kamu adalah Richard, Pelatih Pengucapan (Pronunciation Coach) Bahasa Inggris level Native & Profesional.
@@ -44,6 +45,8 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
   const recognitionRef = useRef(null);
   const manualStopRef = useRef(false);
   const currentTranscriptRef = useRef('');
+
+  const { globalApiKey } = React.useContext(GlobalContext) || {};
 
   useEffect(() => {
     localStorage.setItem('speaking_coach_usage', usageCount.toString());
@@ -89,7 +92,7 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
         systemInstruction: { parts: [{ text: "You are a helpful English teacher. ONLY return 1 short, clear practice sentence. No extra text." }] }
       };
 
-      const data = await fetchGeminiWithRotation(payload);
+      const data = await AiOrchestrator.chat(payload, globalApiKey);
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "Hello, how are you today?";
       setTargetSentence(text.trim().replace(/"/g, ''));
     } catch (error) {
@@ -146,11 +149,9 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
         SpeechRecognition.addListener('listeningState', (data) => {
           if (data.status === 'stopped') {
             setIsRecording(false);
-            if (!manualStopRef.current) {
-              const textToSend = currentTranscriptRef.current.trim();
-              if (textToSend) analyzePronunciation(textToSend);
-              currentTranscriptRef.current = '';
-            }
+            const textToSend = currentTranscriptRef.current.trim();
+            if (textToSend) analyzePronunciation(textToSend);
+            currentTranscriptRef.current = '';
           }
         });
 
@@ -209,11 +210,9 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
       recognitionRef.current.onerror = () => setIsRecording(false);
       recognitionRef.current.onend = () => {
         setIsRecording(false);
-        if (!manualStopRef.current) {
-          const textToSend = currentTranscriptRef.current.trim();
-          if (textToSend) analyzePronunciation(textToSend);
-          currentTranscriptRef.current = '';
-        }
+        const textToSend = currentTranscriptRef.current.trim();
+        if (textToSend) analyzePronunciation(textToSend);
+        currentTranscriptRef.current = '';
       };
 
       try { recognitionRef.current.start(); } catch (err) { }
@@ -228,7 +227,7 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
         systemInstruction: { parts: [{ text: PRONUNCIATION_PROMPT }] }
       };
 
-      const data = await fetchGeminiWithRotation(payload);
+      const data = await AiOrchestrator.chat(payload, globalApiKey);
       const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Error analyzing pronunciation.";
 
       // Bersihkan text dari format markdown (```json ... ```) jika AI tetap mengirimkannya
@@ -266,21 +265,7 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
   };
 
   const speakSentence = async () => {
-    try {
-      await TextToSpeech.speak({
-        text: targetSentence,
-        lang: 'en-US',
-        rate: 0.8,
-      });
-    } catch (err) {
-      console.warn("Capacitor TTS gagal, beralih ke WebView TTS bawaan", err);
-      if ('speechSynthesis' in window && 'SpeechSynthesisUtterance' in window) {
-        const utterance = new SpeechSynthesisUtterance(targetSentence);
-        utterance.lang = 'en-US';
-        utterance.rate = 0.8;
-        window.speechSynthesis.speak(utterance);
-      }
-    }
+    await AiOrchestrator.speak(targetSentence, globalApiKey, { rate: 0.8 });
   };
 
   return (
@@ -366,7 +351,7 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
       </div>
 
       {/* Global Standardized Input Bar for Pronunciation Coach */}
-      <div className="relative z-50 bg-white border-t border-slate-200 w-full p-4 md:p-6 shadow-[0_-10px_30px_rgba(0,0,0,0.06)] shrink-0" style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}>
+      <div className="relative z-[50] bg-white border-t border-slate-200 w-full p-4 md:p-6 shadow-[0_-10px_30px_rgba(0,0,0,0.06)] shrink-0" style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}>
         <div className="max-w-4xl mx-auto w-full flex justify-center items-center gap-4 md:gap-8">
           <button
             onClick={speakSentence}

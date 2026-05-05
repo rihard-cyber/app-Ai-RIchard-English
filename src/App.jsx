@@ -9,8 +9,10 @@ import {
   Volume2,
   Menu,
   X,
+  Search,
   Send,
   Loader2,
+  ArrowDown,
   GraduationCap,
   Sparkles,
   Bot,
@@ -38,7 +40,7 @@ import { LoginPage, SubscriptionPage } from './Auth';
 import PaymentModal from './PaymentModal';
 import { supabase } from './supabaseClient';
 import { CURRICULUM } from './data/curriculum';
-import { fetchGeminiWithRotation } from './api';
+import { AiOrchestrator } from './services/AiOrchestrator';
 import { VOCABULARY_TOPICS as VOCAB_RAW, GRAMMAR_TOPICS as GRAMMAR_RAW, LISTENING_TOPICS as LISTENING_RAW, CONVERSATION_CHARACTERS as CHARS_RAW } from './data/topics';
 
 // --- LAZY LOADED COMPONENTS ---
@@ -48,6 +50,7 @@ const ProgressDashboard = lazy(() => import('./ProgressDashboard'));
 const WritingAnalyzer = lazy(() => import('./WritingAnalyzer'));
 const PronunciationCoach = lazy(() => import('./PronunciationCoach'));
 const AdminDashboard = lazy(() => import('./AdminDashboard'));
+const Leaderboard = lazy(() => import('./Leaderboard'));
 
 // --- DATA PROFIL DEFAULT ---
 const DEFAULT_PROFILE = {
@@ -161,6 +164,17 @@ export default function App() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [theme, setTheme] = useState(() => localStorage.getItem('richard_theme') || 'light');
   const [globalApiKey, setGlobalApiKey] = useState('');
+  const [showSplash, setShowSplash] = useState(true);
+  const [showLevelUpConfetti, setShowLevelUpConfetti] = useState(false);
+  const [levelUpMessage, setLevelUpMessage] = useState('');
+  const [isModulOpen, setIsModulOpen] = useState(true);
+  const [isPraktekOpen, setIsPraktekOpen] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowSplash(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     // Sinkronisasi otomatis API Key terbaru dari Database (Supabase) untuk pengguna HP
@@ -169,8 +183,11 @@ export default function App() {
       try {
         const { data } = await supabase.from('app_settings').select('value').eq('id', 'api_keys').maybeSingle();
         if (data && data.value) {
-          localStorage.setItem('gemini_api_key', data.value);
-          setGlobalApiKey(data.value);
+          let keysObj = data.value;
+          if (typeof keysObj === 'string') {
+            try { keysObj = JSON.parse(keysObj); } catch (e) { keysObj = { core: data.value, translation: '', voice: '' }; }
+          }
+          setGlobalApiKey(keysObj);
         }
       } catch (err) { }
     };
@@ -223,8 +240,11 @@ export default function App() {
       else newLevel = "Proficient (C2)";
 
       setUserProfile(prev => {
-        if (prev.level !== newLevel) {
+        if (prev.level && prev.level !== newLevel && prev.name !== "User" && prev.level !== "Pemula (A1-A2)") {
           supabase.from('user_profiles').update({ level: newLevel }).eq('id', user.id).then();
+          setShowLevelUpConfetti(true);
+          setLevelUpMessage(newLevel);
+          setTimeout(() => { setShowLevelUpConfetti(false); setLevelUpMessage(''); }, 6000);
           return { ...prev, level: newLevel };
         }
         return prev;
@@ -272,7 +292,7 @@ export default function App() {
 
       if (error) throw error;
 
-      const isAdmin = data?.is_admin || userEmail === 'richardpl.meha@gmail.com';
+      const isAdmin = userEmail === 'richardpl.meha@gmail.com';
 
       setUserProfile(prev => ({
         ...prev,
@@ -382,7 +402,7 @@ export default function App() {
     }
   };
 
-  const handleTabChange = (tab) => { setActiveTab(tab); setIsSidebarOpen(false); };
+  const handleTabChange = (tab) => { setActiveTab(tab); setIsSidebarOpen(false); setSearchQuery(''); };
 
   const handleLogoClick = () => {
     if (userProfile.is_admin) {
@@ -404,6 +424,7 @@ export default function App() {
     switch (activeTab) {
       case 'home':
         return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} recommendation={recommendation} onStartGoal={(id) => { setActiveGoalId(id); setActiveTab('goal_session'); }} onUpgrade={() => triggerUpgrade()} />;
+      case 'leaderboard': return <Leaderboard userProfile={userProfile} onNavigate={handleTabChange} />;
       case 'progress': return <ProgressDashboard userProfile={userProfile} onNavigate={handleTabChange} />;
       case 'assessment': return <LevelTest onComplete={handleAssessmentComplete} />;
       case 'vocabulary': return <SetupModule userProfile={userProfile} setUserProfile={setUserProfile} module="Vocabulary" basePrompt={prompts.vocabulary} icon={<BookA size={24} />} color="text-indigo-600" bg="bg-indigo-100" onComplete={(score) => saveProgress('vocabulary', score)} isPro={userProfile.is_pro} topicsList={VOCABULARY_TOPICS} onUpgrade={() => triggerUpgrade()} />;
@@ -479,7 +500,30 @@ export default function App() {
     }
   };
 
-  if (isInitializing) return <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-6 text-white"><Loader2 className="animate-spin text-blue-500 mb-4" size={48} /><p className="text-slate-400 font-bold animate-pulse">Menyiapkan RichardMeha AI...</p></div>;
+  if (isInitializing || showSplash) {
+    return (
+      <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-6 text-white overflow-hidden relative overscroll-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] h-[30rem] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
+
+        <div className="relative z-10 flex flex-col items-center animate-in zoom-in duration-1000 fade-in">
+          <div className="w-24 h-24 rounded-[2rem] bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-2xl shadow-blue-500/50 mb-6 relative">
+            <div className="absolute inset-0 rounded-[2rem] border-4 border-white/20 animate-ping"></div>
+            <Sparkles className="text-white w-12 h-12 animate-pulse" />
+          </div>
+
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white mb-1">
+            RichardMeha<span className="text-blue-500"> AI</span>
+          </h1>
+          <p className="text-slate-400 text-sm font-medium tracking-wide mb-8">Ultimate English Tutor</p>
+
+          <div className="flex flex-col items-center gap-3 mt-4">
+            <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+            <span className="text-[10px] text-slate-500 font-black tracking-widest uppercase">Memuat Sistem...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (authState === 'login') return <LoginPage onLogin={handleLogin} />;
   if (authState === 'assessment') return (
     <Suspense fallback={<LoadingFallback />}>
@@ -513,6 +557,14 @@ export default function App() {
     );
   }
 
+  const isMatch = (text) => text.toLowerCase().includes(searchQuery.toLowerCase());
+  const showMain = !searchQuery || isMatch('Dasbor Belajar') || isMatch('Statistik Progres') || isMatch('Papan Peringkat') || isMatch('Menu Utama');
+  const showLearning = !searchQuery || isMatch('Test CEFR') || isMatch('Belajar (Vocab)') || isMatch('Call Tutor') || isMatch('Chat Tutor') || isMatch('Quiz') || isMatch('Modul Pembelajaran');
+  const showPractice = !searchQuery || isMatch('Speaking Coach') || isMatch('Writing Analyzer') || isMatch('Grammar Speaking') || isMatch('Praktek & Analisa');
+  const showAccount = !searchQuery || isMatch('Pengaturan') || isMatch('Admin') || isMatch('Log Out') || isMatch('Akun');
+  const effectiveModulOpen = searchQuery ? true : isModulOpen;
+  const effectivePraktekOpen = searchQuery ? true : isPraktekOpen;
+
   return (
     <GlobalContext.Provider value={{ globalApiKey, userProfile }}>
       <div className={`flex h-[100dvh] w-full font-sans overflow-hidden overscroll-none transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b1121] text-slate-200 dark-mode' : 'bg-slate-50 text-slate-800'}`}>
@@ -520,30 +572,89 @@ export default function App() {
         <aside className={`fixed md:relative inset-y-0 left-0 z-50 w-72 md:w-64 bg-[#0f172a] text-slate-300 shadow-2xl md:shadow-none transform transition-transform duration-300 ease-in-out flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
           <div className="h-16 flex items-center justify-between px-6 bg-[#0b1121] pt-[env(safe-area-inset-top)]"><h1 onClick={handleLogoClick} title={userProfile.is_admin ? 'Klik 2x untuk ke Admin' : ''} className="text-xl font-bold tracking-wider flex items-center gap-2 text-white cursor-pointer select-none active:scale-95 transition-transform touch-manipulation"><Sparkles className="text-blue-500" /> RichardMeha<span className="text-blue-500"> AI</span></h1><button className="md:hidden text-slate-400 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button></div>
           <div className="p-6 border-b border-slate-800 flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-blue-500/20">{userProfile.name.charAt(0)}</div><div className="flex flex-col"><span className="text-base font-semibold text-white">{userProfile.name}</span><span className="text-xs text-blue-400 flex items-center gap-1"><Trophy size={12} /> {userProfile.level}</span></div></div>
-          <nav className="flex-1 py-4 px-4 space-y-1 overflow-y-auto custom-scrollbar transform-gpu overscroll-contain">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-2">Menu Utama</p>
-            <NavItem icon={<LayoutDashboard />} label="Dasbor Belajar" isActive={activeTab === 'home'} onClick={() => handleTabChange('home')} />
-            <NavItem icon={<BarChart2 />} label="Statistik Progres" isActive={activeTab === 'progress'} onClick={() => handleTabChange('progress')} />
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-6">Modul Pembelajaran</p>
-            <NavItem icon={<GraduationCap />} label="Test CEFR (Awal)" isActive={activeTab === 'assessment'} onClick={() => handleTabChange('assessment')} />
-            <NavItem icon={<BookA />} label="📚 Belajar (Vocab)" isActive={activeTab === 'vocabulary'} onClick={() => handleTabChange('vocabulary')} />
-            <NavItem icon={<Headphones />} label="🎧 Call Tutor" isActive={activeTab === 'call_tutor'} onClick={() => handleTabChange('call_tutor')} />
-            <NavItem icon={<MessageSquare />} label="💬 Chat Tutor" isActive={activeTab === 'conversation'} onClick={() => handleTabChange('conversation')} />
-            <NavItem icon={<Zap />} label="🧠 Quiz & Challenge" isActive={activeTab === 'quiz'} onClick={() => handleTabChange('quiz')} />
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-6">Praktek & Analisa</p>
-            <NavItem icon={<Mic />} label="Speaking Coach" isActive={activeTab === 'speaking'} onClick={() => handleTabChange('speaking')} />
-            <NavItem icon={<PenTool />} label="Writing Analyzer" isActive={activeTab === 'writing_analyzer'} onClick={() => handleTabChange('writing_analyzer')} />
-            <NavItem icon={<GraduationCap />} label="Grammar Speaking" isActive={activeTab === 'grammar'} onClick={() => handleTabChange('grammar')} />
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-6">Akun</p>
-            <NavItem icon={<Settings />} label="Pengaturan" isActive={activeTab === 'settings'} onClick={() => handleTabChange('settings')} />
-            {userProfile.is_admin && (
-              <button onClick={() => { localStorage.setItem('owner_mode', 'admin'); setAuthState('admin'); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-emerald-400 hover:bg-emerald-900/20 hover:text-emerald-300 transition-all font-medium"><Shield size={18} /> <span className="text-sm">Beralih ke Admin</span></button>
+
+          {/* SEARCH BAR */}
+          <div className="px-4 pt-5 pb-2 shrink-0">
+            <div className="relative group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" size={16} />
+              <input
+                type="text"
+                placeholder="Cari modul..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[#1e293b] border border-slate-700/50 text-sm text-slate-200 rounded-xl pl-9 pr-8 py-2.5 focus:outline-none focus:border-blue-500/50 focus:bg-slate-800 transition-all placeholder:text-slate-500 shadow-inner"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors animate-in fade-in zoom-in duration-200">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <nav className="flex-1 py-2 px-4 space-y-1 overflow-y-auto custom-scrollbar transform-gpu overscroll-contain">
+            {showMain && (
+              <div className="animate-in fade-in duration-300">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-2">Menu Utama</p>
+                {(!searchQuery || isMatch('Dasbor Belajar')) && <NavItem icon={<LayoutDashboard />} label="Dasbor Belajar" isActive={activeTab === 'home'} onClick={() => handleTabChange('home')} />}
+                {(!searchQuery || isMatch('Statistik Progres')) && <NavItem icon={<BarChart2 />} label="Statistik Progres" isActive={activeTab === 'progress'} onClick={() => handleTabChange('progress')} />}
+                {(!searchQuery || isMatch('Papan Peringkat')) && <NavItem icon={<Trophy />} label="Papan Peringkat" isActive={activeTab === 'leaderboard'} onClick={() => handleTabChange('leaderboard')} />}
+              </div>
             )}
-            <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-rose-400 hover:bg-rose-900/20 hover:text-rose-300 transition-all"><LogOut size={18} /> <span className="text-sm">Log Out</span></button>
+
+            {showLearning && (
+              <div className="animate-in fade-in duration-300">
+                <button onClick={() => setIsModulOpen(!isModulOpen)} className="w-full flex items-center justify-between px-3 mt-6 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider hover:text-slate-300 transition-colors">
+                  <span>Modul Pembelajaran</span>
+                  <ChevronRight size={14} className={`transition-transform duration-200 ${effectiveModulOpen ? 'rotate-90' : ''}`} />
+                </button>
+                <div className={`space-y-1 overflow-hidden transition-all duration-300 ease-in-out ${effectiveModulOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                  {(!searchQuery || isMatch('Test CEFR (Awal)')) && <NavItem icon={<GraduationCap />} label="Test CEFR (Awal)" isActive={activeTab === 'assessment'} onClick={() => handleTabChange('assessment')} />}
+                  {(!searchQuery || isMatch('Belajar (Vocab)')) && <NavItem icon={<BookA />} label="📚 Belajar (Vocab)" isActive={activeTab === 'vocabulary'} onClick={() => handleTabChange('vocabulary')} />}
+                  {(!searchQuery || isMatch('Call Tutor')) && <NavItem icon={<Headphones />} label="🎧 Call Tutor" isActive={activeTab === 'call_tutor'} onClick={() => handleTabChange('call_tutor')} />}
+                  {(!searchQuery || isMatch('Chat Tutor')) && <NavItem icon={<MessageSquare />} label="💬 Chat Tutor" isActive={activeTab === 'conversation'} onClick={() => handleTabChange('conversation')} />}
+                  {(!searchQuery || isMatch('Quiz & Challenge')) && <NavItem icon={<Zap />} label="🧠 Quiz & Challenge" isActive={activeTab === 'quiz'} onClick={() => handleTabChange('quiz')} />}
+                </div>
+              </div>
+            )}
+
+            {showPractice && (
+              <div className="animate-in fade-in duration-300">
+                <button onClick={() => setIsPraktekOpen(!isPraktekOpen)} className="w-full flex items-center justify-between px-3 mt-4 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider hover:text-slate-300 transition-colors">
+                  <span>Praktek & Analisa</span>
+                  <ChevronRight size={14} className={`transition-transform duration-200 ${effectivePraktekOpen ? 'rotate-90' : ''}`} />
+                </button>
+                <div className={`space-y-1 overflow-hidden transition-all duration-300 ease-in-out ${effectivePraktekOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                  {(!searchQuery || isMatch('Speaking Coach')) && <NavItem icon={<Mic />} label="Speaking Coach" isActive={activeTab === 'speaking'} onClick={() => handleTabChange('speaking')} />}
+                  {(!searchQuery || isMatch('Writing Analyzer')) && <NavItem icon={<PenTool />} label="Writing Analyzer" isActive={activeTab === 'writing_analyzer'} onClick={() => handleTabChange('writing_analyzer')} />}
+                  {(!searchQuery || isMatch('Grammar Speaking')) && <NavItem icon={<GraduationCap />} label="Grammar Speaking" isActive={activeTab === 'grammar'} onClick={() => handleTabChange('grammar')} />}
+                </div>
+              </div>
+            )}
+
+            {showAccount && (
+              <div className="animate-in fade-in duration-300">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-4">Akun</p>
+                {(!searchQuery || isMatch('Pengaturan')) && <NavItem icon={<Settings />} label="Pengaturan" isActive={activeTab === 'settings'} onClick={() => handleTabChange('settings')} />}
+                {userProfile.email === 'richardpl.meha@gmail.com' && (!searchQuery || isMatch('Beralih ke Admin')) && (
+                  <button onClick={() => { localStorage.setItem('owner_mode', 'admin'); setAuthState('admin'); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-emerald-400 hover:bg-emerald-900/20 hover:text-emerald-300 transition-all duration-200 hover:translate-x-1 font-medium"><Shield size={18} /> <span className="text-sm">Beralih ke Admin</span></button>
+                )}
+                {(!searchQuery || isMatch('Log Out')) && <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-rose-400 hover:bg-rose-900/20 hover:text-rose-300 transition-all duration-200 hover:translate-x-1"><LogOut size={18} /> <span className="text-sm">Log Out</span></button>}
+              </div>
+            )}
+
+            {searchQuery && !showMain && !showLearning && !showPractice && !showAccount && (
+              <div className="px-4 py-8 text-center animate-in fade-in zoom-in duration-300">
+                <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
+                  <Search className="text-slate-500" size={20} />
+                </div>
+                <p className="text-sm text-slate-400 font-medium">Modul tidak ditemukan</p>
+              </div>
+            )}
           </nav>
         </aside>
         <main className="flex-1 flex flex-col h-full w-full relative overflow-hidden">
-          <header className="h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] bg-white border-b border-slate-200 flex items-center justify-between px-4 z-30 shrink-0 md:hidden shadow-sm">
+          <header className="h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 z-30 shrink-0 md:hidden shadow-sm">
             <div className="flex items-center gap-3"><button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors"><Menu size={24} /></button><h2 onClick={handleLogoClick} title={userProfile.is_admin ? 'Klik 2x untuk ke Admin' : ''} className="text-lg font-semibold text-slate-800 flex items-center gap-2 cursor-pointer select-none active:scale-95 transition-transform touch-manipulation">RichardMeha<span className="text-blue-600"> AI</span></h2></div>
             <div className="flex items-center gap-2"><div className="flex items-center gap-1 text-sm font-bold text-orange-500 bg-orange-50 px-3 py-1 rounded-full"><Flame size={16} className="fill-orange-500" /> {userProfile.streak}</div></div>
           </header>
@@ -555,6 +666,45 @@ export default function App() {
         </main>
         <PaymentModal isOpen={isPaymentModalOpen} userName={userProfile.name} onClose={() => setIsPaymentModalOpen(false)} onPaymentSuccess={handlePaymentSuccess} planName={selectedPlan.name} price={selectedPlan.price} />
       </div>
+
+      {/* GLOBAL LEVEL UP CONFETTI POP-UP */}
+      {showLevelUpConfetti && (
+        <div className="fixed inset-0 pointer-events-none z-[1000] flex items-center justify-center overflow-hidden">
+          <style>
+            {`
+              @keyframes confettiFall {
+                0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+                100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+              }
+              .animate-confetti { animation: confettiFall linear forwards; }
+            `}
+          </style>
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-500 pointer-events-auto" />
+          <div className="relative z-10 flex flex-col items-center animate-in zoom-in duration-500">
+            <div className="w-32 h-32 bg-gradient-to-tr from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mb-6 shadow-2xl shadow-yellow-500/40 animate-bounce">
+              <Trophy size={64} className="text-white" />
+            </div>
+            <h2 className="text-4xl md:text-6xl font-black text-white mb-2 tracking-tight drop-shadow-xl">LEVEL UP!</h2>
+            <p className="text-xl md:text-2xl text-yellow-300 font-bold drop-shadow-md text-center px-4">Kamu berhasil mencapai {levelUpMessage} 🎉</p>
+          </div>
+          {[...Array(120)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute animate-confetti"
+              style={{
+                left: \`\${Math.random() * 100}%\`,
+          top: '-10%',
+          width: \`\${Math.random() * 10 + 6}px\`,
+          height: \`\${Math.random() * 14 + 8}px\`,
+          backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#ec4899', '#ffffff'][Math.floor(Math.random() * 7)],
+          animationDelay: \`\${Math.random() * 2}s\`,
+          animationDuration: \`\${Math.random() * 3 + 2}s\`,
+                borderRadius: Math.random() > 0.5 ? '50%' : '4px',
+              }}
+            />
+          ))}
+        </div>
+      )}
     </GlobalContext.Provider>
   );
 }
@@ -587,9 +737,9 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, o
   const levelData = CURRICULUM[safeLevel] || CURRICULUM['Pemula Dasar (A1)'];
 
   return (
-    <div className="p-4 md:p-8 w-full max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 overflow-x-hidden">
+    <div className="p-4 md:p-8 w-full max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 overflow-x-hidden">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
-        <div className="lg:col-span-2 bg-gradient-to-br from-indigo-600 via-blue-600 to-blue-500 rounded-[2.5rem] p-6 md:p-12 text-white shadow-2xl relative overflow-hidden group w-full max-w-full">
+        <div className="lg:col-span-2 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-[2.5rem] p-6 md:p-12 text-white shadow-2xl relative overflow-hidden group w-full max-w-full">
           <div className="absolute -bottom-10 -right-10 opacity-10 group-hover:scale-110 transition-transform duration-700">
             <GraduationCap size={240} />
           </div>
@@ -605,7 +755,7 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, o
             <div className="flex flex-col sm:flex-row gap-4 w-full">
               <button
                 onClick={() => onNavigate(recommendation)}
-                className="w-full sm:w-auto bg-white text-blue-700 font-black px-8 py-4 rounded-2xl shadow-xl hover:bg-blue-50 transition-all active:scale-95 flex items-center justify-center gap-2 group"
+                className="w-full sm:w-auto bg-white text-blue-700 font-black px-8 py-4 rounded-2xl shadow-xl transition-all duration-200 hover:scale-105 hover:shadow-[0_0_20px_rgba(79,70,229,0.5)] active:scale-95 flex items-center justify-center gap-2 group"
               >
                 <Zap size={20} className="fill-blue-700 group-hover:scale-125 transition-transform" />
                 Mulai {recommendation.toUpperCase()}
@@ -667,12 +817,12 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, o
 
       <h3 className="text-2xl font-black text-slate-800 mt-12 mb-6 px-2">Modul Belajar Pintar</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 w-full">
-        <DashboardCard title="Vocabulary" desc="Perkaya kosa kata dengan Box of Words." icon={<BookA size={24} />} color="bg-indigo-50 text-indigo-600" hover="hover:border-indigo-300 hover:shadow-indigo-200" onClick={() => onNavigate('vocabulary')} />
-        <DashboardCard title="Speaking" desc="Latih pelafalan dan keberanian bicara." icon={<Mic size={24} />} color="bg-rose-50 text-rose-600" hover="hover:border-rose-300 hover:shadow-rose-200" onClick={() => onNavigate('speaking')} />
-        <DashboardCard title="Grammar" desc="Pahami struktur kalimat untuk speaking." icon={<LayoutDashboard size={24} />} color="bg-emerald-50 text-emerald-600" hover="hover:border-emerald-300 hover:shadow-emerald-200" onClick={() => onNavigate('grammar')} />
-        <DashboardCard title="Listening" desc="Latih telinga mendengar monolog Inggris." icon={<Headphones size={24} />} color="bg-amber-50 text-amber-600" hover="hover:border-amber-300 hover:shadow-amber-200" onClick={() => onNavigate('listening')} />
-        <DashboardCard title="Writing Analyzer" desc="Koreksi tulisanmu secara detail." icon={<PenTool size={24} />} color="bg-blue-50 text-blue-600" hover="hover:border-blue-300 hover:shadow-blue-200" onClick={() => onNavigate('writing_analyzer')} />
-        <DashboardCard title="Conversation" desc="Simulasi ngobrol bareng tokoh idola." icon={<MessageSquare size={24} />} color="bg-purple-50 text-purple-600" hover="hover:border-purple-300 hover:shadow-purple-200" onClick={() => onNavigate('conversation')} />
+        <DashboardCard title="Vocabulary" desc="Perkaya kosa kata dengan Box of Words." icon={<BookA size={24} />} color="bg-indigo-50 text-indigo-600" onClick={() => onNavigate('vocabulary')} />
+        <DashboardCard title="Speaking" desc="Latih pelafalan dan keberanian bicara." icon={<Mic size={24} />} color="bg-rose-50 text-rose-600" onClick={() => onNavigate('speaking')} />
+        <DashboardCard title="Grammar" desc="Pahami struktur kalimat untuk speaking." icon={<LayoutDashboard size={24} />} color="bg-emerald-50 text-emerald-600" onClick={() => onNavigate('grammar')} />
+        <DashboardCard title="Listening" desc="Latih telinga mendengar monolog Inggris." icon={<Headphones size={24} />} color="bg-amber-50 text-amber-600" onClick={() => onNavigate('listening')} />
+        <DashboardCard title="Writing Analyzer" desc="Koreksi tulisanmu secara detail." icon={<PenTool size={24} />} color="bg-blue-50 text-blue-600" onClick={() => onNavigate('writing_analyzer')} />
+        <DashboardCard title="Conversation" desc="Simulasi ngobrol bareng tokoh idola." icon={<MessageSquare size={24} />} color="bg-purple-50 text-purple-600" onClick={() => onNavigate('conversation')} />
       </div>
       <div className="mt-12">
         <Suspense fallback={<div className="h-32 flex items-center justify-center bg-slate-50 rounded-3xl border border-slate-100"><Loader2 className="animate-spin text-blue-400" /></div>}>
@@ -683,13 +833,13 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, o
   );
 }
 
-function DashboardCard({ title, desc, icon, color, hover, onClick }) {
+function DashboardCard({ title, desc, icon, color, onClick }) {
   return (
-    <div onClick={onClick} className={`bg-white p-6 rounded-3xl border border-slate-200 shadow-sm cursor-pointer transition-all duration-300 ${hover} group hover:-translate-y-1 w-full max-w-full overflow-hidden`}>
+    <div onClick={onClick} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm cursor-pointer transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-indigo-500/20 hover:border-indigo-400 dark:hover:border-indigo-500 group w-full max-w-full overflow-hidden">
       <div className={`w-14 h-14 rounded-2xl ${color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm`}>{icon}</div>
-      <h4 className="text-lg font-bold text-slate-800 mb-1">{title}</h4>
-      <p className="text-sm text-slate-500 mb-4">{desc}</p>
-      <div className="flex items-center text-sm font-semibold text-blue-600 gap-1 opacity-0 group-hover:opacity-100 transition-all transform translate-x-[-10px] group-hover:translate-x-0">Mulai Belajar <ChevronRight size={16} /></div>
+      <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">{title}</h4>
+      <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{desc}</p>
+      <div className="flex items-center text-sm font-semibold text-blue-600 dark:text-blue-400 gap-1 opacity-0 group-hover:opacity-100 transition-all transform translate-x-[-10px] group-hover:translate-x-0">Mulai Belajar <ChevronRight size={16} /></div>
     </div>
   );
 }
@@ -760,7 +910,7 @@ function ConversationModule({ userProfile, setUserProfile, basePrompt, isPro, ch
 
 
 function NavItem({ icon, label, isActive, onClick }) {
-  return (<button onClick={onClick} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive ? 'bg-blue-600 text-white shadow-md shadow-blue-900/20 font-medium' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><span className={`${isActive ? 'text-white' : ''}`}>{icon}</span><span className="text-sm whitespace-nowrap">{label}</span></button>);
+  return (<button onClick={onClick} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 hover:translate-x-1 ${isActive ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-medium' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><span className={`${isActive ? 'text-white' : ''}`}>{icon}</span><span className="text-sm whitespace-nowrap">{label}</span></button>);
 }
 
 
@@ -794,6 +944,7 @@ function ChatModule({
   const [voicePersonality, setVoicePersonality] = useState('friendly'); // 'friendly', 'strict', 'buddy'
   const [sttLang, setSttLang] = useState('en-US');
   const idleTimerRef = useRef(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
   // Voice recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -806,9 +957,42 @@ function ChatModule({
   const lastSentTimeRef = useRef(0);
   const currentTranscriptRef = useRef('');
   const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
+
+  const handleScroll = () => {
+    if (!chatContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+    // Tampilkan tombol melayang jika user scroll ke atas lebih dari 150px
+    setShowScrollButton(scrollHeight - scrollTop - clientHeight > 150);
+  };
+
+  // Audio API untuk memutar suara 'Ding' murni tanpa file external
+  const playDing = () => {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(1046.50, audioCtx.currentTime); // Nada tinggi (C6)
+      gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); // Set volume awal
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5); // Efek fade out
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.5);
+    } catch (e) { console.warn("Web Audio API tidak didukung", e); }
+  };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Menggunakan requestAnimationFrame agar kalkulasi scroll presisi setelah DOM selesai di-render
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        chatContainerRef.current?.scrollTo({
+          top: chatContainerRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      }, 150);
+    });
   };
 
   useEffect(() => {
@@ -838,12 +1022,7 @@ function ChatModule({
     const textToTranslate = messages[index].content;
     setIsLoading(true);
     try {
-      const payload = {
-        contents: [{ role: 'user', parts: [{ text: textToTranslate }] }],
-        systemInstruction: { parts: [{ text: "Translate this English sentence to natural, casual, friendly Indonesian (Kampung Inggris style). ONLY return the translation." }] }
-      };
-      const data = await fetchGeminiWithRotation(payload);
-      const translation = data.candidates[0].content.parts[0].text;
+      const translation = await AiOrchestrator.translate(textToTranslate, globalApiKey);
       setTranslations(prev => ({ ...prev, [index]: translation }));
     } catch (err) {
       console.error("Translation failed", err);
@@ -859,7 +1038,7 @@ function ChatModule({
         contents: [{ role: 'user', parts: [{ text: `Conversation history:\n${history}\n\nSuggest 3–4 very short, natural English response options for the user based on the last AI message. Format: Just the options separated by | character. No numbering.` }] }],
         systemInstruction: { parts: [{ text: "You are a helpful assistant providing English conversation suggestions." }] }
       };
-      const data = await fetchGeminiWithRotation(payload);
+      const data = await AiOrchestrator.chat(payload, globalApiKey);
       const rawSuggestions = data.candidates[0].content.parts[0].text;
       const suggestionsList = rawSuggestions.split('|').map(s => s.trim()).filter(s => s);
       setSuggestions(suggestionsList);
@@ -902,28 +1081,13 @@ function ChatModule({
     return engScore > indoScore ? "en" : "id";
   };
 
-  const handleTTS = (text) => {
+  const handleTTS = async (text) => {
     if (!text) return;
     setIsSpeaking(true);
     const cleanText = text.replace(/❌[\s\S]*?✅/g, '').replace(/[✅❌*#_\\]/g, '').replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').substring(0, 600).trim();
-    fallbackTTS(cleanText);
-  };
-
-  const fallbackTTS = async (text) => {
-    // Remove emojis and special characters for browser fallback TTS to prevent stuttering
-    const cleanText = text.replace(/❌[\s\S]*?✅/g, '').replace(/[✅❌*#_\\]/g, '').replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim();
-    if (!cleanText) {
-      setIsSpeaking(false);
-      return;
-    }
-
     const isIndo = detectLanguage(cleanText) === 'id';
-    const langCode = isIndo ? 'id-ID' : 'en-US';
-
-    let rate = 0.9; // Kecepatan diperlambat sedikit agar pengucapan bahasa Inggris lebih mulus
+    let rate = 0.9;
     let pitch = 1.0;
-
-    // Voice Tuning (Pitch & Speed) for Specific Characters
     if (characterName === "Gordon Ramsay") { pitch = 0.8; rate = 1.05; }
     else if (characterName === "Taylor Swift") { pitch = 1.2; rate = 0.95; }
     else if (characterName === "Elon Musk") { pitch = 0.85; rate = 0.85; }
@@ -935,53 +1099,7 @@ function ChatModule({
     else if (characterName === "Emma Watson") { pitch = 1.1; rate = 0.95; }
     else if (characterName === "Albert Einstein") { pitch = 0.7; rate = 0.85; }
     else if (characterGender === 'female' && pitch === 1.0) { pitch = 1.2; }
-
-    try {
-      await TextToSpeech.stop();
-      await TextToSpeech.speak({
-        text: cleanText,
-        lang: langCode,
-        rate: rate,
-        pitch: pitch,
-      });
-      setIsSpeaking(false);
-    } catch (err) {
-      console.warn("Capacitor TTS tidak tersedia, beralih ke Web API", err);
-      // Fallback aman untuk browser (Website PC)
-      if ('speechSynthesis' in window && 'SpeechSynthesisUtterance' in window) {
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        utterance.lang = langCode;
-        utterance.rate = rate;
-        utterance.pitch = pitch;
-
-        const femaleCharacters = ["Taylor Swift", "Oprah Winfrey", "Emma Watson"];
-        const ukCharacters = ["Sherlock Holmes", "Emma Watson", "Gordon Ramsay"];
-        const isFemale = characterGender === 'female' || (characterName && femaleCharacters.includes(characterName));
-        const isUK = characterName ? ukCharacters.includes(characterName) : false;
-
-        const voices = window.speechSynthesis.getVoices();
-        let preferredVoice;
-        if (isIndo) {
-          preferredVoice = voices.find(v => v.lang === 'id-ID' && v.name.toLowerCase().includes('google')) || voices.find(v => v.lang.startsWith('id'));
-        } else {
-          const targetLang = isUK ? 'en-GB' : 'en-US';
-          const genderStr = isFemale ? 'female' : 'male';
-          preferredVoice = voices.find(v => v.lang.startsWith(targetLang) && v.name.toLowerCase().includes('google') && v.name.toLowerCase().includes(genderStr))
-            || voices.find(v => v.lang.startsWith(targetLang) && v.name.toLowerCase().includes(genderStr))
-            || voices.find(v => v.lang.startsWith(targetLang) && v.name.toLowerCase().includes('google'))
-            || voices.find(v => v.lang.startsWith(targetLang))
-            || voices.find(v => v.lang.startsWith('en'));
-        }
-        if (preferredVoice) utterance.voice = preferredVoice;
-
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(utterance);
-      } else {
-        setIsSpeaking(false);
-      }
-    }
+    await AiOrchestrator.speak(cleanText, globalApiKey, { lang: isIndo ? 'id-ID' : 'en-US', pitch, rate, voiceId: characterGender === 'female' ? 'EXAVITQu4vr4xnSDxMaL' : '21m00Tcm4TlvDq8ikWAM', onEnd: () => setIsSpeaking(false) });
   };
 
   const toggleRecording = async () => {
@@ -1037,14 +1155,11 @@ function ChatModule({
           if (data.status === 'stopped') {
             setIsRecording(false);
             setMicStatus('idle');
-
-            if (!manualStopRef.current) {
-              const textToSend = currentTranscriptRef.current.trim();
-              if (textToSend) {
-                sendMessage(textToSend, false, true);
-              }
-              currentTranscriptRef.current = '';
+            const textToSend = currentTranscriptRef.current.trim();
+            if (textToSend) {
+              sendMessage(textToSend, false, true);
             }
+            currentTranscriptRef.current = '';
           }
         });
 
@@ -1106,7 +1221,14 @@ function ChatModule({
       };
 
       recognitionRef.current.onerror = () => { setIsRecording(false); setMicStatus('idle'); };
-      recognitionRef.current.onend = () => { /* User stops manually */ };
+      recognitionRef.current.onend = () => {
+        setIsRecording(false); setMicStatus('idle');
+        const textToSend = currentTranscriptRef.current.trim();
+        if (textToSend) {
+          sendMessage(textToSend, false, true);
+        }
+        currentTranscriptRef.current = '';
+      };
 
       try { recognitionRef.current.start(); } catch (err) { setIsRecording(false); setMicStatus('idle'); }
     }
@@ -1185,7 +1307,7 @@ function ChatModule({
     };
 
     try {
-      const data = await fetchGeminiWithRotation(payload);
+      const data = await AiOrchestrator.chat(payload, globalApiKey);
       let aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
       if (!aiText) {
@@ -1272,6 +1394,8 @@ function ChatModule({
         setTimeout(() => handleSuggest(newMsgs.length - 1), 100);
         return newMsgs;
       });
+
+      playDing(); // Putar suara ding saat pesan AI telah diterima!
     } catch (err) {
       console.error("Gemini API Error:", err);
       setMessages(prev => [...prev, { role: 'system', content: `⚠️ Connection failed: ${err.message}` }]);
@@ -1498,7 +1622,7 @@ function ChatModule({
       </div>
 
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 space-y-6 transform-gpu overscroll-none scroll-smooth w-full" style={{ paddingBottom: '120px' }}>
+      <div ref={chatContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 space-y-6 transform-gpu overscroll-none scroll-smooth w-full" style={{ paddingBottom: '120px' }}>
         {messages.map((msg, idx) => (
           !msg.isHidden && (
             <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} gap-2 w-full`}>
@@ -1601,15 +1725,38 @@ function ChatModule({
           )
         ))}
         {isLoading && (
-          <div className="flex items-center gap-2 text-slate-400 text-xs font-medium pl-10 animate-pulse">
-            <Loader2 size={14} className="animate-spin" /> RichardMeha AI sedang berpikir...
+          <div className="flex items-end gap-2 w-full animate-in fade-in duration-300">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <Bot size={16} />
+            </div>
+            <div className="bg-white border border-slate-200 text-slate-500 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm text-sm flex items-center gap-3 w-fit">
+              <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">AI sedang menganalisa</span>
+              <div className="flex space-x-1.5 items-center justify-center">
+                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              </div>
+            </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Floating Scroll to Bottom Button */}
+      {showScrollButton && (
+        <div className="absolute bottom-[90px] md:bottom-[100px] right-6 z-40 animate-in fade-in zoom-in duration-300">
+          <button
+            onClick={scrollToBottom}
+            className="p-3 md:p-3.5 bg-slate-800/80 backdrop-blur-md text-white rounded-full shadow-xl shadow-slate-900/20 hover:bg-blue-600 hover:border-blue-500 transition-all hover:scale-110 active:scale-95 flex items-center justify-center border border-white/10"
+            title="Scroll ke bawah"
+          >
+            <ArrowDown size={20} />
+          </button>
+        </div>
+      )}
+
       {/* Input Form */}
-      <div className="relative z-50 bg-white border-t border-slate-200 w-full p-4 md:p-6 shadow-[0_-10px_30px_rgba(0,0,0,0.06)] shrink-0" style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}>
+      <div className="relative z-[50] bg-white border-t border-slate-200 w-full p-4 md:p-6 shadow-[0_-10px_30px_rgba(0,0,0,0.06)] shrink-0" style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}>
         <form onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue, false, false); }} className="max-w-4xl mx-auto w-full flex items-center gap-2 md:gap-3">
           <input
             value={inputValue}

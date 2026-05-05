@@ -98,21 +98,37 @@ export default function LevelTest({ onComplete }) {
 
   if (step === 'result') {
     return (
-      <div className="min-h-screen bg-[#060b18] text-white flex flex-col items-center justify-center p-6 text-center animate-in zoom-in-95 duration-700">
-        <div className="w-32 h-32 bg-gradient-to-tr from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mb-8 shadow-2xl shadow-yellow-500/40 animate-bounce">
+      <div className="min-h-screen bg-[#060b18] text-white flex flex-col items-center justify-center p-6 text-center animate-in zoom-in-95 duration-700 relative overflow-hidden">
+        {/* Efek Animasi Confetti Murni CSS */}
+        <div className="absolute inset-0 pointer-events-none z-0">
+          <style>
+            {`
+              @keyframes confettiFall {
+                0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+                100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+              }
+              .animate-confetti { animation: confettiFall linear forwards; }
+            `}
+          </style>
+          {[...Array(100)].map((_, i) => (
+            <div key={i} className="absolute animate-confetti" style={{ left: \`\${Math.random() * 100}%\`, top: '-10%', width: \`\${Math.random() * 8 + 6}px\`, height: \`\${Math.random() * 12 + 8}px\`, backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#ec4899'][Math.floor(Math.random() * 6)], animationDelay: \`\${Math.random() * 2}s\`, animationDuration: \`\${Math.random() * 3 + 2}s\`, borderRadius: Math.random() > 0.5 ? '50%' : '2px' }} />
+          ))}
+        </div>
+
+        <div className="relative z-10 w-32 h-32 bg-gradient-to-tr from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mb-8 shadow-2xl shadow-yellow-500/40 animate-bounce">
           <Trophy size={64} className="text-white" />
         </div>
-        <h2 className="text-4xl font-black mb-2">Assessment Complete!</h2>
-        <p className="text-slate-400 mb-8 font-medium">I've analyzed your English proficiency.</p>
+        <h2 className="relative z-10 text-4xl font-black mb-2">Assessment Complete!</h2>
+        <p className="relative z-10 text-slate-400 mb-8 font-medium">I've analyzed your English proficiency.</p>
 
-        <div className="bg-slate-900/50 border border-white/5 backdrop-blur-xl p-8 rounded-[2.5rem] mb-10 w-full max-w-sm shadow-2xl shadow-blue-500/5">
+        <div className="relative z-10 bg-slate-900/50 border border-white/5 backdrop-blur-xl p-8 rounded-[2.5rem] mb-10 w-full max-w-sm shadow-2xl shadow-blue-500/5">
           <p className="text-slate-500 text-xs font-black uppercase tracking-widest mb-2">Assigned Level:</p>
           <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">{finalLevel}</h3>
         </div>
 
         <button
           onClick={() => onComplete(finalLevel)}
-          className="bg-white text-slate-900 font-black py-4 px-12 rounded-2xl shadow-xl transition-all active:scale-95 flex items-center gap-2 text-lg hover:bg-slate-100"
+          className="relative z-10 bg-white text-slate-900 font-black py-4 px-12 rounded-2xl shadow-xl transition-all active:scale-95 flex items-center gap-2 text-lg hover:bg-slate-100"
         >
           Enter Dashboard <ArrowRight size={20} />
         </button>

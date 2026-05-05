@@ -17,30 +17,32 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
     const [newBank, setNewBank] = useState({ provider: 'BCA', account_number: '', account_name: '' });
 
     // API Key State
-    const [apiKeyInput, setApiKeyInput] = useState('');
+    const [apiKeys, setApiKeys] = useState({ core: '', translation: '', voice: '' });
     const [saveKeySuccess, setSaveKeySuccess] = useState(false);
 
     const fetchApiKey = async () => {
         try {
             const { data } = await supabase.from('app_settings').select('value').eq('id', 'api_keys').single();
             if (data && data.value) {
-                setApiKeyInput(data.value);
-                localStorage.setItem('gemini_api_key', data.value);
-            } else {
-                setApiKeyInput(localStorage.getItem('gemini_api_key') || '');
+                let parsed = data.value;
+                if (typeof parsed === 'string') {
+                    try { parsed = JSON.parse(parsed); } catch (e) { parsed = { core: data.value, translation: '', voice: '' }; }
+                }
+                setApiKeys({ core: parsed.core || '', translation: parsed.translation || '', voice: parsed.voice || '' });
             }
         } catch (error) {
             console.error("DB Key Error:", error);
-            setApiKeyInput(localStorage.getItem('gemini_api_key') || '');
         }
     };
 
     const handleSaveApiKey = async () => {
-        const cleanedKey = apiKeyInput.trim();
-        localStorage.setItem('gemini_api_key', cleanedKey);
-        setApiKeyInput(cleanedKey);
+        const payload = {
+            core: apiKeys.core.trim(),
+            translation: apiKeys.translation.trim(),
+            voice: apiKeys.voice.trim()
+        };
         try {
-            await supabase.from('app_settings').upsert({ id: 'api_keys', value: cleanedKey });
+            await supabase.from('app_settings').upsert({ id: 'api_keys', value: payload });
         } catch (err) {
             console.error(err);
         }
@@ -257,14 +259,37 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
                             {userEmail === 'richardpl.meha@gmail.com' && (
                                 <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm mt-8 border-rose-200 shadow-rose-100">
                                     <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Zap className="text-blue-500" /> Konfigurasi AI (API Key)</h3>
-                                    <p className="text-xs text-slate-500 mb-4">Masukkan kumpulan API Key Anda.<br /><b>Penting:</b> Jangan tambahkan keterangan apapun pada key. Langsung masukkan API Key asli dan pisahkan dengan koma (,). Sistem otomatis loncat ganti AI saat limit habis.</p>
-                                    <div className="flex flex-col gap-3">
-                                        <textarea
-                                            value={apiKeyInput}
-                                            onChange={(e) => setApiKeyInput(e.target.value)}
-                                            placeholder="AIzaSy...,gsk_...,sk-..."
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono resize-y min-h-[120px]"
-                                        ></textarea>
+                                    <p className="text-xs text-slate-500 mb-4">Masukkan kumpulan API Key Anda (Pisahkan dengan koma).</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-xs font-bold text-slate-600">Core AI (OpenAI, Gemini, Groq)</label>
+                                            <textarea
+                                                value={apiKeys.core}
+                                                onChange={(e) => setApiKeys(prev => ({ ...prev, core: e.target.value }))}
+                                                placeholder="sk-..., gsk-..., AIza..."
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono resize-y min-h-[100px]"
+                                            ></textarea>
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-xs font-bold text-slate-600">Translation (DeepL)</label>
+                                            <textarea
+                                                value={apiKeys.translation}
+                                                onChange={(e) => setApiKeys(prev => ({ ...prev, translation: e.target.value }))}
+                                                placeholder="DeepL API Keys..."
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono resize-y min-h-[100px]"
+                                            ></textarea>
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <label className="text-xs font-bold text-slate-600">Voice (ElevenLabs/Google)</label>
+                                            <textarea
+                                                value={apiKeys.voice}
+                                                onChange={(e) => setApiKeys(prev => ({ ...prev, voice: e.target.value }))}
+                                                placeholder="ElevenLabs API Keys..."
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono resize-y min-h-[100px]"
+                                            ></textarea>
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 flex justify-end">
                                         <button onClick={handleSaveApiKey} className={`${saveKeySuccess ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-blue-600 hover:bg-blue-700'} text-white px-6 py-3 rounded-xl font-bold active:scale-95 transition-all w-full sm:w-auto sm:self-end flex justify-center items-center`}>
                                             {saveKeySuccess ? 'Tersimpan ✅' : 'Simpan Semua Key'}
                                         </button>

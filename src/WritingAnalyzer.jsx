@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { GlobalContext } from './App';
+import { AiOrchestrator } from './services/AiOrchestrator';
 
 const WRITING_SYSTEM_PROMPT = (isPro) => `
 Kamu adalah sistem "Professional Writing Analyzer" yang sangat analitis, objektif, dan akurat (seperti Grammarly).
@@ -55,74 +56,13 @@ ${isPro ? `
 `}
 `;
 
-const fetchGeminiWithRotation = async (payload, contextApiKey = '') => {
-  let rawKey = contextApiKey || localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || '';
-  try {
-    const { data } = await supabase.from('app_settings').select('value').eq('id', 'api_keys').single();
-    if (data && data.value) {
-      rawKey = data.value;
-      localStorage.setItem('gemini_api_key', rawKey);
-    }
-  } catch (err) { console.error("DB Key Error:", err); }
-
-  const apiKeys = rawKey.split(',').map(k => k.trim()).filter(k => k);
-  if (apiKeys.length === 0) throw new Error("API Key AI belum diatur.");
-
-  const translateToOpenAIFormat = (geminiPayload) => {
-    const messages = [];
-    if (geminiPayload.systemInstruction?.parts?.[0]?.text) {
-      messages.push({ role: "system", content: geminiPayload.systemInstruction.parts[0].text });
-    }
-    if (geminiPayload.contents) {
-      geminiPayload.contents.forEach(c => {
-        messages.push({ role: c.role === 'model' ? 'assistant' : 'user', content: c.parts[0].text });
-      });
-    }
-    return { messages, temperature: geminiPayload.generationConfig?.temperature || 0.7, max_tokens: geminiPayload.generationConfig?.maxOutputTokens || 1024 };
-  };
-
-  let lastError = "Unknown Error";
-
-  for (let attempt = 0; attempt < 2; attempt++) {
-    for (const key of apiKeys) {
-      try {
-        if (key.startsWith('gsk_')) {
-          const groqPayload = { ...translateToOpenAIFormat(payload), model: "llama-3.3-70b-versatile" };
-          const res = await fetch(`https://api.groq.com/openai/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }, body: JSON.stringify(groqPayload) });
-          const data = await res.json();
-          if (!res.ok || data.error) throw new Error(data.error?.message || `Groq Error: ${res.status}`);
-          return { candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] };
-        } else if (key.startsWith('sk-')) {
-          const oaPayload = { ...translateToOpenAIFormat(payload), model: "gpt-4o-mini" };
-          const res = await fetch(`https://api.openai.com/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }, body: JSON.stringify(oaPayload) });
-          const data = await res.json();
-          if (!res.ok || data.error) throw new Error(data.error?.message || `OpenAI Error: ${res.status}`);
-          return { candidates: [{ content: { parts: [{ text: data.choices[0].message.content }] } }] };
-        } else {
-          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-          const data = await res.json();
-          if (!res.ok || data.error) throw new Error(data.error?.message || `Gemini Error: ${res.status}`);
-          return data;
-        }
-      } catch (err) {
-        lastError = err.message;
-        const lowerErr = lastError.toLowerCase();
-        if (lowerErr.includes('quota') || lowerErr.includes('limit') || lowerErr.includes('failed to fetch') || lowerErr.includes('429') || lowerErr.includes('insufficient') || lowerErr.includes('too many') || lowerErr.includes('leaked') || lowerErr.includes('api key')) continue;
-        throw err;
-      }
-    }
-    if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 3500));
-  }
-  throw new Error(`Sistem AI sedang sibuk/limit. Mohon tunggu dan coba lagi. (Pesan terakhir: ${lastError})`);
-};
-
 export default function WritingAnalyzer({ userProfile, onUpgrade }) {
   const [text, setText] = useState('');
   const [analysis, setAnalysis] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [usageCount, setUsageCount] = useState(() => parseInt(localStorage.getItem('writing_analyzer_usage') || '0'));
   const isPro = userProfile?.is_pro;
-  
+
   const { globalApiKey } = React.useContext(GlobalContext) || {};
 
   const isLocked = !isPro && usageCount >= 3;
@@ -137,7 +77,7 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
         systemInstruction: { parts: [{ text: WRITING_SYSTEM_PROMPT(isPro) }] }
       };
 
-      const data = await fetchGeminiWithRotation(payload, globalApiKey);
+      const data = await AiOrchestrator.chat(payload, globalApiKey);
       const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Maaf, Richard sedang sibuk. Coba sebentar lagi ya!";
       setAnalysis(aiResponse);
       setUsageCount(prev => {
@@ -184,17 +124,17 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
     const flushTable = (keyIndex) => {
       if (tableRows.length > 0) {
         elements.push(
-          <div key={`table-${keyIndex}`} className="overflow-x-auto my-6 rounded-2xl border border-slate-200 shadow-sm w-full">
-            <table className="w-full text-sm text-left whitespace-nowrap md:whitespace-normal">
+          <div key={`table-${keyIndex}`} className="overflow-x-auto my-8 rounded-2xl border border-slate-200 shadow-sm w-full bg-white">
+            <table className="w-full text-sm text-left border-collapse">
               <tbody>
                 {tableRows.map((row, idx) => {
                   if (row.replace(/[\s|-]/g, '') === '') return null; // Mengabaikan baris pembatas markdown spt |---|---|
                   const cols = row.split('|').map(c => c.trim()).filter(c => c);
                   const isHeader = idx === 0;
                   return (
-                    <tr key={idx} className={isHeader ? "bg-indigo-50 font-bold text-indigo-900 border-b-2 border-indigo-100" : "border-t border-slate-100 bg-white hover:bg-slate-50 transition-colors"}>
+                    <tr key={idx} className={isHeader ? "bg-slate-50 border-b border-slate-200" : "border-b border-slate-100 bg-white hover:bg-slate-50/50 transition-colors last:border-0"}>
                       {cols.map((col, cidx) => (
-                        <td key={cidx} className={`px-4 py-3 align-top ${isHeader ? 'uppercase tracking-wider text-[10px]' : ''}`} dangerouslySetInnerHTML={{ __html: col.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/`(.*?)`/g, '<code class="bg-slate-100 text-rose-500 px-1 py-0.5 rounded text-xs font-mono">$1</code>') }} />
+                        <td key={cidx} className={`px-6 py-4 align-top ${isHeader ? 'text-xs font-bold text-slate-500 uppercase tracking-wider' : 'text-slate-700 font-medium'}`} dangerouslySetInnerHTML={{ __html: col.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>').replace(/`(.*?)`/g, '<code class="bg-rose-50 text-rose-500 px-1.5 py-0.5 rounded text-sm font-mono">$1</code>') }} />
                       ))}
                     </tr>
                   );
@@ -216,15 +156,14 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
       } else {
         if (inTable) flushTable(i);
 
-        // Styling teks tebal (bold) dan miring (italic)
-        let formattedLine = trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/`(.*?)`/g, '<code class="bg-slate-100 text-rose-500 px-1 py-0.5 rounded text-[10px] font-mono">$1</code>');
+        let formattedLine = trimmed.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>').replace(/\*(.*?)\*/g, '<em class="italic text-slate-700">$1</em>').replace(/`(.*?)`/g, '<code class="bg-rose-50 text-rose-500 px-1.5 py-0.5 rounded text-sm font-mono">$1</code>');
 
         if (trimmed.startsWith('###')) {
-          elements.push(<h3 key={i} className="text-lg font-black text-slate-800 mt-8 mb-3 flex items-center gap-2" dangerouslySetInnerHTML={{ __html: formattedLine.replace(/^###\s*/, '') }} />);
+          elements.push(<h3 key={i} className="text-xl md:text-2xl font-bold text-slate-800 mt-10 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2" dangerouslySetInnerHTML={{ __html: formattedLine.replace(/^###\s*/, '') }} />);
         } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-          elements.push(<li key={i} className="ml-4 mb-2 list-disc marker:text-indigo-400 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: formattedLine.replace(/^[-*]\s*/, '') }} />);
+          elements.push(<li key={i} className="ml-6 mb-2 list-disc marker:text-indigo-400 text-slate-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: formattedLine.replace(/^[-*]\s*/, '') }} />);
         } else if (trimmed !== '') {
-          elements.push(<p key={i} className="mb-3 text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: formattedLine }} />);
+          elements.push(<p key={i} className="mb-4 text-slate-600 leading-relaxed" dangerouslySetInnerHTML={{ __html: formattedLine }} />);
         }
       }
     });
@@ -234,101 +173,97 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500 pb-24">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-indigo-100 text-indigo-600 rounded-2xl shadow-sm">
-            <PenTool size={24} />
-          </div>
-          <div>
-            <h2 className="text-2xl font-black text-slate-800">Writing Analyzer</h2>
-            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Professional Feedback Engine</p>
-          </div>
+    <div className="p-4 md:p-10 max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-32">
+      <div className="flex flex-col items-center text-center mb-8 md:mb-12">
+        <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-indigo-500/30 mb-6 transform -rotate-3 hover:rotate-0 transition-transform">
+          <PenTool size={32} />
         </div>
-        {!isPro && (
-          <button
-            onClick={onUpgrade}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-xl text-xs font-black shadow-lg shadow-orange-500/20 active:scale-95 transition-all"
-          >
-            <Crown size={14} /> UPGRADE PRO
-          </button>
-        )}
+        <h2 className="text-3xl md:text-5xl font-black text-slate-800 tracking-tight mb-4">Professional <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-600">Writing Analyzer</span></h2>
+        <p className="text-slate-500 font-medium max-w-xl mx-auto md:text-lg">Tingkatkan kualitas tulisan bahasa Inggris kamu. Dapatkan koreksi tata bahasa, struktur kalimat, dan gaya bahasa instan ala profesional.</p>
       </div>
 
-      <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl overflow-hidden ring-1 ring-slate-100">
+      <div className="bg-white rounded-3xl border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden transition-all focus-within:border-indigo-300 focus-within:shadow-[0_8px_30px_rgba(99,102,241,0.08)] relative">
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Paste your English text here... RichardMeha will check it for you! 😊"
-          className="w-full h-48 md:h-64 p-8 text-lg text-slate-700 outline-none resize-none placeholder:text-slate-300 font-medium leading-relaxed"
+          placeholder="Ketik atau paste tulisan bahasa Inggrismu di sini..."
+          className="w-full h-64 md:h-80 p-6 md:p-8 text-lg text-slate-700 outline-none resize-none placeholder:text-slate-300 font-medium leading-relaxed bg-transparent"
+          spellCheck="false"
         ></textarea>
 
-        <div className="bg-slate-50/50 backdrop-blur-sm p-6 border-t border-slate-100 flex justify-between items-center">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Text Density</span>
-            <span className="text-sm font-bold text-slate-700">{text.split(/\s+/).filter(x => x).length} Words</span>
+        <div className="bg-white px-6 py-4 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-6 text-sm font-semibold text-slate-400">
+            <span>{text.trim() ? text.trim().split(/\s+/).filter(x => x).length : 0} <span className="font-normal text-slate-500">Kata</span></span>
+            <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
+            <span>{text.length} <span className="font-normal text-slate-500">Karakter</span></span>
           </div>
           <button
             onClick={analyzeWriting}
             disabled={isLoading || !text.trim()}
-            className="bg-slate-900 hover:bg-black text-white font-black py-4 px-10 rounded-2xl transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 shadow-xl shadow-slate-900/10"
+            className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-8 rounded-xl transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
           >
-            {isLoading ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} className="text-blue-400" />}
-            Analyze Now
+            {isLoading ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} className="text-indigo-200" />}
+            Analisa Sekarang
           </button>
         </div>
       </div>
 
       {!isPro && (
-        <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex items-center gap-3">
-          <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
-            <Lock size={20} />
+        <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-5 md:p-6 rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl shadow-slate-900/10">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-amber-400 shrink-0 border border-white/10">
+              <Crown size={24} />
+            </div>
+            <div>
+              <h4 className="text-white font-bold text-sm md:text-base">Tingkatkan ke Pro untuk Hasil Maksimal</h4>
+              <p className="text-slate-400 text-xs md:text-sm mt-1">Dapatkan analisa mendalam, perbaikan tone, dan saran advanced vocabulary.</p>
+            </div>
           </div>
-          <p className="text-xs text-amber-800 font-medium">
-            You are currently in **Free Mode**. Deep analysis, tone improvement, and advanced vocabulary are locked.
-            <button onClick={onUpgrade} className="ml-2 underline font-black">Unlock Pro features 👑</button>
-          </p>
+          <button onClick={onUpgrade} className="w-full md:w-auto whitespace-nowrap bg-amber-400 hover:bg-amber-500 text-amber-950 font-black px-6 py-3 rounded-xl transition-all shadow-lg shadow-amber-400/20 active:scale-95">
+            Upgrade Pro
+          </button>
         </div>
       )}
 
       {analysis && (
-        <div className="bg-white rounded-[2.5rem] border border-indigo-100 shadow-2xl p-8 md:p-10 animate-in zoom-in-95 duration-500 relative overflow-hidden">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6 md:p-10 animate-in zoom-in-95 duration-500 relative overflow-hidden mt-8">
           <div className="absolute top-0 right-0 p-6">
             <button
               onClick={() => {
                 navigator.clipboard.writeText(analysis);
-                alert("Copied to clipboard!");
+                alert("Hasil analisa disalin!");
               }}
-              className="bg-indigo-50 text-indigo-600 p-3 rounded-2xl cursor-pointer hover:bg-indigo-100 transition-colors shadow-sm"
+              className="text-slate-400 hover:text-indigo-600 p-2 rounded-xl hover:bg-indigo-50 transition-colors"
+              title="Copy Analysis"
             >
               <Copy size={20} />
             </button>
           </div>
 
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center shadow-inner">
-              <CheckCircle2 size={24} />
+          <div className="flex items-center gap-4 mb-8 pb-6 border-b border-slate-100">
+            <div className="w-14 h-14 bg-gradient-to-tr from-emerald-400 to-emerald-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/30">
+              <CheckCircle2 size={28} />
             </div>
             <div>
-              <h3 className="text-xl font-black text-slate-800 tracking-tight">Analysis Report</h3>
-              <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">RichardMeha Verified</p>
+              <h3 className="text-2xl font-black text-slate-800 tracking-tight">Hasil Analisa</h3>
+              <p className="text-sm text-emerald-600 font-bold tracking-wide mt-1">Selesai diperiksa oleh AI</p>
             </div>
           </div>
 
-          <div className="prose prose-slate max-w-none text-slate-600">
+          <div className="prose prose-slate max-w-none text-slate-600 prose-headings:font-bold prose-headings:text-slate-800 prose-p:leading-relaxed prose-a:text-indigo-600 prose-code:text-rose-500 prose-code:bg-rose-50 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:font-medium prose-code:before:content-none prose-code:after:content-none">
             {renderFormattedAnalysis(analysis)}
           </div>
 
-          <div className="mt-10 pt-8 border-t border-slate-100 flex items-center justify-between">
+          <div className="mt-12 pt-8 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
             <button
               onClick={() => { setAnalysis(null); setText(''); }}
-              className="flex items-center gap-2 text-xs font-black text-slate-400 hover:text-slate-800 transition-colors uppercase tracking-widest"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-all active:scale-95"
             >
-              <RotateCcw size={16} /> Reset Analyzer
+              <RotateCcw size={18} /> Analisa Teks Baru
             </button>
             {!isPro && (
-              <button onClick={onUpgrade} className="text-xs font-black text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
-                See more with PRO <ArrowRight size={14} />
+              <button onClick={onUpgrade} className="w-full sm:w-auto px-6 py-3 font-bold text-white bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 rounded-xl transition-all shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2">
+                <Crown size={18} /> Buka Fitur Pro
               </button>
             )}
           </div>
