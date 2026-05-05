@@ -1,4 +1,4 @@
-import { generateChatResponse } from './ChatService.js';
+import { generateChatResponse } from './ChatService';
 
 export const translateText = async (text, keysObj) => {
     const deepLKeys = (keysObj?.translation || '').split(',').map(k => k.trim()).filter(Boolean);

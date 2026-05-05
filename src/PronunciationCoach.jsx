@@ -11,7 +11,7 @@ import {
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
 import { supabase } from './supabaseClient';
-import { AiOrchestrator } from './services/AiOrchestrator.js';
+import { AiOrchestrator } from './AiOrchestrator';
 import { GlobalContext } from './App';
 
 const PRONUNCIATION_PROMPT = `

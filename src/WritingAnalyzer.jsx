@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { GlobalContext } from './App';
-import { AiOrchestrator } from './services/AiOrchestrator.js';
+import { AiOrchestrator } from './AiOrchestrator';
 
 const WRITING_SYSTEM_PROMPT = (isPro) => `
 Kamu adalah sistem "Professional Writing Analyzer" yang sangat analitis, objektif, dan akurat (seperti Grammarly).
