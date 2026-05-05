@@ -1,5 +1,5 @@
 export const generateChatResponse = async (payload, keysObj) => {
-    const rawKey = keysObj?.core || localStorage.getItem('gemini_api_key') || '';
+    const rawKey = keysObj?.core || '';
     const keys = rawKey.split(',').map(k => k.trim()).filter(Boolean);
     if (!keys.length) throw new Error("Core API Key belum diatur.");
 

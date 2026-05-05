@@ -171,14 +171,45 @@ export default function App() {
   const [isPraktekOpen, setIsPraktekOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // State untuk melacak gesture Swipe (Geser Layar)
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+
+  const handleTouchStart = (e) => {
+    setTouchEnd(null);
+    setTouchStart({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
+  };
+
+  const handleTouchMove = (e) => {
+    setTouchEnd({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distanceX = touchStart.x - touchEnd.x;
+    const distanceY = touchStart.y - touchEnd.y;
+
+    // Pastikan swipe lebih dominan ke arah horizontal (mencegah bentrok dengan scroll vertikal)
+    if (Math.abs(distanceX) > Math.abs(distanceY)) {
+      // Swipe Right dari ujung kiri layar (x < 40px) untuk membuka sidebar
+      if (distanceX < -40 && touchStart.x < 40 && !isSidebarOpen) {
+        setIsSidebarOpen(true);
+      }
+      // Swipe Left untuk menutup sidebar
+      if (distanceX > 40 && isSidebarOpen) {
+        setIsSidebarOpen(false);
+      }
+    }
+  };
+
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 2000);
     return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    // Sinkronisasi otomatis API Key terbaru dari Database (Supabase) untuk pengguna HP
-    const syncApiKeyFromDB = async () => {
+    // Ambil API Key terbaru (Single Source of Truth) dari Supabase
+    const fetchKeys = async () => {
       if (!supabase) return;
       try {
         const { data } = await supabase.from('app_settings').select('value').eq('id', 'api_keys').maybeSingle();
@@ -191,7 +222,21 @@ export default function App() {
         }
       } catch (err) { }
     };
-    syncApiKeyFromDB();
+    fetchKeys();
+
+    // Supabase Realtime Subscription untuk update API Key secara instan
+    const apiKeysChannel = supabase
+      .channel('public:app_settings')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'app_settings', filter: "id=eq.api_keys" }, (payload) => {
+        if (payload.new && payload.new.value) {
+          let keysObj = payload.new.value;
+          if (typeof keysObj === 'string') {
+            try { keysObj = JSON.parse(keysObj); } catch (e) { keysObj = { core: payload.new.value, translation: '', voice: '' }; }
+          }
+          setGlobalApiKey(keysObj);
+        }
+      })
+      .subscribe();
 
     // Listener proaktif agar transisi sesi berjalan mulus tanpa looping
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
@@ -207,6 +252,7 @@ export default function App() {
 
     return () => {
       authListener?.subscription?.unsubscribe();
+      supabase.removeChannel(apiKeysChannel);
     };
   }, []);
   useEffect(() => { if (authState === 'app') fetchStats(); }, [authState]);
@@ -487,7 +533,7 @@ export default function App() {
               {/* Tambahan: Tombol Clear Cache untuk HP Android */}
               <div className="p-6 border-b border-slate-100 flex items-center justify-between">
                 <div><h4 className="font-bold text-slate-800">Refresh Sistem</h4><p className="text-xs text-slate-500">Hapus cache API & muat ulang aplikasi.</p></div>
-                <button onClick={() => { localStorage.removeItem('gemini_api_key'); window.location.reload(true); }} className="px-5 py-2.5 bg-blue-50 text-blue-600 font-black rounded-xl hover:bg-blue-100 transition-all active:scale-95 text-xs shadow-sm">
+                <button onClick={() => { window.location.reload(true); }} className="px-5 py-2.5 bg-blue-50 text-blue-600 font-black rounded-xl hover:bg-blue-100 transition-all active:scale-95 text-xs shadow-sm">
                   <RefreshCw size={14} className="inline-block mr-1" /> CLEAR CACHE
                 </button>
               </div>
@@ -567,7 +613,12 @@ export default function App() {
 
   return (
     <GlobalContext.Provider value={{ globalApiKey, userProfile }}>
-      <div className={`flex h-screen h-[100dvh] w-full font-sans overflow-hidden overscroll-none transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b1121] text-slate-200 dark-mode' : 'bg-slate-50 text-slate-800'}`}>
+      <div
+        className={`flex h-screen h-[100dvh] w-full font-sans overflow-hidden overscroll-none transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b1121] text-slate-200 dark-mode' : 'bg-slate-50 text-slate-800'}`}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
         {isSidebarOpen && <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300" onClick={() => setIsSidebarOpen(false)} />}
         <aside className={`fixed md:relative inset-y-0 left-0 z-50 w-72 md:w-64 h-screen h-[100dvh] bg-[#0f172a] text-slate-300 shadow-2xl md:shadow-none transform transition-transform duration-300 ease-in-out flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
           <div className="h-16 flex items-center justify-between px-6 bg-[#0b1121] pt-[env(safe-area-inset-top)]"><h1 onClick={handleLogoClick} title={userProfile.is_admin ? 'Klik 2x untuk ke Admin' : ''} className="text-xl font-bold tracking-wider flex items-center gap-2 text-white cursor-pointer select-none active:scale-95 transition-transform touch-manipulation"><Sparkles className="text-blue-500" /> RichardMeha<span className="text-blue-500"> AI</span></h1><button className="md:hidden text-slate-400 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button></div>
@@ -611,7 +662,7 @@ export default function App() {
                 <div className={`space-y-1 overflow-hidden transition-all duration-300 ease-in-out ${effectiveModulOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
                   {(!searchQuery || isMatch('Test CEFR (Awal)')) && <NavItem icon={<GraduationCap />} label="Test CEFR (Awal)" isActive={activeTab === 'assessment'} onClick={() => handleTabChange('assessment')} />}
                   {(!searchQuery || isMatch('Belajar (Vocab)')) && <NavItem icon={<BookA />} label="📚 Belajar (Vocab)" isActive={activeTab === 'vocabulary'} onClick={() => handleTabChange('vocabulary')} />}
-                  {(!searchQuery || isMatch('Call Tutor')) && <NavItem icon={<Headphones />} label="🎧 Call Tutor" isActive={activeTab === 'call_tutor'} onClick={() => handleTabChange('call_tutor')} />}
+                  {(!searchQuery || isMatch('Call Tutor')) && <NavItem icon={<Headphones />} label="🎧 Call Tutor" isActive={activeTab === 'call_tutor'} onClick={() => handleTabChange('call_tutor')} badge="New" />}
                   {(!searchQuery || isMatch('Chat Tutor')) && <NavItem icon={<MessageSquare />} label="💬 Chat Tutor" isActive={activeTab === 'conversation'} onClick={() => handleTabChange('conversation')} />}
                   {(!searchQuery || isMatch('Quiz & Challenge')) && <NavItem icon={<Zap />} label="🧠 Quiz & Challenge" isActive={activeTab === 'quiz'} onClick={() => handleTabChange('quiz')} />}
                 </div>
@@ -909,8 +960,16 @@ function ConversationModule({ userProfile, setUserProfile, basePrompt, isPro, ch
 }
 
 
-function NavItem({ icon, label, isActive, onClick }) {
-  return (<button onClick={onClick} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 hover:translate-x-1 ${isActive ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-medium' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}><span className={`${isActive ? 'text-white' : ''}`}>{icon}</span><span className="text-sm whitespace-nowrap">{label}</span></button>);
+function NavItem({ icon, label, isActive, onClick, badge }) {
+  return (
+    <button onClick={onClick} className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 hover:translate-x-1 ${isActive ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-medium' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}>
+      <div className="flex items-center gap-3">
+        <span className={`${isActive ? 'text-white' : ''}`}>{icon}</span>
+        <span className="text-sm whitespace-nowrap">{label}</span>
+      </div>
+      {badge && <span className="bg-rose-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest animate-pulse shadow-sm shadow-rose-500/30">{badge}</span>}
+    </button>
+  );
 }
 
 
@@ -958,6 +1017,8 @@ function ChatModule({
   const currentTranscriptRef = useRef('');
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
+
+  const { globalApiKey } = React.useContext(GlobalContext) || {};
 
   const handleScroll = () => {
     if (!chatContainerRef.current) return;
@@ -1398,7 +1459,7 @@ function ChatModule({
       playDing(); // Putar suara ding saat pesan AI telah diterima!
     } catch (err) {
       console.error("Gemini API Error:", err);
-      setMessages(prev => [...prev, { role: 'system', content: `⚠️ Connection failed: ${err.message}` }]);
+      setMessages(prev => [...prev, { role: 'system', content: `⚠️ Yah, koneksi internetmu terputus atau AI sedang sibuk nih. Coba periksa koneksimu dan kirim ulang ya! 😊 (Info: ${err.message})` }]);
     } finally {
       setIsLoading(false);
       setMicStatus('idle');
