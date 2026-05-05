@@ -218,12 +218,12 @@ export function LoginPage({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#0f172a] flex items-center justify-center p-4 overflow-hidden relative overscroll-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+    <div className="min-h-screen min-h-[100dvh] w-full bg-[#0f172a] flex items-center justify-center p-4 overflow-hidden relative overscroll-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/30 rounded-full blur-[100px] pointer-events-none"></div>
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-[100px] pointer-events-none"></div>
 
       <div className="w-full max-w-md running-border rounded-3xl p-[3px] animate-in zoom-in-95 duration-500 mx-2">
-        <div className="running-border-inner rounded-[22px] bg-[#0f172a]/90 backdrop-blur-xl p-6 md:p-8 flex flex-col relative z-10 overflow-hidden min-h-[480px] w-full">
+        <div className="running-border-inner rounded-[22px] bg-[#0f172a]/90 backdrop-blur-xl p-6 md:p-8 flex flex-col relative z-10 overflow-y-auto overflow-x-hidden custom-scrollbar min-h-[480px] max-h-[85vh] w-full">
 
           <div className="flex justify-center mb-6">
             <div onClick={handleLogoClick} className="cursor-pointer select-none w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20 transition-transform active:scale-95 touch-manipulation">
@@ -457,7 +457,7 @@ export function LoginPage({ onLogin }) {
 
 export function SubscriptionPage({ onSelectPlan }) {
   return (
-    <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center p-4 md:p-8 overflow-x-hidden overscroll-none pb-[calc(16px+env(safe-area-inset-bottom))] pt-[calc(16px+env(safe-area-inset-top))]">
+    <div className="min-h-screen min-h-[100dvh] w-full bg-slate-50 flex items-center justify-center p-4 md:p-8 overflow-x-hidden overscroll-none pb-[calc(16px+env(safe-area-inset-bottom))] pt-[calc(16px+env(safe-area-inset-top))]">
       <div className="max-w-7xl w-full mx-auto">
         <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h1 className="text-3xl md:text-5xl font-black text-slate-800 mb-4 tracking-tight">Pilih Paket Belajarmu</h1>

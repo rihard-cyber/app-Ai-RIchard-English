@@ -502,7 +502,7 @@ export default function App() {
 
   if (isInitializing || showSplash) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-6 text-white overflow-hidden relative overscroll-none">
+      <div className="min-h-screen min-h-[100dvh] bg-[#0f172a] flex flex-col items-center justify-center p-6 text-white overflow-hidden relative overscroll-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] h-[30rem] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
 
         <div className="relative z-10 flex flex-col items-center animate-in zoom-in duration-1000 fade-in">
@@ -540,7 +540,7 @@ export default function App() {
     // PROTECTED ROUTE GUARD: Kunci halaman Admin
     if (!isInitializing && !userProfile.is_admin && userProfile.email !== 'richardpl.meha@gmail.com') {
       return (
-        <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="min-h-screen min-h-[100dvh] bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center">
           <Shield className="text-rose-500 mb-4" size={64} />
           <h2 className="text-3xl font-black mb-2">Akses Ditolak</h2>
           <p className="text-slate-400 mb-8">Halaman ini dilindungi secara ketat. Anda akan dialihkan kembali.</p>
@@ -567,9 +567,9 @@ export default function App() {
 
   return (
     <GlobalContext.Provider value={{ globalApiKey, userProfile }}>
-      <div className={`flex h-[100dvh] w-full font-sans overflow-hidden overscroll-none transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b1121] text-slate-200 dark-mode' : 'bg-slate-50 text-slate-800'}`}>
+      <div className={`flex h-screen h-[100dvh] w-full font-sans overflow-hidden overscroll-none transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b1121] text-slate-200 dark-mode' : 'bg-slate-50 text-slate-800'}`}>
         {isSidebarOpen && <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300" onClick={() => setIsSidebarOpen(false)} />}
-        <aside className={`fixed md:relative inset-y-0 left-0 z-50 w-72 md:w-64 bg-[#0f172a] text-slate-300 shadow-2xl md:shadow-none transform transition-transform duration-300 ease-in-out flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <aside className={`fixed md:relative inset-y-0 left-0 z-50 w-72 md:w-64 h-screen h-[100dvh] bg-[#0f172a] text-slate-300 shadow-2xl md:shadow-none transform transition-transform duration-300 ease-in-out flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
           <div className="h-16 flex items-center justify-between px-6 bg-[#0b1121] pt-[env(safe-area-inset-top)]"><h1 onClick={handleLogoClick} title={userProfile.is_admin ? 'Klik 2x untuk ke Admin' : ''} className="text-xl font-bold tracking-wider flex items-center gap-2 text-white cursor-pointer select-none active:scale-95 transition-transform touch-manipulation"><Sparkles className="text-blue-500" /> RichardMeha<span className="text-blue-500"> AI</span></h1><button className="md:hidden text-slate-400 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button></div>
           <div className="p-6 border-b border-slate-800 flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-blue-500/20">{userProfile.name.charAt(0)}</div><div className="flex flex-col"><span className="text-base font-semibold text-white">{userProfile.name}</span><span className="text-xs text-blue-400 flex items-center gap-1"><Trophy size={12} /> {userProfile.level}</span></div></div>
 
@@ -1494,7 +1494,7 @@ function ChatModule({
   return (
     <div className="absolute inset-0 flex flex-col bg-slate-50/50 z-20">
       {callMode && (
-        <div className="absolute inset-0 bg-[#0f172a] z-50 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
+        <div className="absolute inset-0 bg-[#0f172a] z-50 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500 overflow-y-auto custom-scrollbar">
           <div className="absolute top-6 left-6 flex items-center gap-2">
             <div className="flex bg-white/5 rounded-xl p-1 border border-white/10">
               {['friendly', 'strict', 'buddy'].map(p => (
