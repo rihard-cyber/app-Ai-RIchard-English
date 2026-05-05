@@ -692,13 +692,13 @@ export default function App() {
               key={i}
               className="absolute animate-confetti"
               style={{
-                left: \`\${Math.random() * 100}%\`,
-          top: '-10%',
-          width: \`\${Math.random() * 10 + 6}px\`,
-          height: \`\${Math.random() * 14 + 8}px\`,
-          backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#ec4899', '#ffffff'][Math.floor(Math.random() * 7)],
-          animationDelay: \`\${Math.random() * 2}s\`,
-          animationDuration: \`\${Math.random() * 3 + 2}s\`,
+                left: `${Math.random() * 100}%`,
+                top: '-10%',
+                width: `${Math.random() * 10 + 6}px`,
+                height: `${Math.random() * 14 + 8}px`,
+                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#ec4899', '#ffffff'][Math.floor(Math.random() * 7)],
+                animationDelay: `${Math.random() * 2}s`,
+                animationDuration: `${Math.random() * 3 + 2}s`,
                 borderRadius: Math.random() > 0.5 ? '50%' : '4px',
               }}
             />

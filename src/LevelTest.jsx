@@ -111,7 +111,7 @@ export default function LevelTest({ onComplete }) {
             `}
           </style>
           {[...Array(100)].map((_, i) => (
-            <div key={i} className="absolute animate-confetti" style={{ left: \`\${Math.random() * 100}%\`, top: '-10%', width: \`\${Math.random() * 8 + 6}px\`, height: \`\${Math.random() * 12 + 8}px\`, backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#ec4899'][Math.floor(Math.random() * 6)], animationDelay: \`\${Math.random() * 2}s\`, animationDuration: \`\${Math.random() * 3 + 2}s\`, borderRadius: Math.random() > 0.5 ? '50%' : '2px' }} />
+            <div key={i} className="absolute animate-confetti" style={{ left: `${Math.random() * 100}%`, top: '-10%', width: `${Math.random() * 8 + 6}px`, height: `${Math.random() * 12 + 8}px`, backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#ec4899'][Math.floor(Math.random() * 6)], animationDelay: `${Math.random() * 2}s`, animationDuration: `${Math.random() * 3 + 2}s`, borderRadius: Math.random() > 0.5 ? '50%' : '2px' }} />
           ))}
         </div>
 
