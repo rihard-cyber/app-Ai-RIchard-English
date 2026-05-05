@@ -40,7 +40,7 @@ import { LoginPage, SubscriptionPage } from './Auth';
 import PaymentModal from './PaymentModal';
 import { supabase } from './supabaseClient';
 import { CURRICULUM } from './data/curriculum';
-import { AiOrchestrator } from './services/AiOrchestrator';
+import { AiOrchestrator } from './services/AiOrchestrator.js';
 import { VOCABULARY_TOPICS as VOCAB_RAW, GRAMMAR_TOPICS as GRAMMAR_RAW, LISTENING_TOPICS as LISTENING_RAW, CONVERSATION_CHARACTERS as CHARS_RAW } from './data/topics';
 
 // --- LAZY LOADED COMPONENTS ---
