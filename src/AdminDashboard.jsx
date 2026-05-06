@@ -24,6 +24,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
     const [saveKeySuccess, setSaveKeySuccess] = useState(false);
     const [apiStatus, setApiStatus] = useState({ openai: null, gemini: null, groq: null, l10n: null, elevenlabs: null, iflytek: null });
     const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
+    const [isFetchingKeys, setIsFetchingKeys] = useState(true);
 
     const showToast = (message, type = 'info') => {
         setToast({ show: true, message, type });
@@ -87,6 +88,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
     };
 
     const fetchApiKey = async () => {
+        setIsFetchingKeys(true);
         try {
             const { data } = await supabase.from('app_settings').select('value').eq('id', 'api_keys').single();
             if (data && data.value) {
@@ -101,6 +103,8 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
             }
         } catch (error) {
             console.error("DB Key Error:", error);
+        } finally {
+            setIsFetchingKeys(false);
         }
     };
 
@@ -141,8 +145,11 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
 
     useEffect(() => {
         fetchData();
-        if (activeTab === 'overview') fetchApiKey();
-    }, [activeTab]); // Refetch every time tab changes
+    }, [activeTab]);
+
+    useEffect(() => {
+        fetchApiKey();
+    }, []); // Fetch keys once exactly on mount
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -384,6 +391,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
                             handleTestConnections={handleTestConnections}
                             handleSaveApiKey={handleSaveApiKey}
                             saveKeySuccess={saveKeySuccess}
+                            isFetchingKeys={isFetchingKeys}
                         />
                     )}
 
@@ -713,7 +721,7 @@ function StatusBadge({ status }) {
     return null;
 }
 
-function Overview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray, userEmail, apiKeys, setApiKeys, apiStatus, handleTestConnections, handleSaveApiKey, saveKeySuccess }) {
+function Overview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray, userEmail, apiKeys, setApiKeys, apiStatus, handleTestConnections, handleSaveApiKey, saveKeySuccess, isFetchingKeys }) {
     // Perhitungan Distribusi Level Bahasa (A1-C2)
     const levelCounts = { A1: 0, A2: 0, B1: 0, B2: 0, C1: 0, C2: 0 };
     usersData.forEach(u => {
@@ -813,7 +821,13 @@ function Overview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray
             </div>
 
             {userEmail === 'richardpl.meha@gmail.com' && (
-                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm mt-8 border-rose-200 shadow-rose-100">
+                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm mt-8 border-rose-200 shadow-rose-100 relative overflow-hidden">
+                    {isFetchingKeys && (
+                        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
+                            <Loader2 className="animate-spin text-blue-500 mb-2" size={32} />
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Memuat Kredensial...</p>
+                        </div>
+                    )}
                     <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Zap className="text-blue-500" /> Konfigurasi AI (API Key)</h3>
                     <p className="text-xs text-slate-500 mb-4">Masukkan kredensial API secara spesifik untuk setiap layanan. <br /><span className="text-emerald-600 font-bold">Tips: Anda bisa memasukkan hingga 10 API Key yang dipisahkan dengan koma (,) agar sistem dapat menggantinya secara otomatis (round-robin/random).</span></p>
                     <div className="space-y-6">

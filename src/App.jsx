@@ -219,7 +219,7 @@ export default function App() {
             try {
               keysObj = JSON.parse(keysObj);
             } catch (e) {
-              keysObj = { openai: '', gemini: data.value, l10n: '', iflytekAppId: '', iflytekApiKey: '', iflytekApiSecret: '' };
+              keysObj = { openai: '', gemini: data.value, groq: '', l10n: '', elevenlabs: '', elevenlabsVoiceId: '', iflytekAppId: '', iflytekApiKey: '', iflytekApiSecret: '' };
             }
           }
           setGlobalApiKey(keysObj);
@@ -235,7 +235,7 @@ export default function App() {
         if (payload.new && payload.new.value) {
           let keysObj = payload.new.value;
           if (typeof keysObj === 'string') {
-            try { keysObj = JSON.parse(keysObj); } catch (e) { keysObj = { core: payload.new.value, translation: '', voice: '' }; }
+            try { keysObj = JSON.parse(keysObj); } catch (e) { keysObj = { openai: '', gemini: payload.new.value, groq: '', l10n: '', elevenlabs: '', elevenlabsVoiceId: '', iflytekAppId: '', iflytekApiKey: '', iflytekApiSecret: '' }; }
           }
           setGlobalApiKey(keysObj);
         }
