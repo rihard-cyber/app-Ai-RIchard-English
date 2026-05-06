@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -16,10 +19,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  # Job 1: Build project Vite
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,7 +32,6 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      # INI BAGIAN YANG DIUBAH BEB 👇
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
@@ -50,6 +50,15 @@ jobs:
         with:
           path: './dist'
 
+  # Job 2: Deploy ke GitHub Pages
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
