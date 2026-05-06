@@ -301,6 +301,10 @@ export default function ProgressDashboard({ userProfile, onNavigate }) {
                   <SkillBar label="Vocabulary" value={stats.vocabulary} icon={<Zap size={18} />} color="bg-amber-500" />
                 </div>
 
+                <div className="mt-10 flex justify-center">
+                  <SkillRadarChart data={stats} />
+                </div>
+
                 <div className="mt-12 pt-8 border-t border-slate-100">
                   <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2 mt-4">
                     <Calendar size={16} /> Learning Activity (Last 4 Weeks)
@@ -396,6 +400,83 @@ export default function ProgressDashboard({ userProfile, onNavigate }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+export function SkillRadarChart({ data }) {
+  const size = 260; // Ukuran kanvas SVG
+  const center = size / 2;
+  const radius = 90;
+  const maxScore = 100;
+
+  // 4 Sumbu: Atas, Kanan, Bawah, Kiri
+  const skills = [
+    { key: 'speaking', label: 'Speaking', angle: -Math.PI / 2 },
+    { key: 'writing', label: 'Writing', angle: 0 },
+    { key: 'grammar', label: 'Grammar', angle: Math.PI / 2 },
+    { key: 'vocabulary', label: 'Vocab', angle: Math.PI },
+  ];
+
+  // Fungsi menghitung koordinat berdasarkan skor
+  const getCoordinates = (score, angle) => {
+    const distance = (score / maxScore) * radius;
+    return {
+      x: center + distance * Math.cos(angle),
+      y: center + distance * Math.sin(angle)
+    };
+  };
+
+  // Kalkulasi titik polygon untuk data Anda
+  const points = skills.map(skill => {
+    const score = data[skill.key] || 0; // Default 0 jika null
+    const { x, y } = getCoordinates(score, skill.angle);
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <div className="w-full flex flex-col items-center justify-center p-6 bg-white rounded-3xl border border-slate-200 shadow-sm animate-in fade-in">
+      <h3 className="font-bold text-slate-800 mb-6 uppercase tracking-widest text-xs">Analisis Skill (Radar)</h3>
+      <svg width={size} height={size} className="overflow-visible drop-shadow-sm">
+        {/* 1. Gambar Jaring Laba-laba (Background Grids) */}
+        {[20, 40, 60, 80, 100].map(level => {
+          const levelRadius = (level / maxScore) * radius;
+          const gridPoints = skills.map(skill => {
+            const x = center + levelRadius * Math.cos(skill.angle);
+            const y = center + levelRadius * Math.sin(skill.angle);
+            return `${x},${y}`;
+          }).join(' ');
+          return (
+            <polygon key={level} points={gridPoints} fill="none" stroke="#e2e8f0" strokeWidth="1" strokeDasharray={level < 100 ? "4,4" : "none"} />
+          );
+        })}
+
+        {/* 2. Gambar Garis Sumbu (Axes) */}
+        {skills.map((skill, index) => {
+          const end = getCoordinates(100, skill.angle);
+          return <line key={index} x1={center} y1={center} x2={end.x} y2={end.y} stroke="#e2e8f0" strokeWidth="1.5" />;
+        })}
+
+        {/* 3. Gambar Area Data (Polygon Skor) dengan Animasi Transisi */}
+        <polygon points={points} fill="rgba(59, 130, 246, 0.25)" stroke="#3b82f6" strokeWidth="2.5" className="transition-all duration-1000 ease-out" />
+
+        {/* 4. Gambar Titik-Titik Data (Dots) dengan Animasi */}
+        {skills.map((skill, index) => {
+          const score = data[skill.key] || 0;
+          const { x, y } = getCoordinates(score, skill.angle);
+          return <circle key={`p-${index}`} cx={x} cy={y} r="5" fill="#2563eb" className="hover:r-[6px] cursor-pointer transition-all duration-1000 ease-out" />;
+        })}
+
+        {/* 5. Teks Label Skill */}
+        {skills.map((skill, index) => {
+          const labelPos = getCoordinates(135, skill.angle); // Dorong label agak keluar
+          return (
+            <text key={`l-${index}`} x={labelPos.x} y={labelPos.y} fontSize="12" fontWeight="bold" fill="#475569" textAnchor="middle" alignmentBaseline="middle">
+              {skill.label}
+            </text>
+          );
+        })}
+      </svg>
     </div>
   );
 }

@@ -8,27 +8,38 @@ const getRandomKey = (keyString) => {
 };
 
 export const translateText = async (text, globalApiKey) => {
-    const l10nKey = getRandomKey(globalApiKey?.l10n);
+    let keysData = typeof globalApiKey === 'object' && globalApiKey !== null ? globalApiKey : {};
+    if (typeof globalApiKey === 'string') {
+        try { keysData = JSON.parse(globalApiKey); }
+        catch (e) { keysData = {}; }
+    }
 
-    if (l10nKey) {
-        try {
-            const response = await fetch('https://api.l10n.dev/v1/translate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-API-Key': l10nKey
-                },
-                body: JSON.stringify({ text: text, target_language: 'id' })
-            });
+    const l10nKeysList = (keysData.l10n || globalApiKey?.l10n || '').split(',').map(k => k.trim()).filter(k => k);
+    l10nKeysList.sort(() => Math.random() - 0.5); // Acak untuk load balancing
 
-            if (response.ok) {
-                const data = await response.json();
-                if (data.translated_text) return data.translated_text;
+    if (l10nKeysList.length > 0) {
+        for (const key of l10nKeysList) {
+            try {
+                const response = await fetch('https://api.l10n.dev/v1/translate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': key
+                    },
+                    body: JSON.stringify({ text: text, target_language: 'id' })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.translated_text) return data.translated_text;
+                }
+                throw new Error('Limit habis atau key gagal');
+            } catch (error) {
+                console.warn(`l10n.dev key failed, memutar ke kunci berikutnya...`, error);
+                continue; // Coba kunci selanjutnya di dalam array
             }
-            console.warn("l10n.dev translation failed or limits reached, falling back...");
-        } catch (error) {
-            console.warn("l10n.dev network error, falling back to Core AI...", error);
         }
+        console.warn("Semua kunci l10n.dev gagal / limit habis. Jatuh ke fallback Core AI.");
     }
 
     // Core AI Fallback
