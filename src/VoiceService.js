@@ -29,8 +29,57 @@ const fallbackTTS = (text, options) => {
     });
 };
 
+const getRandomKey = (keyString) => {
+    if (!keyString) return null;
+    const keys = keyString.split(',').map(k => k.trim()).filter(k => k);
+    if (keys.length === 0) return null;
+    return keys[Math.floor(Math.random() * keys.length)];
+};
+
 export const speakText = async (text, globalApiKey, options = {}) => {
-    const { iflytekAppId, iflytekApiKey, iflytekApiSecret } = globalApiKey || {};
+    const { elevenlabs, elevenlabsVoiceId } = globalApiKey || {};
+    const elevenlabsKey = getRandomKey(elevenlabs);
+
+    // iFLYTEK membutuhkan rotasi 3 kunci secara tersinkronisasi
+    const appIds = (globalApiKey?.iflytekAppId || '').split(',').map(k => k.trim()).filter(k => k);
+    const apiKeys = (globalApiKey?.iflytekApiKey || '').split(',').map(k => k.trim()).filter(k => k);
+    const apiSecrets = (globalApiKey?.iflytekApiSecret || '').split(',').map(k => k.trim()).filter(k => k);
+    const iflytekIndex = appIds.length > 0 ? Math.floor(Math.random() * appIds.length) : 0;
+    const iflytekAppId = appIds[iflytekIndex] || appIds[0];
+    const iflytekApiKey = apiKeys[iflytekIndex] || apiKeys[0];
+    const iflytekApiSecret = apiSecrets[iflytekIndex] || apiSecrets[0];
+
+    if (elevenlabsKey) {
+        try {
+            const voiceId = elevenlabsVoiceId || options?.voiceId || '21m00Tcm4TlvDq8ikWAM';
+            const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'xi-api-key': elevenlabsKey
+                },
+                body: JSON.stringify({
+                    text: text,
+                    model_id: 'eleven_multilingual_v2',
+                    voice_settings: { stability: 0.5, similarity_boost: 0.5 }
+                })
+            });
+
+            if (!response.ok) throw new Error('ElevenLabs API Error');
+
+            const blob = await response.blob();
+            const audioUrl = URL.createObjectURL(blob);
+
+            return new Promise((resolve) => {
+                const audio = new Audio(audioUrl);
+                audio.onended = () => { URL.revokeObjectURL(audioUrl); resolve(); };
+                audio.onerror = () => { URL.revokeObjectURL(audioUrl); fallbackTTS(text, options).then(resolve); };
+                audio.play().catch(() => fallbackTTS(text, options).then(resolve));
+            });
+        } catch (error) {
+            console.error("ElevenLabs implementation failed", error);
+        }
+    }
 
     if (!iflytekAppId || !iflytekApiKey || !iflytekApiSecret) {
         console.warn("iFLYTEK credentials missing. Falling back to browser TTS.");

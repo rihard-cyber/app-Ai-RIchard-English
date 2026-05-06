@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-    LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw, Menu, X, User, Zap, Crown, Download, Search
+    LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw, Menu, X, User, Zap, Crown, Download, Search, ArrowUpDown
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
@@ -20,8 +20,71 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
     const [newBank, setNewBank] = useState({ provider: 'BCA', account_number: '', account_name: '' });
 
     // API Key State
-    const [apiKeys, setApiKeys] = useState({ openai: '', gemini: '', l10n: '', iflytekAppId: '', iflytekApiKey: '', iflytekApiSecret: '' });
+    const [apiKeys, setApiKeys] = useState({ openai: '', gemini: '', groq: '', l10n: '', elevenlabs: '', elevenlabsVoiceId: '', iflytekAppId: '', iflytekApiKey: '', iflytekApiSecret: '' });
     const [saveKeySuccess, setSaveKeySuccess] = useState(false);
+    const [apiStatus, setApiStatus] = useState({ openai: null, gemini: null, groq: null, l10n: null, elevenlabs: null, iflytek: null });
+    const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
+
+    const showToast = (message, type = 'info') => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast({ show: false, message, type: 'info' }), 3000);
+    };
+
+    const handleTestConnections = async () => {
+        const getFirstKey = (keyString) => keyString ? keyString.split(',')[0].trim() : '';
+
+        if (apiKeys.openai) {
+            setApiStatus(p => ({ ...p, openai: 'testing' }));
+            fetch('https://api.openai.com/v1/models', { headers: { Authorization: `Bearer ${getFirstKey(apiKeys.openai)}` } })
+                .then(res => setApiStatus(p => ({ ...p, openai: res.ok ? 'ok' : 'error' })))
+                .catch(() => setApiStatus(p => ({ ...p, openai: 'error' })));
+        }
+        if (apiKeys.gemini) {
+            setApiStatus(p => ({ ...p, gemini: 'testing' }));
+            fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash?key=${getFirstKey(apiKeys.gemini)}`)
+                .then(res => setApiStatus(p => ({ ...p, gemini: res.ok ? 'ok' : 'error' })))
+                .catch(() => setApiStatus(p => ({ ...p, gemini: 'error' })));
+        }
+        if (apiKeys.groq) {
+            setApiStatus(p => ({ ...p, groq: 'testing' }));
+            fetch('https://api.groq.com/openai/v1/models', { headers: { Authorization: `Bearer ${getFirstKey(apiKeys.groq)}` } })
+                .then(res => setApiStatus(p => ({ ...p, groq: res.ok ? 'ok' : 'error' })))
+                .catch(() => setApiStatus(p => ({ ...p, groq: 'error' })));
+        }
+        if (apiKeys.l10n) {
+            setApiStatus(p => ({ ...p, l10n: 'testing' }));
+            fetch('https://api.l10n.dev/v1/translate', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-API-Key': getFirstKey(apiKeys.l10n) }, body: JSON.stringify({ text: 'test', target_language: 'id' }) })
+                .then(res => setApiStatus(p => ({ ...p, l10n: res.ok ? 'ok' : 'error' })))
+                .catch(() => setApiStatus(p => ({ ...p, l10n: 'error' })));
+        }
+        if (apiKeys.elevenlabs) {
+            setApiStatus(p => ({ ...p, elevenlabs: 'testing' }));
+            fetch('https://api.elevenlabs.io/v1/models', { headers: { 'xi-api-key': getFirstKey(apiKeys.elevenlabs) } })
+                .then(res => setApiStatus(p => ({ ...p, elevenlabs: res.ok ? 'ok' : 'error' })))
+                .catch(() => setApiStatus(p => ({ ...p, elevenlabs: 'error' })));
+        }
+        if (apiKeys.iflytekAppId && apiKeys.iflytekApiKey && apiKeys.iflytekApiSecret) {
+            setApiStatus(p => ({ ...p, iflytek: 'testing' }));
+            try {
+                const host = "tts-api.xfyun.cn";
+                const path = "/v2/tts";
+                const date = new Date().toUTCString();
+                const signatureOrigin = `host: ${host}\ndate: ${date}\nGET ${path} HTTP/1.1`;
+                const encoder = new TextEncoder();
+                const cryptoKey = await crypto.subtle.importKey("raw", encoder.encode(getFirstKey(apiKeys.iflytekApiSecret)), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+                const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(signatureOrigin));
+                const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
+                const authorizationOrigin = `api_key="${getFirstKey(apiKeys.iflytekApiKey)}", algorithm="hmac-sha256", headers="host date request-line", signature="${signatureBase64}"`;
+                const authorization = btoa(authorizationOrigin);
+                const url = `wss://${host}${path}?authorization=${encodeURIComponent(authorization)}&date=${encodeURIComponent(date)}&host=${host}`;
+                const ws = new WebSocket(url);
+                ws.onopen = () => { setApiStatus(p => ({ ...p, iflytek: 'ok' })); ws.close(); };
+                ws.onerror = () => { setApiStatus(p => ({ ...p, iflytek: 'error' })); ws.close(); };
+            } catch (err) {
+                setApiStatus(p => ({ ...p, iflytek: 'error' }));
+            }
+        }
+    };
 
     const fetchApiKey = async () => {
         try {
@@ -29,11 +92,11 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
             if (data && data.value) {
                 let parsed = data.value;
                 if (typeof parsed === 'string') {
-                    try { parsed = JSON.parse(parsed); } catch (e) { parsed = { openai: '', gemini: data.value, l10n: '', iflytekAppId: '', iflytekApiKey: '', iflytekApiSecret: '' }; }
+                    try { parsed = JSON.parse(parsed); } catch (e) { parsed = { openai: '', gemini: data.value, groq: '', l10n: '', elevenlabs: '', elevenlabsVoiceId: '', iflytekAppId: '', iflytekApiKey: '', iflytekApiSecret: '' }; }
                 }
                 setApiKeys({
-                    openai: parsed.openai || '', gemini: parsed.gemini || '', l10n: parsed.l10n || '',
-                    iflytekAppId: parsed.iflytekAppId || '', iflytekApiKey: parsed.iflytekApiKey || '', iflytekApiSecret: parsed.iflytekApiSecret || ''
+                    openai: parsed.openai || '', gemini: parsed.gemini || '', groq: parsed.groq || '', l10n: parsed.l10n || '',
+                    elevenlabs: parsed.elevenlabs || '', elevenlabsVoiceId: parsed.elevenlabsVoiceId || '', iflytekAppId: parsed.iflytekAppId || '', iflytekApiKey: parsed.iflytekApiKey || '', iflytekApiSecret: parsed.iflytekApiSecret || ''
                 });
             }
         } catch (error) {
@@ -45,7 +108,10 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
         const payload = {
             openai: apiKeys.openai.trim(),
             gemini: apiKeys.gemini.trim(),
+            groq: apiKeys.groq.trim(),
             l10n: apiKeys.l10n.trim(),
+            elevenlabs: apiKeys.elevenlabs.trim(),
+            elevenlabsVoiceId: apiKeys.elevenlabsVoiceId?.trim() || '',
             iflytekAppId: apiKeys.iflytekAppId.trim(),
             iflytekApiKey: apiKeys.iflytekApiKey.trim(),
             iflytekApiSecret: apiKeys.iflytekApiSecret.trim()
@@ -81,19 +147,17 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            // Fetch stats
-            const { count: totalUsers } = await supabase.from('user_profiles').select('*', { count: 'exact', head: true });
-            const { count: proUsers } = await supabase.from('user_profiles').select('*', { count: 'exact', head: true }).eq('is_pro', true);
-
             // Fetch Transactions
             const { data: txData } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
             setTransactions(txData || []);
 
             const revenue = (txData || []).filter(tx => tx.status === 'approved').reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
 
+            // Fetch All Users (SINGLE SOURCE OF TRUTH)
+            const { data: userData } = await supabase.from('user_profiles').select('*').order('created_at', { ascending: false });
+            setUsers(userData || []);
+
             setStats({
-                totalUsers: totalUsers || 0,
-                proUsers: proUsers || 0,
                 revenue: revenue,
                 totalTx: txData?.length || 0
             });
@@ -101,10 +165,6 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
             // Fetch Banks
             const { data: bankData } = await supabase.from('payment_methods').select('*').order('created_at', { ascending: true });
             setBanks(bankData || []);
-
-            // Fetch All Users
-            const { data: userData } = await supabase.from('user_profiles').select('*').order('created_at', { ascending: false });
-            setUsers(userData || []);
 
         } catch (error) {
             console.error("Error fetching admin data:", error);
@@ -118,22 +178,22 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
             await supabase.from('transactions').update({ status: 'approved' }).eq('id', txId);
             // Upgrade User to PRO
             await supabase.from('user_profiles').update({ is_pro: true }).eq('id', userId);
-            alert("Pembayaran Berhasil di ACC! User sekarang adalah PRO.");
+            showToast("Pembayaran Berhasil di ACC! User sekarang adalah PRO.", "success");
             fetchData();
         } catch (error) {
             console.error(error);
-            alert("Gagal menyetujui pembayaran.");
+            showToast("Gagal menyetujui pembayaran.", "error");
         }
     };
 
     const handleRejectPayment = async (txId) => {
         try {
             await supabase.from('transactions').update({ status: 'rejected' }).eq('id', txId);
-            alert("Pembayaran Ditolak.");
+            showToast("Pembayaran Ditolak.", "success");
             fetchData();
         } catch (error) {
             console.error(error);
-            alert("Gagal menolak pembayaran.");
+            showToast("Gagal menolak pembayaran.", "error");
         }
     };
 
@@ -156,6 +216,9 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
         return months.indexOf(b.month) - months.indexOf(a.month);
     });
 
+    const chartData = [...monthlyRevenueArray].reverse().slice(-12);
+    const maxRevenue = Math.max(...chartData.map(d => d.revenue), 10000);
+
     const filteredTransactions = transactions.filter(tx => {
         const txDate = new Date(tx.created_at);
         const monthMatch = !selectedMonth || (txDate.getMonth() + 1).toString() === selectedMonth;
@@ -166,7 +229,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
 
     const handleExportTransactions = () => {
         if (filteredTransactions.length === 0) {
-            alert("Tidak ada data transaksi untuk diekspor.");
+            showToast("Tidak ada data transaksi untuk diekspor.", "error");
             return;
         }
 
@@ -210,11 +273,11 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
             if (error) throw error;
 
             setNewBank({ provider: 'BCA', account_number: '', account_name: '' });
-            alert("✅ Berhasil! Rekening " + newBank.provider + " sudah tersimpan dan aktif.");
+            showToast("Berhasil! Rekening " + newBank.provider + " sudah tersimpan dan aktif.", "success");
             fetchData();
         } catch (error) {
             console.error("Gagal simpan:", error);
-            alert("❌ Gagal Simpan: " + (error.message || "Masalah koneksi database"));
+            showToast("Gagal Simpan: " + (error.message || "Masalah koneksi database"), "error");
         }
     };
 
@@ -229,6 +292,13 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
 
     return (
         <div className="flex h-[100dvh] bg-slate-50 font-sans overflow-hidden">
+            {/* Global Toast Notification */}
+            {toast.show && (
+                <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-xl border flex items-center gap-3 animate-in slide-in-from-top-4 duration-300 ${toast.type === 'error' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+                    {toast.type === 'error' ? <XCircle size={20} /> : <CheckCircle size={20} />}
+                    <span className="font-bold text-sm">{toast.message}</span>
+                </div>
+            )}
             {/* Mobile Sidebar Overlay */}
             {isSidebarOpen && (
                 <div
@@ -301,109 +371,20 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
                     </div>
 
                     {activeTab === 'overview' && (
-                        <div className="space-y-8 animate-in fade-in">
-                            {/* Stats Cards */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                <StatCard title="Total Pengguna" value={stats.totalUsers} icon={<Users />} color="bg-blue-500" />
-                                <SubStatCard title="Pengguna PRO" value={stats.proUsers} icon={<CheckCircle />} color="text-emerald-500" />
-                                <StatCard title="Dana Masuk (Rp)" value={stats.revenue.toLocaleString('id-ID')} icon={<ArrowDownRight />} color="bg-emerald-500" />
-                                <StatCard title="Total Transaksi" value={stats.totalTx} icon={<Activity />} color="bg-purple-500" />
-                            </div>
-
-                            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                                <h3 className="font-bold text-slate-800 mb-4">Grafik Pertumbuhan (Simulasi)</h3>
-                                <div className="h-64 flex items-end gap-2 md:gap-4 w-full border-b border-slate-100 pb-2">
-                                    {[40, 70, 45, 90, 65, 120, 100].map((val, i) => (
-                                        <div key={i} className="w-full bg-blue-100 hover:bg-blue-500 transition-colors rounded-t-md relative group flex flex-col justify-end" style={{ height: `${(val / 120) * 100}%` }}>
-                                            <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-lg">{val} Users</div>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="flex justify-between text-xs text-slate-400 mt-2 font-bold uppercase"><span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span><span>Min</span></div>
-                            </div>
-
-                            <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden mt-8">
-                                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                                    <h3 className="font-bold text-slate-800 flex items-center gap-2"><CreditCard className="text-blue-500" /> Ringkasan Pendapatan Bulanan</h3>
-                                </div>
-                                <div className="overflow-x-auto transform-gpu overscroll-x-contain scroll-smooth pb-2">
-                                    <table className="w-full text-left text-sm whitespace-nowrap md:whitespace-normal">
-                                        <thead className="bg-slate-50/80 text-slate-500 font-black uppercase tracking-widest text-[10px]">
-                                            <tr>
-                                                <th className="p-6">Bulan & Tahun</th>
-                                                <th className="p-6">Jumlah Transaksi</th>
-                                                <th className="p-6">Total Pendapatan</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {monthlyRevenueArray.map((item, index) => (
-                                                <tr key={index} className="hover:bg-slate-50/50 transition-colors">
-                                                    <td className="p-6 font-bold text-slate-800">{item.month} {item.year}</td>
-                                                    <td className="p-6 font-bold text-blue-600">{item.txCount} Transaksi</td>
-                                                    <td className="p-6 font-black text-emerald-600">Rp {item.revenue.toLocaleString('id-ID')}</td>
-                                                </tr>
-                                            ))}
-                                            {monthlyRevenueArray.length === 0 && <tr><td colSpan="3" className="p-8 text-center text-slate-400">Belum ada pendapatan yang tercatat.</td></tr>}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
-                            {userEmail === 'richardpl.meha@gmail.com' && (
-                                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm mt-8 border-rose-200 shadow-rose-100">
-                                    <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Zap className="text-blue-500" /> Konfigurasi AI (API Key)</h3>
-                                    <p className="text-xs text-slate-500 mb-4">Masukkan kredensial API secara spesifik untuk setiap layanan.</p>
-                                    <div className="space-y-6">
-                                        <div>
-                                            <h4 className="text-sm font-bold text-slate-700 mb-3 border-b pb-2">Core AI</h4>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div className="flex flex-col gap-2">
-                                                    <label className="text-xs font-bold text-slate-600">OpenAI API Key</label>
-                                                    <input type="password" value={apiKeys.openai} onChange={(e) => setApiKeys(prev => ({ ...prev, openai: e.target.value }))} placeholder="sk-proj-..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
-                                                </div>
-                                                <div className="flex flex-col gap-2">
-                                                    <label className="text-xs font-bold text-slate-600">Gemini API Key</label>
-                                                    <input type="password" value={apiKeys.gemini} onChange={(e) => setApiKeys(prev => ({ ...prev, gemini: e.target.value }))} placeholder="AIza..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <h4 className="text-sm font-bold text-slate-700 mb-3 border-b pb-2">Translation API</h4>
-                                            <div className="grid grid-cols-1 gap-4">
-                                                <div className="flex flex-col gap-2">
-                                                    <label className="text-xs font-bold text-slate-600">l10n.dev API Key</label>
-                                                    <input type="password" value={apiKeys.l10n} onChange={(e) => setApiKeys(prev => ({ ...prev, l10n: e.target.value }))} placeholder="l10n.dev API Key" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <h4 className="text-sm font-bold text-slate-700 mb-3 border-b pb-2">Voice API (iFLYTEK)</h4>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <div className="flex flex-col gap-2">
-                                                    <label className="text-xs font-bold text-slate-600">App ID</label>
-                                                    <input type="text" value={apiKeys.iflytekAppId} onChange={(e) => setApiKeys(prev => ({ ...prev, iflytekAppId: e.target.value }))} placeholder="App ID" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
-                                                </div>
-                                                <div className="flex flex-col gap-2">
-                                                    <label className="text-xs font-bold text-slate-600">API Key</label>
-                                                    <input type="password" value={apiKeys.iflytekApiKey} onChange={(e) => setApiKeys(prev => ({ ...prev, iflytekApiKey: e.target.value }))} placeholder="API Key" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
-                                                </div>
-                                                <div className="flex flex-col gap-2">
-                                                    <label className="text-xs font-bold text-slate-600">API Secret</label>
-                                                    <input type="password" value={apiKeys.iflytekApiSecret} onChange={(e) => setApiKeys(prev => ({ ...prev, iflytekApiSecret: e.target.value }))} placeholder="API Secret" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="mt-4 flex justify-end">
-                                        <button onClick={handleSaveApiKey} className={`${saveKeySuccess ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-blue-600 hover:bg-blue-700'} text-white px-6 py-3 rounded-xl font-bold active:scale-95 transition-all w-full sm:w-auto sm:self-end flex justify-center items-center`}>
-                                            {saveKeySuccess ? 'Tersimpan ✅' : 'Simpan Semua Key'}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                        <Overview
+                            usersData={users}
+                            stats={stats}
+                            chartData={chartData}
+                            maxRevenue={maxRevenue}
+                            monthlyRevenueArray={monthlyRevenueArray}
+                            userEmail={userEmail}
+                            apiKeys={apiKeys}
+                            setApiKeys={setApiKeys}
+                            apiStatus={apiStatus}
+                            handleTestConnections={handleTestConnections}
+                            handleSaveApiKey={handleSaveApiKey}
+                            saveKeySuccess={saveKeySuccess}
+                        />
                     )}
 
                     {activeTab === 'transactions' && (
@@ -453,6 +434,14 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
                                             <option value="12">Desember</option>
                                         </select>
                                     </div>
+                                    {(selectedMonth || selectedYear || searchUserName) && (
+                                        <button
+                                            onClick={() => { setSelectedMonth(''); setSelectedYear(''); setSearchUserName(''); }}
+                                            className="flex items-center gap-1.5 px-4 py-2.5 bg-rose-50 text-rose-500 hover:bg-rose-100 rounded-xl text-sm font-bold transition-all shadow-sm shrink-0"
+                                        >
+                                            <X size={16} /> Reset
+                                        </button>
+                                    )}
                                 </div>
                                 <button
                                     onClick={handleExportTransactions}
@@ -713,6 +702,283 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
                     )}
                 </div>
             </main>
+        </div>
+    );
+}
+
+function StatusBadge({ status }) {
+    if (status === 'testing') return <span className="ml-2 text-[9px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full animate-pulse border border-slate-200 font-bold">Memeriksa...</span>;
+    if (status === 'ok') return <span className="ml-2 text-[9px] bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full border border-emerald-200 font-bold">Terhubung ✅</span>;
+    if (status === 'error') return <span className="ml-2 text-[9px] bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full border border-rose-200 font-bold">Gagal ❌</span>;
+    return null;
+}
+
+function Overview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray, userEmail, apiKeys, setApiKeys, apiStatus, handleTestConnections, handleSaveApiKey, saveKeySuccess }) {
+    return (
+        <div className="space-y-8 animate-in fade-in">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <StatCard title="Total Pengguna" value={usersData.length} icon={<Users />} color="bg-blue-500" />
+                <SubStatCard title="Pengguna PRO" value={usersData.filter(u => u.is_pro).length} icon={<CheckCircle />} color="text-emerald-500" />
+                <StatCard title="Dana Masuk (Rp)" value={stats.revenue.toLocaleString('id-ID')} icon={<ArrowDownRight />} color="bg-emerald-500" />
+                <StatCard title="Total Transaksi" value={stats.totalTx} icon={<Activity />} color="bg-purple-500" />
+            </div>
+
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+                <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2"><Activity className="text-emerald-500" /> Grafik Pendapatan Bulanan</h3>
+                <div className="h-64 flex items-end gap-2 md:gap-4 w-full border-b border-slate-100 pb-2">
+                    {chartData.length > 0 ? chartData.map((item, i) => {
+                        const heightPercent = Math.max((item.revenue / maxRevenue) * 100, 2);
+                        return (
+                            <div key={i} className="w-full bg-emerald-100 hover:bg-emerald-500 transition-colors rounded-t-md relative group flex flex-col justify-end" style={{ height: `${heightPercent}%` }}>
+                                <div className="opacity-0 group-hover:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg z-10 whitespace-nowrap">
+                                    Rp {item.revenue.toLocaleString('id-ID')}
+                                </div>
+                            </div>
+                        );
+                    }) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm font-medium">Belum ada data pendapatan.</div>
+                    )}
+                </div>
+                <div className="flex justify-between text-[10px] text-slate-400 mt-3 font-bold uppercase tracking-wider">
+                    {chartData.map((item, i) => (
+                        <span key={i} className="w-full text-center truncate" title={`${item.month} ${item.year}`}>
+                            {item.month.substring(0, 3)} '{item.year.toString().substring(2)}
+                        </span>
+                    ))}
+                </div>
+            </div>
+
+            <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden mt-8">
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <h3 className="font-bold text-slate-800 flex items-center gap-2"><CreditCard className="text-blue-500" /> Ringkasan Pendapatan Bulanan</h3>
+                </div>
+                <div className="overflow-x-auto transform-gpu overscroll-x-contain scroll-smooth pb-2">
+                    <table className="w-full text-left text-sm whitespace-nowrap md:whitespace-normal">
+                        <thead className="bg-slate-50/80 text-slate-500 font-black uppercase tracking-widest text-[10px]">
+                            <tr>
+                                <th className="p-6">Bulan & Tahun</th>
+                                <th className="p-6">Jumlah Transaksi</th>
+                                <th className="p-6">Total Pendapatan</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {monthlyRevenueArray.map((item, index) => (
+                                <tr key={index} className="hover:bg-slate-50/50 transition-colors">
+                                    <td className="p-6 font-bold text-slate-800">{item.month} {item.year}</td>
+                                    <td className="p-6 font-bold text-blue-600">{item.txCount} Transaksi</td>
+                                    <td className="p-6 font-black text-emerald-600">Rp {item.revenue.toLocaleString('id-ID')}</td>
+                                </tr>
+                            ))}
+                            {monthlyRevenueArray.length === 0 && <tr><td colSpan="3" className="p-8 text-center text-slate-400">Belum ada pendapatan yang tercatat.</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {userEmail === 'richardpl.meha@gmail.com' && (
+                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm mt-8 border-rose-200 shadow-rose-100">
+                    <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Zap className="text-blue-500" /> Konfigurasi AI (API Key)</h3>
+                    <p className="text-xs text-slate-500 mb-4">Masukkan kredensial API secara spesifik untuk setiap layanan. <br /><span className="text-emerald-600 font-bold">Tips: Anda bisa memasukkan hingga 10 API Key yang dipisahkan dengan koma (,) agar sistem dapat menggantinya secara otomatis (round-robin/random).</span></p>
+                    <div className="space-y-6">
+                        <div>
+                            <h4 className="text-sm font-bold text-slate-700 mb-3 border-b pb-2">Core AI</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-xs font-bold text-slate-600 flex items-center">OpenAI API Key <StatusBadge status={apiStatus.openai} /></label>
+                                    <input type="text" value={apiKeys.openai} onChange={(e) => setApiKeys(prev => ({ ...prev, openai: e.target.value }))} placeholder="sk-proj-..., sk-proj-..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-xs font-bold text-slate-600 flex items-center">Gemini API Key <StatusBadge status={apiStatus.gemini} /></label>
+                                    <input type="text" value={apiKeys.gemini} onChange={(e) => setApiKeys(prev => ({ ...prev, gemini: e.target.value }))} placeholder="AIza..., AIza..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-xs font-bold text-slate-600 flex items-center">Groq API Key <StatusBadge status={apiStatus.groq} /></label>
+                                    <input type="text" value={apiKeys.groq} onChange={(e) => setApiKeys(prev => ({ ...prev, groq: e.target.value }))} placeholder="gsk_..., gsk_..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 className="text-sm font-bold text-slate-700 mb-3 border-b pb-2">Translation API</h4>
+                            <div className="grid grid-cols-1 gap-4">
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-xs font-bold text-slate-600 flex items-center">l10n.dev API Key <StatusBadge status={apiStatus.l10n} /></label>
+                                    <input type="text" value={apiKeys.l10n} onChange={(e) => setApiKeys(prev => ({ ...prev, l10n: e.target.value }))} placeholder="Key1, Key2, Key3..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 className="text-sm font-bold text-slate-700 mb-3 border-b pb-2 flex items-center">Voice API</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 mb-4 gap-4">
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-xs font-bold text-slate-600 flex items-center">ElevenLabs API Key <StatusBadge status={apiStatus.elevenlabs} /></label>
+                                    <input type="text" value={apiKeys.elevenlabs} onChange={(e) => setApiKeys(prev => ({ ...prev, elevenlabs: e.target.value }))} placeholder="Key1, Key2..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-xs font-bold text-slate-600 flex items-center">ElevenLabs Voice ID</label>
+                                    <input type="text" value={apiKeys.elevenlabsVoiceId} onChange={(e) => setApiKeys(prev => ({ ...prev, elevenlabsVoiceId: e.target.value }))} placeholder="Voice ID (Opsional)" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                </div>
+                            </div>
+                            <h5 className="text-xs font-bold text-slate-600 mb-2 flex items-center">Atau gunakan iFLYTEK: <StatusBadge status={apiStatus.iflytek} /></h5>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-xs font-bold text-slate-600">App ID</label>
+                                    <input type="text" value={apiKeys.iflytekAppId} onChange={(e) => setApiKeys(prev => ({ ...prev, iflytekAppId: e.target.value }))} placeholder="ID1, ID2..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-xs font-bold text-slate-600">API Key</label>
+                                    <input type="text" value={apiKeys.iflytekApiKey} onChange={(e) => setApiKeys(prev => ({ ...prev, iflytekApiKey: e.target.value }))} placeholder="Key1, Key2..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-xs font-bold text-slate-600">API Secret</label>
+                                    <input type="text" value={apiKeys.iflytekApiSecret} onChange={(e) => setApiKeys(prev => ({ ...prev, iflytekApiSecret: e.target.value }))} placeholder="Secret1, Secret2..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mt-6 flex flex-col sm:flex-row justify-end gap-3 border-t border-slate-100 pt-4">
+                        <button onClick={handleTestConnections} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold active:scale-95 transition-all w-full sm:w-auto flex justify-center items-center gap-2">
+                            <Activity size={18} /> Test Koneksi API
+                        </button>
+                        <button onClick={handleSaveApiKey} className={`${saveKeySuccess ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-blue-600 hover:bg-blue-700'} text-white px-6 py-3 rounded-xl font-bold active:scale-95 transition-all w-full sm:w-auto sm:self-end flex justify-center items-center`}>
+                            {saveKeySuccess ? 'Tersimpan ✅' : 'Simpan Semua Key'}
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function DataPengguna({ usersData, isLoading }) {
+    const [sortOrder, setSortOrder] = useState('desc');
+
+    const sortedUsers = [...usersData].sort((a, b) => {
+        const dateA = new Date(a.created_at).getTime();
+        const dateB = new Date(b.created_at).getTime();
+        return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+    });
+
+    return (
+        <div className="space-y-8 animate-in fade-in">
+            {isLoading ? (
+                <div className="flex flex-col items-center justify-center p-20 text-slate-400">
+                    <Loader2 className="animate-spin mb-4" size={48} />
+                    <p className="font-bold tracking-widest text-[10px] uppercase">Mengambil data murid...</p>
+                </div>
+            ) : (
+                <>
+                    {/* User Distribution Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+                            <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center">
+                                <Users size={28} />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Murid</p>
+                                <h4 className="text-2xl font-black text-slate-800">{usersData.length}</h4>
+                            </div>
+                        </div>
+                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+                            <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center">
+                                <Crown size={28} />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Member PRO</p>
+                                <h4 className="text-2xl font-black text-slate-800">{usersData.filter(u => u.is_pro).length}</h4>
+                            </div>
+                        </div>
+                        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
+                            <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center">
+                                <Activity size={28} />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Conversion Rate</p>
+                                <h4 className="text-2xl font-black text-slate-800">
+                                    {usersData.length > 0 ? ((usersData.filter(u => u.is_pro).length / usersData.length) * 100).toFixed(1) : 0}%
+                                </h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* User Table Panel */}
+                    <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="font-bold text-slate-800">Daftar Pengguna Aktif</h3>
+                            <div className="flex gap-2">
+                                <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold">{usersData.length} Total</span>
+                            </div>
+                        </div>
+                        <div className="overflow-x-auto transform-gpu overscroll-x-contain scroll-smooth pb-4 px-4 md:px-0">
+                            <table className="w-full text-left text-sm whitespace-nowrap md:whitespace-normal min-w-[640px]">
+                                <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider">
+                                    <tr>
+                                        <th className="p-6">User Profile</th>
+                                        <th className="p-6">Language Level</th>
+                                        <th className="p-6">Subscription</th>
+                                        <th className="p-6 cursor-pointer hover:bg-slate-100 transition-colors group select-none" onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}>
+                                            <div className="flex items-center gap-2">Join Date <ArrowUpDown size={14} className={`text-slate-400 group-hover:text-blue-500 transition-colors ${sortOrder === 'asc' ? 'rotate-180' : ''}`} /></div>
+                                        </th>
+                                        <th className="p-6">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {sortedUsers.map(u => (
+                                        <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="p-6">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold">
+                                                        {u.name?.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-slate-800">{u.name}</p>
+                                                        <p className="text-xs text-slate-400 capitalize">{u.gender}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="p-6">
+                                                <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-black tracking-tight">
+                                                    {u.level}
+                                                </span>
+                                            </td>
+                                            <td className="p-6">
+                                                {u.is_pro ? (
+                                                    <div className="flex items-center gap-1.5 text-amber-600 font-bold">
+                                                        <Crown size={14} /> PRO MEMBER
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-slate-400 font-medium">Free Tier</span>
+                                                )}
+                                            </td>
+                                            <td className="p-6 text-slate-500 font-medium">
+                                                {new Date(u.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                            </td>
+                                            <td className="p-6">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                                    <span className="text-xs font-bold text-slate-600">Aktif</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {usersData.length === 0 && (
+                                        <tr>
+                                            <td colSpan="5" className="p-20 text-center">
+                                                <div className="flex flex-col items-center gap-2 text-slate-300">
+                                                    <Users size={48} />
+                                                    <p className="text-lg font-medium">Belum ada data murid.</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 }

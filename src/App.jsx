@@ -216,7 +216,11 @@ export default function App() {
         if (data && data.value) {
           let keysObj = data.value;
           if (typeof keysObj === 'string') {
-            try { keysObj = JSON.parse(keysObj); } catch (e) { keysObj = { core: data.value, translation: '', voice: '' }; }
+            try {
+              keysObj = JSON.parse(keysObj);
+            } catch (e) {
+              keysObj = { openai: '', gemini: data.value, l10n: '', iflytekAppId: '', iflytekApiKey: '', iflytekApiSecret: '' };
+            }
           }
           setGlobalApiKey(keysObj);
         }

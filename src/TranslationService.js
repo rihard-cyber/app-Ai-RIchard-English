@@ -1,7 +1,14 @@
 import { generateChatResponse } from './ChatService.js';
 
+const getRandomKey = (keyString) => {
+    if (!keyString) return null;
+    const keys = keyString.split(',').map(k => k.trim()).filter(k => k);
+    if (keys.length === 0) return null;
+    return keys[Math.floor(Math.random() * keys.length)];
+};
+
 export const translateText = async (text, globalApiKey) => {
-    const l10nKey = globalApiKey?.l10n;
+    const l10nKey = getRandomKey(globalApiKey?.l10n);
 
     if (l10nKey) {
         try {
