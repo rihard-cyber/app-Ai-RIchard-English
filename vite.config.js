@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// Konfigurasi standar untuk memastikan CI/CD GitHub Actions berjalan lancar
+
 function chunkLoadingNotifier() {
   return {
     name: 'chunk-loading-notifier',
