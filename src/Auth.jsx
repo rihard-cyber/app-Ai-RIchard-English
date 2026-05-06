@@ -1,21 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, ArrowRight, CheckCircle2, Shield, Zap, Crown, Mail, KeyRound, User as UserIcon, Loader2 } from 'lucide-react';
+import { Sparkles, ArrowRight, CheckCircle2, Shield, Zap, Crown, Mail, KeyRound, User as UserIcon, Loader2, Eye, EyeOff } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 export function LoginPage({ onLogin }) {
   const [mode, setMode] = useState('signin'); // 'signin', 'signup', 'verify'
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
+  const [shakeField, setShakeField] = useState('');
 
   const logoClickCount = useRef(0);
   const logoClickTimeout = useRef(null);
   // Sign In State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // Sign Up State
   const [fullName, setFullName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Verification State
   const [otp, setOtp] = useState(['', '', '', '', '', '', '', '']);
@@ -33,6 +36,17 @@ export function LoginPage({ onLogin }) {
     };
   }, []);
 
+  const showToast = (message, type = 'info') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'info' }), 3000);
+  };
+
+  const triggerShake = (field, msg) => {
+    setShakeField(field);
+    showToast(msg, 'error');
+    setTimeout(() => setShakeField(''), 500); // Hapus animasi setelah 500ms
+  };
+
   const handleLogoClick = () => {
     logoClickCount.current += 1;
     if (logoClickCount.current >= 2) {
@@ -49,64 +63,67 @@ export function LoginPage({ onLogin }) {
     e.preventDefault();
     if (!email || !password) return;
     setIsLoading(true);
-    setErrorMsg('');
 
     // Bersihkan spasi kosong dari keyboard Android
     const safeEmail = email.trim().toLowerCase();
     const safePassword = password.trim();
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: safeEmail,
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: safeEmail,
+        password: safePassword,
+      });
+      if (error) throw error;
 
-    setIsLoading(false);
-
-    if (error) {
-      if (error.message === 'Invalid login credentials') {
-        setErrorMsg('Email atau password salah.');
-      } else if (error.message.includes('Email not confirmed')) {
-        setErrorMsg('Email belum diverifikasi. Silakan masukkan kode: 11223344');
-        setMode('verify');
-      } else {
-        setErrorMsg(error.message);
-      }
-    } else {
-      // Deteksi jika login dipicu dari form Admin Portal
       if (mode === 'admin_login') {
         onLogin('admin');
       } else {
         onLogin('user');
       }
+    } catch (error) {
+      if (error.message === 'Invalid login credentials') {
+        showToast('Email atau password salah. Cek kembali penulisan Anda.', 'error');
+      } else if (error.message.includes('Email not confirmed')) {
+        showToast('Email belum diverifikasi. Silakan periksa inbox Anda.', 'error');
+        setMode('verify');
+      } else {
+        showToast('Login Gagal: ' + error.message, 'error');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleSignUp = async (e) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
-      setErrorMsg('Password dan konfirmasi tidak sama!');
-      return;
-    }
+
+    // 1. Validasi Ketat
+    if (!fullName.trim()) return triggerShake('fullName', 'Nama lengkap wajib diisi!');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return triggerShake('email', 'Format email tidak valid!');
+    if (password.length < 6) return triggerShake('password', 'Password minimal 6 karakter!');
+    if (password !== confirmPassword) return triggerShake('confirmPassword', 'Password dan konfirmasi tidak sama!');
+
     setIsLoading(true);
-    setErrorMsg('');
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          }
         }
-      }
-    });
+      });
+      if (error) throw error;
 
-    setIsLoading(false);
-
-    if (error) {
-      setErrorMsg(error.message);
-    } else {
-      // Confirm Email Supabase dimatikan, bisa langsung diarahkan ke Dashboard
-      onLogin('user');
+      showToast('Pendaftaran berhasil! Silakan cek email Anda untuk kode verifikasi.', 'success');
+      setMode('verify');
+    } catch (error) {
+      showToast('Daftar Gagal: ' + error.message, 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -116,22 +133,21 @@ export function LoginPage({ onLogin }) {
     if (enteredCode.length < 8) return;
 
     setIsLoading(true);
-    setErrorMsg('');
 
-    // Real verification via Supabase
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token: enteredCode,
-      type: 'signup'
-    });
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: enteredCode,
+        type: 'signup'
+      });
+      if (error) throw error;
 
-    setIsLoading(false);
-
-    if (error) {
-      setErrorMsg('Kode OTP salah atau sudah kadaluarsa.');
-    } else {
-      alert('Verifikasi Berhasil! Selamat datang di RichardMeha AI.');
+      showToast('Verifikasi Berhasil! Selamat datang di RichardMeha AI.', 'success');
       onLogin();
+    } catch (error) {
+      showToast('Kode OTP salah atau sudah kadaluarsa.', 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -139,22 +155,23 @@ export function LoginPage({ onLogin }) {
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     if (!email) {
-      setErrorMsg('Masukkan email Anda terlebih dahulu.');
+      showToast('Masukkan email Anda terlebih dahulu.', 'error');
       return;
     }
     setIsLoading(true);
-    setErrorMsg('');
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
-    });
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin,
+      });
+      if (error) throw error;
 
-    setIsLoading(false);
-    if (error) {
-      setErrorMsg(error.message);
-    } else {
-      alert('Link reset password telah dikirim ke email Anda. Silakan cek inbox/spam.');
+      showToast('Link reset password telah dikirim ke email Anda. Silakan cek inbox/spam.', 'success');
       setMode('signin');
+    } catch (error) {
+      showToast('Gagal mengirim link: ' + error.message, 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -162,35 +179,39 @@ export function LoginPage({ onLogin }) {
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      setErrorMsg('Password dan konfirmasi tidak sama!');
+      showToast('Password dan konfirmasi tidak sama!', 'error');
       return;
     }
     setIsLoading(true);
-    setErrorMsg('');
 
-    const { error } = await supabase.auth.updateUser({ password: password });
+    try {
+      const { error } = await supabase.auth.updateUser({ password: password });
+      if (error) throw error;
 
-    setIsLoading(false);
-    if (error) {
-      setErrorMsg(error.message);
-    } else {
-      alert('Password berhasil diperbarui! Silakan masuk menggunakan password baru Anda.');
+      showToast('Password berhasil diperbarui! Silakan masuk menggunakan password baru Anda.', 'success');
       setMode('signin');
       setPassword('');
       setConfirmPassword('');
+    } catch (error) {
+      showToast('Gagal Update: ' + error.message, 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   // Login instan menggunakan Akun Google
   const handleGoogleLogin = async () => {
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin }
-    });
-    if (error) {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin }
+      });
+      if (error) throw error;
+    } catch (error) {
+      showToast("Login Google Gagal: " + error.message, 'error');
+    } finally {
       setIsLoading(false);
-      setErrorMsg(error.message);
     }
   };
 
@@ -214,11 +235,30 @@ export function LoginPage({ onLogin }) {
 
   const switchMode = (newMode) => {
     setMode(newMode);
-    setErrorMsg('');
   };
 
   return (
     <div className="min-h-screen min-h-[100dvh] w-full bg-[#0f172a] flex items-center justify-center p-4 overflow-hidden relative overscroll-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+
+      {/* CSS Styles untuk Animasi Shake */}
+      <style>
+        {`
+          @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+          }
+          .animate-shake { animation: shake 0.5s ease-in-out; }
+        `}
+      </style>
+
+      {/* Global Toast Notification */}
+      {toast.show && (
+        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-xl border flex items-center gap-3 animate-in slide-in-from-top-4 duration-300 ${toast.type === 'error' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+          <span className="font-bold text-sm">{toast.message}</span>
+        </div>
+      )}
+
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/30 rounded-full blur-[100px] pointer-events-none"></div>
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-[100px] pointer-events-none"></div>
 
@@ -230,12 +270,6 @@ export function LoginPage({ onLogin }) {
               <Sparkles className="text-white w-8 h-8" />
             </div>
           </div>
-
-          {errorMsg && (
-            <div className="bg-red-500/10 border border-red-500/50 text-red-400 text-sm px-4 py-2 rounded-xl mb-4 text-center absolute top-24 left-8 right-8 z-20">
-              {errorMsg}
-            </div>
-          )}
 
           <div className="relative flex-1">
             {/* SIGN IN FORM */}
@@ -251,26 +285,29 @@ export function LoginPage({ onLogin }) {
                     <input
                       type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                       placeholder="richard@example.com"
-                      className="w-full pl-11 pr-5 py-3.5 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" required
+                      className="w-full pl-11 pr-5 py-3.5 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 transition-all" required
                     />
                   </div>
                 </div>
                 <div>
                   <div className="flex justify-between items-center mb-1.5 ml-1">
                     <label className="block text-sm font-medium text-slate-300">Password</label>
-                    <button type="button" onClick={() => switchMode('forgot')} className="text-xs text-blue-400 hover:text-blue-300 focus:outline-none">Lupa Password?</button>
+                    <button type="button" disabled={isLoading} onClick={() => switchMode('forgot')} className="text-xs text-blue-400 hover:text-blue-300 focus:outline-none disabled:opacity-50">Lupa Password?</button>
                   </div>
                   <div className="relative">
                     <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                     <input
-                      type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                      type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full pl-11 pr-5 py-3.5 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" required
+                      className="w-full pl-11 pr-12 py-3.5 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 transition-all" required
                     />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 focus:outline-none">
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
                 </div>
                 <button disabled={isLoading} type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 group mt-2">
-                  {isLoading ? <Loader2 className="animate-spin" size={18} /> : <>Sign In <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" /></>}
+                  {isLoading ? <><Loader2 className="animate-spin" size={18} /> Memproses...</> : <>Sign In <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" /></>}
                 </button>
               </form>
 
@@ -279,7 +316,7 @@ export function LoginPage({ onLogin }) {
                 <span className="flex-shrink-0 mx-4 text-slate-500 text-xs uppercase tracking-wider font-bold">ATAU MASUK DENGAN</span>
                 <div className="flex-grow border-t border-slate-700/50"></div>
               </div>
-              <button type="button" onClick={handleGoogleLogin} disabled={isLoading} className="w-full bg-white hover:bg-slate-50 text-slate-800 font-bold py-3.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-3 active:scale-95">
+              <button type="button" onClick={handleGoogleLogin} disabled={isLoading} className="w-full bg-white hover:bg-slate-50 disabled:bg-slate-300 disabled:cursor-not-allowed text-slate-800 font-bold py-3.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-3 active:scale-95">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
                   <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
@@ -289,7 +326,7 @@ export function LoginPage({ onLogin }) {
                 Akun Google
               </button>
               <div className="mt-6 text-center">
-                <p className="text-slate-400 text-sm">Belum punya akun? <button onClick={() => switchMode('signup')} className="text-blue-400 font-bold hover:underline focus:outline-none">Daftar sekarang</button></p>
+                <p className="text-slate-400 text-sm">Belum punya akun? <button disabled={isLoading} onClick={() => switchMode('signup')} className="text-blue-400 font-bold hover:underline focus:outline-none disabled:opacity-50">Daftar sekarang</button></p>
               </div>
             </div>
 
@@ -301,34 +338,40 @@ export function LoginPage({ onLogin }) {
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div>
                   <div className="relative">
-                    <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                    <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nama Lengkap" className="w-full pl-11 pr-5 py-3 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" required />
+                    <UserIcon className={`absolute left-4 top-1/2 -translate-y-1/2 ${shakeField === 'fullName' ? 'text-rose-500' : 'text-slate-500'}`} size={18} />
+                    <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Nama Lengkap" className={`w-full pl-11 pr-5 py-3 rounded-xl bg-slate-800/50 border text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all ${shakeField === 'fullName' ? 'border-rose-500 animate-shake' : 'border-slate-700 focus:border-blue-500'}`} />
                   </div>
                 </div>
                 <div>
                   <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email Aktif" className="w-full pl-11 pr-5 py-3 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" required />
+                    <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 ${shakeField === 'email' ? 'text-rose-500' : 'text-slate-500'}`} size={18} />
+                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email Aktif" className={`w-full pl-11 pr-5 py-3 rounded-xl bg-slate-800/50 border text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all ${shakeField === 'email' ? 'border-rose-500 animate-shake' : 'border-slate-700 focus:border-blue-500'}`} />
                   </div>
                 </div>
                 <div>
                   <div className="relative">
-                    <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Buat Password" className="w-full pl-11 pr-5 py-3 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" required />
+                    <KeyRound className={`absolute left-4 top-1/2 -translate-y-1/2 ${shakeField === 'password' ? 'text-rose-500' : 'text-slate-500'}`} size={18} />
+                    <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Buat Password" className={`w-full pl-11 pr-12 py-3 rounded-xl bg-slate-800/50 border text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all ${shakeField === 'password' ? 'border-rose-500 animate-shake' : 'border-slate-700 focus:border-blue-500'}`} />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 focus:outline-none">
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
                 </div>
                 <div>
                   <div className="relative">
-                    <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                    <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Ulangi Password" className="w-full pl-11 pr-5 py-3 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" required />
+                    <KeyRound className={`absolute left-4 top-1/2 -translate-y-1/2 ${shakeField === 'confirmPassword' ? 'text-rose-500' : 'text-slate-500'}`} size={18} />
+                    <input type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Ulangi Password" className={`w-full pl-11 pr-12 py-3 rounded-xl bg-slate-800/50 border text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all ${shakeField === 'confirmPassword' ? 'border-rose-500 animate-shake' : 'border-slate-700 focus:border-blue-500'}`} />
+                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 focus:outline-none">
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
                 </div>
                 <button disabled={isLoading} type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 group mt-2">
-                  {isLoading ? <Loader2 className="animate-spin" size={18} /> : <>Kirim Kode Verifikasi <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" /></>}
+                  {isLoading ? <><Loader2 className="animate-spin" size={18} /> Memproses...</> : <>Kirim Kode Verifikasi <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" /></>}
                 </button>
               </form>
               <div className="mt-4 text-center">
-                <p className="text-slate-400 text-sm">Sudah punya akun? <button onClick={() => switchMode('signin')} className="text-blue-400 font-bold hover:underline focus:outline-none">Sign In</button></p>
+                <p className="text-slate-400 text-sm">Sudah punya akun? <button disabled={isLoading} onClick={() => switchMode('signin')} className="text-blue-400 font-bold hover:underline focus:outline-none disabled:opacity-50">Sign In</button></p>
               </div>
             </div>
 
@@ -400,13 +443,19 @@ export function LoginPage({ onLogin }) {
                 <div>
                   <div className="relative">
                     <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                    <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password Baru" className="w-full pl-11 pr-5 py-3.5 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" required />
+                    <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password Baru" className="w-full pl-11 pr-12 py-3.5 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" required />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 focus:outline-none">
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
                 </div>
                 <div>
                   <div className="relative">
                     <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                    <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Ulangi Password" className="w-full pl-11 pr-5 py-3.5 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" required />
+                    <input type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Ulangi Password" className="w-full pl-11 pr-12 py-3.5 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all" required />
+                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 focus:outline-none">
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
                 </div>
                 <button disabled={isLoading} type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 group mt-2">
@@ -435,14 +484,17 @@ export function LoginPage({ onLogin }) {
                   <div className="relative">
                     <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500" size={18} />
                     <input
-                      type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                      type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
                       placeholder="Admin Password"
-                      className="w-full pl-11 pr-5 py-3.5 rounded-xl bg-slate-800/50 border border-emerald-900/50 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" required
+                      className="w-full pl-11 pr-12 py-3.5 rounded-xl bg-slate-800/50 border border-emerald-900/50 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" required
                     />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-400 hover:text-emerald-300 focus:outline-none">
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
                 </div>
                 <button disabled={isLoading} type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-70 text-white font-black py-4 rounded-2xl transition-all shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2 group mt-4 active:scale-95">
-                  {isLoading ? <Loader2 className="animate-spin" size={18} /> : <>MASUK SEBAGAI OWNER 👑 <Shield size={18} className="group-hover:rotate-12 transition-transform" /></>}
+                  {isLoading ? <><Loader2 className="animate-spin" size={18} /> Autentikasi...</> : <>MASUK SEBAGAI OWNER 👑 <Shield size={18} className="group-hover:rotate-12 transition-transform" /></>}
                 </button>
               </form>
             </div>

@@ -32,7 +32,8 @@ import {
   Lightbulb,
   Lock,
   Shield,
-  RefreshCw
+  RefreshCw,
+  Trash2
 } from 'lucide-react';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
@@ -444,6 +445,29 @@ export default function App() {
     return newTheme;
   });
 
+  const handleDeleteHistory = async () => {
+    if (!window.confirm("Yakin ingin menghapus seluruh riwayat belajar (XP, level, dan progres)? Data tidak bisa dikembalikan.")) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('user_progress').delete().eq('user_id', user.id);
+      await supabase.from('user_profiles').update({ xp: 0, level: 'Beginner (A1)', has_completed_initial_test: false, streak: 0 }).eq('id', user.id);
+      alert("Riwayat berhasil dihapus. Aplikasi akan dimuat ulang.");
+      window.location.reload();
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmation = window.prompt("PERINGATAN KRITIS: Anda yakin ingin menghapus akun? Ketik 'HAPUS' untuk mengonfirmasi:");
+    if (confirmation !== 'HAPUS') return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('user_profiles').delete().eq('id', user.id);
+      await supabase.from('user_progress').delete().eq('user_id', user.id);
+      await handleLogout();
+      alert("Data profil berhasil dihapus. Silakan hubungi Admin (richardpl.meha@gmail.com) jika Anda ingin menghapus email Anda secara permanen dari sistem.");
+    }
+  });
+
   const saveProgress = async (skill, score, details = {}) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -540,6 +564,16 @@ export default function App() {
                 <button onClick={() => { window.location.reload(true); }} className="px-5 py-2.5 bg-blue-50 text-blue-600 font-black rounded-xl hover:bg-blue-100 transition-all active:scale-95 text-xs shadow-sm">
                   <RefreshCw size={14} className="inline-block mr-1" /> CLEAR CACHE
                 </button>
+              </div>
+
+              {/* Opsi Hapus Data / Akun */}
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <div><h4 className="font-bold text-slate-800">Reset Riwayat Belajar</h4><p className="text-xs text-slate-500">Mulai ulang progres (XP & Level) dari 0.</p></div>
+                <button onClick={handleDeleteHistory} className="px-5 py-2.5 bg-amber-50 text-amber-600 font-black rounded-xl hover:bg-amber-100 transition-all active:scale-95 text-xs shadow-sm"><RefreshCw size={14} className="inline-block mr-1" /> RESET DATA</button>
+              </div>
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <div><h4 className="font-bold text-slate-800">Hapus Akun</h4><p className="text-xs text-slate-500">Hapus profil secara permanen.</p></div>
+                <button onClick={handleDeleteAccount} className="px-5 py-2.5 bg-rose-50 text-rose-600 font-black rounded-xl hover:bg-rose-100 transition-all active:scale-95 text-xs shadow-sm"><Trash2 size={14} className="inline-block mr-1" /> HAPUS AKUN</button>
               </div>
 
               <div className="p-6"><button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 py-4 bg-rose-50 text-rose-600 font-bold rounded-2xl hover:bg-rose-100 transition-all active:scale-95"><LogOut size={18} /> Keluar dari Akun</button></div>

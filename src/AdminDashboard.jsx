@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-    LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw, Menu, X, User, Zap, Crown, Download, Search, ArrowUpDown
+    LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw, Menu, X, User, Zap, Crown, Download, Search, ArrowUpDown, Eye, EyeOff, Trash
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
@@ -432,6 +432,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
                             handleSaveApiKey={handleSaveApiKey}
                             saveKeySuccess={saveKeySuccess}
                             isFetchingKeys={isFetchingKeys}
+                            showToast={showToast}
                         />
                     )}
 
@@ -761,7 +762,7 @@ function StatusBadge({ status }) {
     return null;
 }
 
-function Overview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray, userEmail, apiKeys, setApiKeys, apiStatus, handleTestConnections, handleSaveApiKey, saveKeySuccess, isFetchingKeys }) {
+function Overview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray, userEmail, apiKeys, setApiKeys, apiStatus, handleTestConnections, handleSaveApiKey, saveKeySuccess, isFetchingKeys, showToast }) {
     // Perhitungan Distribusi Level Bahasa (A1-C2)
     const levelCounts = { A1: 0, A2: 0, B1: 0, B2: 0, C1: 0, C2: 0 };
     usersData.forEach(u => {
@@ -776,6 +777,31 @@ function Overview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray
     });
     const maxLevelCount = Math.max(...Object.values(levelCounts), 1);
     const levelColors = { A1: 'bg-emerald-400', A2: 'bg-emerald-500', B1: 'bg-blue-400', B2: 'bg-blue-500', C1: 'bg-purple-400', C2: 'bg-purple-500' };
+
+    const [showKey, setShowKey] = useState({});
+    const [isClearingLogs, setIsClearingLogs] = useState(false);
+
+    const toggleKeyVisibility = (key) => setShowKey(p => ({ ...p, [key]: !p[key] }));
+
+    const handleClearLogs = async () => {
+        if (!window.confirm('Apakah Anda yakin ingin menghapus semua log aktivitas pengguna yang lebih lama dari 30 hari? Tindakan ini akan mengosongkan ruang database.')) return;
+
+        setIsClearingLogs(true);
+        try {
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+            const { error } = await supabase.from('user_progress').delete().lt('created_at', thirtyDaysAgo.toISOString());
+
+            if (error) throw error;
+            showToast("Log aktivitas usang berhasil dibersihkan.", "success");
+        } catch (error) {
+            console.error("Clear logs error:", error);
+            showToast("Gagal membersihkan log.", "error");
+        } finally {
+            setIsClearingLogs(false);
+        }
+    };
 
     return (
         <div className="space-y-8 animate-in fade-in">
@@ -876,15 +902,30 @@ function Overview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="flex flex-col gap-2">
                                     <label className="text-xs font-bold text-slate-600 flex items-center">OpenAI API Key <StatusBadge status={apiStatus.openai} /></label>
-                                    <input type="text" value={apiKeys.openai} onChange={(e) => setApiKeys(prev => ({ ...prev, openai: e.target.value }))} placeholder="sk-proj-..., sk-proj-..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                    <div className="relative">
+                                        <input type={showKey.openai ? "text" : "password"} value={apiKeys.openai} onChange={(e) => setApiKeys(prev => ({ ...prev, openai: e.target.value }))} placeholder="sk-proj-..., sk-proj-..." className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                        <button type="button" onClick={() => toggleKeyVisibility('openai')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                                            {showKey.openai ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <label className="text-xs font-bold text-slate-600 flex items-center">Gemini API Key <StatusBadge status={apiStatus.gemini} /></label>
-                                    <input type="text" value={apiKeys.gemini} onChange={(e) => setApiKeys(prev => ({ ...prev, gemini: e.target.value }))} placeholder="AIza..., AIza..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                    <div className="relative">
+                                        <input type={showKey.gemini ? "text" : "password"} value={apiKeys.gemini} onChange={(e) => setApiKeys(prev => ({ ...prev, gemini: e.target.value }))} placeholder="AIza..., AIza..." className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                        <button type="button" onClick={() => toggleKeyVisibility('gemini')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                                            {showKey.gemini ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <label className="text-xs font-bold text-slate-600 flex items-center">Groq API Key <StatusBadge status={apiStatus.groq} /></label>
-                                    <input type="text" value={apiKeys.groq} onChange={(e) => setApiKeys(prev => ({ ...prev, groq: e.target.value }))} placeholder="gsk_..., gsk_..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                    <div className="relative">
+                                        <input type={showKey.groq ? "text" : "password"} value={apiKeys.groq} onChange={(e) => setApiKeys(prev => ({ ...prev, groq: e.target.value }))} placeholder="gsk_..., gsk_..." className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                        <button type="button" onClick={() => toggleKeyVisibility('groq')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                                            {showKey.groq ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -894,7 +935,12 @@ function Overview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray
                             <div className="grid grid-cols-1 gap-4">
                                 <div className="flex flex-col gap-2">
                                     <label className="text-xs font-bold text-slate-600 flex items-center">l10n.dev API Key <StatusBadge status={apiStatus.l10n} /></label>
-                                    <input type="text" value={apiKeys.l10n} onChange={(e) => setApiKeys(prev => ({ ...prev, l10n: e.target.value }))} placeholder="Key1, Key2, Key3..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                    <div className="relative">
+                                        <input type={showKey.l10n ? "text" : "password"} value={apiKeys.l10n} onChange={(e) => setApiKeys(prev => ({ ...prev, l10n: e.target.value }))} placeholder="Key1, Key2, Key3..." className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                        <button type="button" onClick={() => toggleKeyVisibility('l10n')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                                            {showKey.l10n ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -904,7 +950,12 @@ function Overview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray
                             <div className="grid grid-cols-1 md:grid-cols-2 mb-4 gap-4">
                                 <div className="flex flex-col gap-2">
                                     <label className="text-xs font-bold text-slate-600 flex items-center">ElevenLabs API Key <StatusBadge status={apiStatus.elevenlabs} /></label>
-                                    <input type="text" value={apiKeys.elevenlabs} onChange={(e) => setApiKeys(prev => ({ ...prev, elevenlabs: e.target.value }))} placeholder="Key1, Key2..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                    <div className="relative">
+                                        <input type={showKey.elevenlabs ? "text" : "password"} value={apiKeys.elevenlabs} onChange={(e) => setApiKeys(prev => ({ ...prev, elevenlabs: e.target.value }))} placeholder="Key1, Key2..." className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                        <button type="button" onClick={() => toggleKeyVisibility('elevenlabs')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                                            {showKey.elevenlabs ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <label className="text-xs font-bold text-slate-600 flex items-center">ElevenLabs Voice ID</label>
@@ -919,11 +970,21 @@ function Overview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <label className="text-xs font-bold text-slate-600">API Key</label>
-                                    <input type="text" value={apiKeys.iflytekApiKey} onChange={(e) => setApiKeys(prev => ({ ...prev, iflytekApiKey: e.target.value }))} placeholder="Key1, Key2..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                    <div className="relative">
+                                        <input type={showKey.iflytekApiKey ? "text" : "password"} value={apiKeys.iflytekApiKey} onChange={(e) => setApiKeys(prev => ({ ...prev, iflytekApiKey: e.target.value }))} placeholder="Key1, Key2..." className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                        <button type="button" onClick={() => toggleKeyVisibility('iflytekApiKey')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                                            {showKey.iflytekApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <label className="text-xs font-bold text-slate-600">API Secret</label>
-                                    <input type="text" value={apiKeys.iflytekApiSecret} onChange={(e) => setApiKeys(prev => ({ ...prev, iflytekApiSecret: e.target.value }))} placeholder="Secret1, Secret2..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                    <div className="relative">
+                                        <input type={showKey.iflytekApiSecret ? "text" : "password"} value={apiKeys.iflytekApiSecret} onChange={(e) => setApiKeys(prev => ({ ...prev, iflytekApiSecret: e.target.value }))} placeholder="Secret1, Secret2..." className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                        <button type="button" onClick={() => toggleKeyVisibility('iflytekApiSecret')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                                            {showKey.iflytekApiSecret ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -938,6 +999,27 @@ function Overview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray
                     </div>
                 </div>
             )}
+
+            {userEmail === 'richardpl.meha@gmail.com' && (
+                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm mt-8">
+                    <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Trash className="text-rose-500" /> Pemeliharaan Sistem</h3>
+                    <p className="text-xs text-slate-500 mb-4">Bersihkan file sampah dan log aktivitas yang sudah usang untuk menghemat kapasitas database.</p>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 gap-4">
+                        <div>
+                            <h4 className="text-sm font-bold text-slate-700">Hapus Log Aktivitas (&gt;30 Hari)</h4>
+                            <p className="text-xs text-slate-500 mt-1">Menghapus riwayat latihan pengguna yang sudah kedaluwarsa.</p>
+                        </div>
+                        <button
+                            onClick={handleClearLogs}
+                            disabled={isClearingLogs}
+                            className="w-full sm:w-auto px-5 py-2.5 bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 text-sm shrink-0"
+                        >
+                            {isClearingLogs ? <Loader2 size={16} className="animate-spin" /> : <Trash size={16} />}
+                            {isClearingLogs ? 'Membersihkan...' : 'Bersihkan Log'}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -945,16 +1027,49 @@ function Overview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray
 function DataPengguna({ usersData, isLoading }) {
     const [sortOrder, setSortOrder] = useState('desc');
     const [searchQuery, setSearchQuery] = useState('');
+    const [filterLevel, setFilterLevel] = useState('');
 
-    const filteredUsers = usersData.filter(u =>
-        !searchQuery || (u.name || 'User').toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredUsers = usersData.filter(u => {
+        const matchName = !searchQuery || (u.name || 'User').toLowerCase().includes(searchQuery.toLowerCase());
+        const matchLevel = !filterLevel || (u.level || '').includes(filterLevel);
+        return matchName && matchLevel;
+    });
 
     const sortedUsers = [...filteredUsers].sort((a, b) => {
         const dateA = new Date(a.created_at).getTime();
         const dateB = new Date(b.created_at).getTime();
         return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
     });
+
+    const handleExportUsers = () => {
+        if (sortedUsers.length === 0) {
+            alert("Tidak ada data pengguna untuk diekspor.");
+            return;
+        }
+
+        const headers = ["Nama", "Gender", "Level", "Status Pro", "Tanggal Gabung"];
+        const csvRows = sortedUsers.map(u => [
+            u.name || 'User',
+            u.gender || 'male',
+            u.level || 'Beginner (A1)',
+            u.is_pro ? 'PRO' : 'Free',
+            new Date(u.created_at).toLocaleDateString('id-ID')
+        ]);
+
+        const csvContent = [
+            headers.join(","),
+            ...csvRows.map(row => row.map(item => `"${item}"`).join(","))
+        ].join("\n");
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Data_Pengguna_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     return (
         <div className="space-y-8 animate-in fade-in">
@@ -1000,10 +1115,23 @@ function DataPengguna({ usersData, isLoading }) {
 
                     {/* User Table Panel */}
                     <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="p-6 border-b border-slate-100 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
                             <h3 className="font-bold text-slate-800">Daftar Pengguna Aktif</h3>
-                            <div className="flex items-center gap-3 w-full sm:w-auto">
-                                <div className="relative w-full sm:w-64">
+                            <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+                                <select
+                                    value={filterLevel}
+                                    onChange={(e) => setFilterLevel(e.target.value)}
+                                    className="w-full sm:w-auto bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-2 focus:outline-none focus:border-blue-500 transition-all shadow-sm"
+                                >
+                                    <option value="">Semua Level</option>
+                                    <option value="A1">Beginner (A1)</option>
+                                    <option value="A2">Elementary (A2)</option>
+                                    <option value="B1">Intermediate (B1)</option>
+                                    <option value="B2">Upper Intermediate (B2)</option>
+                                    <option value="C1">Advanced (C1)</option>
+                                    <option value="C2">Proficient (C2)</option>
+                                </select>
+                                <div className="relative w-full sm:w-56">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                                     <input
                                         type="text"
@@ -1013,6 +1141,9 @@ function DataPengguna({ usersData, isLoading }) {
                                         className="pl-9 pr-4 py-2 w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl focus:outline-none focus:border-blue-500 transition-all shadow-sm"
                                     />
                                 </div>
+                                <button onClick={handleExportUsers} className="flex items-center gap-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 px-4 py-2 rounded-xl text-sm font-bold transition-colors w-full sm:w-auto justify-center shrink-0">
+                                    <Download size={16} /> Ekspor CSV
+                                </button>
                                 <div className="flex gap-2 shrink-0">
                                     <span className="px-3 py-2 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold">{sortedUsers.length} Total</span>
                                 </div>
