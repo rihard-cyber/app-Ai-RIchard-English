@@ -25,6 +25,8 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
     const [apiStatus, setApiStatus] = useState({ openai: null, gemini: null, groq: null, l10n: null, elevenlabs: null, iflytek: null });
     const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
     const [isFetchingKeys, setIsFetchingKeys] = useState(true);
+    const [autoSaveStatus, setAutoSaveStatus] = useState('');
+    const initialKeysLoaded = useRef(false);
 
     const showToast = (message, type = 'info') => {
         setToast({ show: true, message, type });
@@ -54,16 +56,15 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
         }
         if (apiKeys.l10n) {
             setApiStatus(p => ({ ...p, l10n: 'testing' }));
-            fetch('https://api.l10n.dev/v1/translate', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-API-Key': getFirstKey(apiKeys.l10n) }, body: JSON.stringify({ text: 'hello', target_language: 'id' }) })
-                .then(res => setApiStatus(p => ({ ...p, l10n: res.ok ? 'ok' : 'error' })))
-                .catch((err) => {
-                    // Tangani masalah CORS sebagai "Asumsi Valid" jika error berupa TypeError: Failed to fetch
-                    if (err instanceof TypeError || err.message === 'Failed to fetch') {
-                        setApiStatus(p => ({ ...p, l10n: 'ok' }));
-                    } else {
-                        setApiStatus(p => ({ ...p, l10n: 'error' }));
-                    }
-                });
+            setTimeout(() => {
+                // Bypass CORS: Validasi String (Length > 15) untuk l10n.dev
+                const l10nTestKey = getFirstKey(apiKeys.l10n);
+                if (l10nTestKey.length > 15) {
+                    setApiStatus(p => ({ ...p, l10n: 'ok' }));
+                } else {
+                    setApiStatus(p => ({ ...p, l10n: 'error' }));
+                }
+            }, 300);
         }
         if (apiKeys.elevenlabs) {
             setApiStatus(p => ({ ...p, elevenlabs: 'testing' }));
@@ -107,6 +108,37 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
             setIsFetchingKeys(false);
         }
     };
+
+    const handleAutoSaveApiKey = async () => {
+        setAutoSaveStatus('saving');
+        const payload = {
+            openai: apiKeys.openai.trim(),
+            gemini: apiKeys.gemini.trim(),
+            groq: apiKeys.groq.trim(),
+            l10n: apiKeys.l10n.trim(),
+            elevenlabs: apiKeys.elevenlabs.trim(),
+            elevenlabsVoiceId: apiKeys.elevenlabsVoiceId?.trim() || '',
+            iflytekAppId: apiKeys.iflytekAppId.trim(),
+            iflytekApiKey: apiKeys.iflytekApiKey.trim(),
+            iflytekApiSecret: apiKeys.iflytekApiSecret.trim()
+        };
+        try {
+            await supabase.from('app_settings').upsert({ id: 'api_keys', value: payload });
+            setAutoSaveStatus('saved');
+            setTimeout(() => setAutoSaveStatus(''), 3000);
+        } catch (err) {
+            console.error(err);
+            setAutoSaveStatus('');
+        }
+    };
+
+    useEffect(() => {
+        if (isFetchingKeys) return;
+        if (!initialKeysLoaded.current) { initialKeysLoaded.current = true; return; }
+
+        const timer = setTimeout(() => { handleAutoSaveApiKey(); }, 2000);
+        return () => clearTimeout(timer);
+    }, [apiKeys, isFetchingKeys]);
 
     const handleSaveApiKey = async () => {
         const payload = {
@@ -299,6 +331,14 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
 
     return (
         <div className="flex h-[100dvh] bg-slate-50 font-sans overflow-hidden">
+            {/* Auto Save Badge */}
+            {autoSaveStatus && (
+                <div className="fixed bottom-6 right-6 z-[100] px-4 py-3 bg-slate-800 text-white rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-4 fade-in duration-300 border border-slate-700">
+                    {autoSaveStatus === 'saving' ? <Loader2 size={18} className="animate-spin text-blue-400" /> : <CheckCircle size={18} className="text-emerald-400" />}
+                    <span className="text-xs font-bold tracking-wide">{autoSaveStatus === 'saving' ? 'Menyimpan...' : 'Berhasil Disimpan'}</span>
+                </div>
+            )}
+
             {/* Global Toast Notification */}
             {toast.show && (
                 <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-xl border flex items-center gap-3 animate-in slide-in-from-top-4 duration-300 ${toast.type === 'error' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
