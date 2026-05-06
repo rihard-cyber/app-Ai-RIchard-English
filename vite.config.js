@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import react from '@vitejs/plugin-react-oxc';
 
 export default defineConfig({
   plugins: [react()],
@@ -8,7 +8,7 @@ export default defineConfig({
     target: 'esnext',
     cssMinify: true,
     chunkSizeWarningLimit: 1500,
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
