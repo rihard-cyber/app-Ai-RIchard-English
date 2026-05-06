@@ -1,6 +1,6 @@
-import { generateChatResponse } from './ChatService';
-import { translateText } from './TranslationService';
-import { speakText } from './VoiceService';
+import { generateChatResponse } from './ChatService.js';
+import { translateText } from './TranslationService.js';
+import { speakText } from './VoiceService.js';
 
 export const AiOrchestrator = {
     chat: generateChatResponse,

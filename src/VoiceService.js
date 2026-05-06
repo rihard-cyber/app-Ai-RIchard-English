@@ -1,50 +1,80 @@
-import { TextToSpeech } from '@capacitor-community/text-to-speech';
+async function getIFlytekAuthUrl(apiKey, apiSecret) {
+    const host = "tts-api.xfyun.cn";
+    const path = "/v2/tts";
+    const date = new Date().toUTCString();
+    const signatureOrigin = `host: ${host}\ndate: ${date}\nGET ${path} HTTP/1.1`;
 
-export const speakText = async (text, keysObj, options = {}) => {
-    const elevenKeys = (keysObj?.voice || '').split(',').map(k => k.trim()).filter(Boolean);
-    const cleanText = text.replace(/❌[\s\S]*?✅/g, '').replace(/[✅❌*#_\\]/g, '').replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').substring(0, 600).trim();
+    const encoder = new TextEncoder();
+    const cryptoKey = await crypto.subtle.importKey(
+        "raw", encoder.encode(apiSecret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+    );
+    const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(signatureOrigin));
+    const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
 
-    if (!cleanText) {
-        if (options.onEnd) options.onEnd();
-        return;
-    }
+    const authorizationOrigin = `api_key="${apiKey}", algorithm="hmac-sha256", headers="host date request-line", signature="${signatureBase64}"`;
+    const authorization = btoa(authorizationOrigin);
 
-    if (elevenKeys.length > 0) {
-        for (const key of elevenKeys) {
-            try {
-                const voiceId = options.voiceId || '21m00Tcm4TlvDq8ikWAM';
-                const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
-                    method: 'POST',
-                    headers: { 'xi-api-key': key, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: cleanText, model_id: 'eleven_multilingual_v2' })
-                });
-                if (res.ok) {
-                    const blob = await res.blob();
-                    const url = URL.createObjectURL(blob);
-                    const audio = new Audio(url);
-                    if (options.onEnd) { audio.onended = options.onEnd; audio.onerror = options.onEnd; }
-                    audio.play();
-                    return;
-                }
-            } catch (e) { console.error("ElevenLabs fallback", e); }
-        }
+    return `wss://${host}${path}?authorization=${encodeURIComponent(authorization)}&date=${encodeURIComponent(date)}&host=${host}`;
+}
+
+const fallbackTTS = (text, options) => {
+    return new Promise((resolve) => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = options?.lang || 'en-US';
+        utterance.rate = options?.rate || 1.0;
+        utterance.pitch = options?.pitch || 1.0;
+        utterance.onend = resolve;
+        utterance.onerror = resolve;
+        window.speechSynthesis.speak(utterance);
+    });
+};
+
+export const speakText = async (text, globalApiKey, options = {}) => {
+    const { iflytekAppId, iflytekApiKey, iflytekApiSecret } = globalApiKey || {};
+
+    if (!iflytekAppId || !iflytekApiKey || !iflytekApiSecret) {
+        console.warn("iFLYTEK credentials missing. Falling back to browser TTS.");
+        return fallbackTTS(text, options);
     }
 
     try {
-        await TextToSpeech.stop();
-        await TextToSpeech.speak({ text: cleanText, lang: options.lang || 'en-US', rate: options.rate || 0.9, pitch: options.pitch || 1.0 });
-        if (options.onEnd) options.onEnd();
-    } catch (e) {
-        if ('speechSynthesis' in window && 'SpeechSynthesisUtterance' in window) {
-            const utterance = new SpeechSynthesisUtterance(cleanText);
-            utterance.lang = options.lang || 'en-US';
-            utterance.rate = options.rate || 0.9;
-            utterance.pitch = options.pitch || 1.0;
-            if (options.onEnd) { utterance.onend = options.onEnd; utterance.onerror = options.onEnd; }
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.speak(utterance);
-        } else {
-            if (options.onEnd) options.onEnd();
-        }
+        const url = await getIFlytekAuthUrl(iflytekApiKey, iflytekApiSecret);
+
+        return new Promise((resolve, reject) => {
+            const ws = new WebSocket(url);
+            let audioChunks = [];
+
+            ws.onopen = () => {
+                const params = {
+                    common: { app_id: iflytekAppId },
+                    business: { aue: "lame", sfl: 1, vcn: "xiaoyan", speed: 50, pitch: 50, volume: 50, bgs: 0 },
+                    data: { status: 2, text: btoa(unescape(encodeURIComponent(text))) }
+                };
+                ws.send(JSON.stringify(params));
+            };
+
+            ws.onmessage = (e) => {
+                const res = JSON.parse(e.data);
+                if (res.code !== 0) return fallbackTTS(text, options).then(resolve);
+                if (res.data && res.data.audio) audioChunks.push(res.data.audio);
+
+                if (res.data && res.data.status === 2) {
+                    ws.close();
+                    const audioSrc = "data:audio/mp3;base64," + audioChunks.join("");
+                    const audio = new Audio(audioSrc);
+                    audio.onended = resolve;
+                    audio.onerror = () => fallbackTTS(text, options).then(resolve);
+                    audio.play().catch(() => fallbackTTS(text, options).then(resolve));
+                }
+            };
+
+            ws.onerror = () => {
+                ws.close();
+                fallbackTTS(text, options).then(resolve);
+            };
+        });
+    } catch (error) {
+        console.error("iFLYTEK implementation failed", error);
+        return fallbackTTS(text, options);
     }
 };

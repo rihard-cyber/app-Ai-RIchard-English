@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-    LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw, Menu, X, User, Zap, Crown
+    LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw, Menu, X, User, Zap, Crown, Download, Search
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
@@ -12,12 +12,15 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
     const [banks, setBanks] = useState([]);
     const [users, setUsers] = useState([]); // New User State
     const [isLoading, setIsLoading] = useState(true);
+    const [selectedMonth, setSelectedMonth] = useState('');
+    const [selectedYear, setSelectedYear] = useState('');
+    const [searchUserName, setSearchUserName] = useState('');
 
     // New Bank State
     const [newBank, setNewBank] = useState({ provider: 'BCA', account_number: '', account_name: '' });
 
     // API Key State
-    const [apiKeys, setApiKeys] = useState({ core: '', translation: '', voice: '' });
+    const [apiKeys, setApiKeys] = useState({ openai: '', gemini: '', l10n: '', iflytekAppId: '', iflytekApiKey: '', iflytekApiSecret: '' });
     const [saveKeySuccess, setSaveKeySuccess] = useState(false);
 
     const fetchApiKey = async () => {
@@ -26,9 +29,12 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
             if (data && data.value) {
                 let parsed = data.value;
                 if (typeof parsed === 'string') {
-                    try { parsed = JSON.parse(parsed); } catch (e) { parsed = { core: data.value, translation: '', voice: '' }; }
+                    try { parsed = JSON.parse(parsed); } catch (e) { parsed = { openai: '', gemini: data.value, l10n: '', iflytekAppId: '', iflytekApiKey: '', iflytekApiSecret: '' }; }
                 }
-                setApiKeys({ core: parsed.core || '', translation: parsed.translation || '', voice: parsed.voice || '' });
+                setApiKeys({
+                    openai: parsed.openai || '', gemini: parsed.gemini || '', l10n: parsed.l10n || '',
+                    iflytekAppId: parsed.iflytekAppId || '', iflytekApiKey: parsed.iflytekApiKey || '', iflytekApiSecret: parsed.iflytekApiSecret || ''
+                });
             }
         } catch (error) {
             console.error("DB Key Error:", error);
@@ -37,9 +43,12 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
 
     const handleSaveApiKey = async () => {
         const payload = {
-            core: apiKeys.core.trim(),
-            translation: apiKeys.translation.trim(),
-            voice: apiKeys.voice.trim()
+            openai: apiKeys.openai.trim(),
+            gemini: apiKeys.gemini.trim(),
+            l10n: apiKeys.l10n.trim(),
+            iflytekAppId: apiKeys.iflytekAppId.trim(),
+            iflytekApiKey: apiKeys.iflytekApiKey.trim(),
+            iflytekApiSecret: apiKeys.iflytekApiSecret.trim()
         };
         try {
             await supabase.from('app_settings').upsert({ id: 'api_keys', value: payload });
@@ -126,6 +135,63 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
             console.error(error);
             alert("Gagal menolak pembayaran.");
         }
+    };
+
+    const availableYears = [...new Set(transactions.map(tx => new Date(tx.created_at).getFullYear()))].sort((a, b) => b - a);
+
+    const monthlyRevenue = transactions.filter(tx => tx.status === 'approved').reduce((acc, tx) => {
+        const date = new Date(tx.created_at);
+        const month = date.toLocaleString('id-ID', { month: 'long' });
+        const year = date.getFullYear();
+        const key = `${month} ${year}`;
+        if (!acc[key]) acc[key] = { month, year, revenue: 0, txCount: 0 };
+        acc[key].revenue += Number(tx.amount || 0);
+        acc[key].txCount += 1;
+        return acc;
+    }, {});
+
+    const monthlyRevenueArray = Object.values(monthlyRevenue).sort((a, b) => {
+        const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+        if (a.year !== b.year) return b.year - a.year;
+        return months.indexOf(b.month) - months.indexOf(a.month);
+    });
+
+    const filteredTransactions = transactions.filter(tx => {
+        const txDate = new Date(tx.created_at);
+        const monthMatch = !selectedMonth || (txDate.getMonth() + 1).toString() === selectedMonth;
+        const yearMatch = !selectedYear || txDate.getFullYear().toString() === selectedYear;
+        const searchMatch = !searchUserName || (tx.user_name || 'User').toLowerCase().includes(searchUserName.toLowerCase());
+        return monthMatch && yearMatch && searchMatch;
+    });
+
+    const handleExportTransactions = () => {
+        if (filteredTransactions.length === 0) {
+            alert("Tidak ada data transaksi untuk diekspor.");
+            return;
+        }
+
+        const headers = ["Tanggal", "User", "Paket", "Nominal", "Status"];
+        const csvRows = filteredTransactions.map(tx => [
+            new Date(tx.created_at).toLocaleDateString('id-ID'),
+            tx.user_name || 'User',
+            tx.plan_name,
+            tx.amount,
+            tx.status
+        ]);
+
+        const csvContent = [
+            headers.join(","),
+            ...csvRows.map(row => row.map(item => `"${item}"`).join(","))
+        ].join("\n");
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Data_Transaksi_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const handleAddBank = async (e) => {
@@ -256,37 +322,78 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
                                 <div className="flex justify-between text-xs text-slate-400 mt-2 font-bold uppercase"><span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span><span>Min</span></div>
                             </div>
 
+                            <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden mt-8">
+                                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                    <h3 className="font-bold text-slate-800 flex items-center gap-2"><CreditCard className="text-blue-500" /> Ringkasan Pendapatan Bulanan</h3>
+                                </div>
+                                <div className="overflow-x-auto transform-gpu overscroll-x-contain scroll-smooth pb-2">
+                                    <table className="w-full text-left text-sm whitespace-nowrap md:whitespace-normal">
+                                        <thead className="bg-slate-50/80 text-slate-500 font-black uppercase tracking-widest text-[10px]">
+                                            <tr>
+                                                <th className="p-6">Bulan & Tahun</th>
+                                                <th className="p-6">Jumlah Transaksi</th>
+                                                <th className="p-6">Total Pendapatan</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {monthlyRevenueArray.map((item, index) => (
+                                                <tr key={index} className="hover:bg-slate-50/50 transition-colors">
+                                                    <td className="p-6 font-bold text-slate-800">{item.month} {item.year}</td>
+                                                    <td className="p-6 font-bold text-blue-600">{item.txCount} Transaksi</td>
+                                                    <td className="p-6 font-black text-emerald-600">Rp {item.revenue.toLocaleString('id-ID')}</td>
+                                                </tr>
+                                            ))}
+                                            {monthlyRevenueArray.length === 0 && <tr><td colSpan="3" className="p-8 text-center text-slate-400">Belum ada pendapatan yang tercatat.</td></tr>}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
                             {userEmail === 'richardpl.meha@gmail.com' && (
                                 <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm mt-8 border-rose-200 shadow-rose-100">
                                     <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Zap className="text-blue-500" /> Konfigurasi AI (API Key)</h3>
-                                    <p className="text-xs text-slate-500 mb-4">Masukkan kumpulan API Key Anda (Pisahkan dengan koma).</p>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div className="flex flex-col gap-2">
-                                            <label className="text-xs font-bold text-slate-600">Core AI (OpenAI, Gemini, Groq)</label>
-                                            <textarea
-                                                value={apiKeys.core}
-                                                onChange={(e) => setApiKeys(prev => ({ ...prev, core: e.target.value }))}
-                                                placeholder="sk-..., gsk-..., AIza..."
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono resize-y min-h-[100px]"
-                                            ></textarea>
+                                    <p className="text-xs text-slate-500 mb-4">Masukkan kredensial API secara spesifik untuk setiap layanan.</p>
+                                    <div className="space-y-6">
+                                        <div>
+                                            <h4 className="text-sm font-bold text-slate-700 mb-3 border-b pb-2">Core AI</h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="flex flex-col gap-2">
+                                                    <label className="text-xs font-bold text-slate-600">OpenAI API Key</label>
+                                                    <input type="password" value={apiKeys.openai} onChange={(e) => setApiKeys(prev => ({ ...prev, openai: e.target.value }))} placeholder="sk-proj-..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                                </div>
+                                                <div className="flex flex-col gap-2">
+                                                    <label className="text-xs font-bold text-slate-600">Gemini API Key</label>
+                                                    <input type="password" value={apiKeys.gemini} onChange={(e) => setApiKeys(prev => ({ ...prev, gemini: e.target.value }))} placeholder="AIza..." className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="flex flex-col gap-2">
-                                            <label className="text-xs font-bold text-slate-600">Translation (DeepL)</label>
-                                            <textarea
-                                                value={apiKeys.translation}
-                                                onChange={(e) => setApiKeys(prev => ({ ...prev, translation: e.target.value }))}
-                                                placeholder="DeepL API Keys..."
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono resize-y min-h-[100px]"
-                                            ></textarea>
+
+                                        <div>
+                                            <h4 className="text-sm font-bold text-slate-700 mb-3 border-b pb-2">Translation API</h4>
+                                            <div className="grid grid-cols-1 gap-4">
+                                                <div className="flex flex-col gap-2">
+                                                    <label className="text-xs font-bold text-slate-600">l10n.dev API Key</label>
+                                                    <input type="password" value={apiKeys.l10n} onChange={(e) => setApiKeys(prev => ({ ...prev, l10n: e.target.value }))} placeholder="l10n.dev API Key" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="flex flex-col gap-2">
-                                            <label className="text-xs font-bold text-slate-600">Voice (ElevenLabs/Google)</label>
-                                            <textarea
-                                                value={apiKeys.voice}
-                                                onChange={(e) => setApiKeys(prev => ({ ...prev, voice: e.target.value }))}
-                                                placeholder="ElevenLabs API Keys..."
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono resize-y min-h-[100px]"
-                                            ></textarea>
+
+                                        <div>
+                                            <h4 className="text-sm font-bold text-slate-700 mb-3 border-b pb-2">Voice API (iFLYTEK)</h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div className="flex flex-col gap-2">
+                                                    <label className="text-xs font-bold text-slate-600">App ID</label>
+                                                    <input type="text" value={apiKeys.iflytekAppId} onChange={(e) => setApiKeys(prev => ({ ...prev, iflytekAppId: e.target.value }))} placeholder="App ID" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                                </div>
+                                                <div className="flex flex-col gap-2">
+                                                    <label className="text-xs font-bold text-slate-600">API Key</label>
+                                                    <input type="password" value={apiKeys.iflytekApiKey} onChange={(e) => setApiKeys(prev => ({ ...prev, iflytekApiKey: e.target.value }))} placeholder="API Key" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                                </div>
+                                                <div className="flex flex-col gap-2">
+                                                    <label className="text-xs font-bold text-slate-600">API Secret</label>
+                                                    <input type="password" value={apiKeys.iflytekApiSecret} onChange={(e) => setApiKeys(prev => ({ ...prev, iflytekApiSecret: e.target.value }))} placeholder="API Secret" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="mt-4 flex justify-end">
@@ -300,44 +407,99 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
                     )}
 
                     {activeTab === 'transactions' && (
-                        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in">
-                            <div className="overflow-x-auto transform-gpu overscroll-x-contain scroll-smooth pb-2">
-                                <table className="w-full text-left text-sm whitespace-nowrap md:whitespace-normal">
-                                    <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider">
-                                        <tr>
-                                            <th className="p-4">Tanggal</th>
-                                            <th className="p-4">User</th>
-                                            <th className="p-4">Paket</th>
-                                            <th className="p-4">Nominal</th>
-                                            <th className="p-4">Status</th>
-                                            <th className="p-4 text-center">Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {transactions.map(tx => (
-                                            <tr key={tx.id} className="hover:bg-slate-50/50">
-                                                <td className="p-4 text-slate-600">{new Date(tx.created_at).toLocaleDateString('id-ID')}</td>
-                                                <td className="p-4 font-bold text-slate-800">{tx.user_name || 'User'}</td>
-                                                <td className="p-4 text-blue-600 font-medium">{tx.plan_name}</td>
-                                                <td className="p-4 font-bold text-emerald-600">Rp {Number(tx.amount).toLocaleString('id-ID')}</td>
-                                                <td className="p-4">
-                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${tx.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : tx.status === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>{tx.status}</span>
-                                                </td>
-                                                <td className="p-4 flex justify-center gap-2">
-                                                    {tx.status === 'pending' ? (
-                                                        <>
-                                                            <button onClick={() => handleAccPayment(tx.id, tx.user_id)} className="p-2 bg-emerald-100 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-colors" title="ACC Pembayaran"><CheckCircle size={18} /></button>
-                                                            <button onClick={() => handleRejectPayment(tx.id)} className="p-2 bg-rose-100 text-rose-600 hover:bg-rose-600 hover:text-white rounded-lg transition-colors" title="Tolak"><XCircle size={18} /></button>
-                                                        </>
-                                                    ) : (
-                                                        <span className="text-xs text-slate-400 italic">Selesai</span>
-                                                    )}
-                                                </td>
+                        <div className="space-y-6 animate-in fade-in">
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                                <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                                    <div className="flex items-center gap-2 w-full sm:w-auto relative">
+                                        <Search className="absolute left-3 text-slate-400" size={16} />
+                                        <input
+                                            type="text"
+                                            placeholder="Cari nama user..."
+                                            value={searchUserName}
+                                            onChange={(e) => setSearchUserName(e.target.value)}
+                                            className="pl-9 pr-4 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm rounded-xl focus:outline-none focus:border-emerald-500 shadow-sm w-full"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                                        <label className="text-sm font-bold text-slate-600 whitespace-nowrap">Filter Tahun:</label>
+                                        <select
+                                            value={selectedYear}
+                                            onChange={(e) => setSelectedYear(e.target.value)}
+                                            className="bg-white border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-emerald-500 shadow-sm w-full sm:w-auto"
+                                        >
+                                            <option value="">Semua Tahun</option>
+                                            {availableYears.map(year => <option key={year} value={year}>{year}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                                        <label className="text-sm font-bold text-slate-600 whitespace-nowrap">Filter Bulan:</label>
+                                        <select
+                                            value={selectedMonth}
+                                            onChange={(e) => setSelectedMonth(e.target.value)}
+                                            className="bg-white border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-emerald-500 shadow-sm w-full sm:w-auto"
+                                        >
+                                            <option value="">Semua Bulan</option>
+                                            <option value="1">Januari</option>
+                                            <option value="2">Februari</option>
+                                            <option value="3">Maret</option>
+                                            <option value="4">April</option>
+                                            <option value="5">Mei</option>
+                                            <option value="6">Juni</option>
+                                            <option value="7">Juli</option>
+                                            <option value="8">Agustus</option>
+                                            <option value="9">September</option>
+                                            <option value="10">Oktober</option>
+                                            <option value="11">November</option>
+                                            <option value="12">Desember</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleExportTransactions}
+                                    className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm active:scale-95 text-sm w-full md:w-auto shrink-0"
+                                >
+                                    <Download size={18} /> Ekspor CSV Transaksi
+                                </button>
+                            </div>
+                            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div className="overflow-x-auto transform-gpu overscroll-x-contain scroll-smooth pb-2">
+                                    <table className="w-full text-left text-sm whitespace-nowrap md:whitespace-normal">
+                                        <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider">
+                                            <tr>
+                                                <th className="p-4">Tanggal</th>
+                                                <th className="p-4">User</th>
+                                                <th className="p-4">Paket</th>
+                                                <th className="p-4">Nominal</th>
+                                                <th className="p-4">Status</th>
+                                                <th className="p-4 text-center">Aksi</th>
                                             </tr>
-                                        ))}
-                                        {transactions.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-slate-400">Belum ada data transaksi.</td></tr>}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {filteredTransactions.map(tx => (
+                                                <tr key={tx.id} className="hover:bg-slate-50/50">
+                                                    <td className="p-4 text-slate-600">{new Date(tx.created_at).toLocaleDateString('id-ID')}</td>
+                                                    <td className="p-4 font-bold text-slate-800">{tx.user_name || 'User'}</td>
+                                                    <td className="p-4 text-blue-600 font-medium">{tx.plan_name}</td>
+                                                    <td className="p-4 font-bold text-emerald-600">Rp {Number(tx.amount).toLocaleString('id-ID')}</td>
+                                                    <td className="p-4">
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${tx.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : tx.status === 'rejected' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>{tx.status}</span>
+                                                    </td>
+                                                    <td className="p-4 flex justify-center gap-2">
+                                                        {tx.status === 'pending' ? (
+                                                            <>
+                                                                <button onClick={() => handleAccPayment(tx.id, tx.user_id)} className="p-2 bg-emerald-100 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition-colors" title="ACC Pembayaran"><CheckCircle size={18} /></button>
+                                                                <button onClick={() => handleRejectPayment(tx.id)} className="p-2 bg-rose-100 text-rose-600 hover:bg-rose-600 hover:text-white rounded-lg transition-colors" title="Tolak"><XCircle size={18} /></button>
+                                                            </>
+                                                        ) : (
+                                                            <span className="text-xs text-slate-400 italic">Selesai</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {filteredTransactions.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-slate-400">Belum ada data transaksi.</td></tr>}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     )}
