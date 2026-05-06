@@ -40,7 +40,7 @@
             android:authorities="${applicationId}.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true"
-            tools:ignore="ExportedContentProvider">
+            tools:ignore="ExportedContentProvider,Spelling">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
