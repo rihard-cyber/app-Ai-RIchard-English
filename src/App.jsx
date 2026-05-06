@@ -466,7 +466,7 @@ export default function App() {
       await handleLogout();
       alert("Data profil berhasil dihapus. Silakan hubungi Admin (richardpl.meha@gmail.com) jika Anda ingin menghapus email Anda secara permanen dari sistem.");
     }
-  });
+  };
 
   const saveProgress = async (skill, score, details = {}) => {
     const { data: { user } } = await supabase.auth.getUser();
