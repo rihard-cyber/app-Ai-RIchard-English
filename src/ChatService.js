@@ -33,9 +33,16 @@ const getRandomKey = (keyString) => {
 };
 
 export const generateChatResponse = async (payload, globalApiKey) => {
-    const geminiKey = getRandomKey(globalApiKey?.gemini || globalApiKey?.core);
-    const groqKey = getRandomKey(globalApiKey?.groq);
-    const openaiKey = getRandomKey(globalApiKey?.openai);
+    // Pengamanan Struktur: Handle parsing jika payload masih berupa string atau undefined
+    let keys = typeof globalApiKey === 'object' && globalApiKey !== null ? globalApiKey : {};
+    if (typeof globalApiKey === 'string') {
+        try { keys = JSON.parse(globalApiKey); }
+        catch (e) { keys = { gemini: globalApiKey }; }
+    }
+
+    const geminiKey = getRandomKey(keys.gemini || keys.core);
+    const groqKey = getRandomKey(keys.groq);
+    const openaiKey = getRandomKey(keys.openai);
 
     if (geminiKey) {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;

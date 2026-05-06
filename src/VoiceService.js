@@ -37,48 +37,62 @@ const getRandomKey = (keyString) => {
 };
 
 export const speakText = async (text, globalApiKey, options = {}) => {
-    const { elevenlabs, elevenlabsVoiceId } = globalApiKey || {};
-    const elevenlabsKey = getRandomKey(elevenlabs);
+    // Pengamanan Ekstraksi Kunci
+    let keysData = typeof globalApiKey === 'object' && globalApiKey !== null ? globalApiKey : {};
+    if (typeof globalApiKey === 'string') {
+        try { keysData = JSON.parse(globalApiKey); }
+        catch (e) { keysData = {}; }
+    }
+
+    const { elevenlabs, elevenlabsVoiceId } = keysData;
 
     // iFLYTEK membutuhkan rotasi 3 kunci secara tersinkronisasi
-    const appIds = (globalApiKey?.iflytekAppId || '').split(',').map(k => k.trim()).filter(k => k);
-    const apiKeys = (globalApiKey?.iflytekApiKey || '').split(',').map(k => k.trim()).filter(k => k);
-    const apiSecrets = (globalApiKey?.iflytekApiSecret || '').split(',').map(k => k.trim()).filter(k => k);
+    const appIds = (keysData.iflytekAppId || '').split(',').map(k => k.trim()).filter(k => k);
+    const apiKeys = (keysData.iflytekApiKey || '').split(',').map(k => k.trim()).filter(k => k);
+    const apiSecrets = (keysData.iflytekApiSecret || '').split(',').map(k => k.trim()).filter(k => k);
     const iflytekIndex = appIds.length > 0 ? Math.floor(Math.random() * appIds.length) : 0;
     const iflytekAppId = appIds[iflytekIndex] || appIds[0];
     const iflytekApiKey = apiKeys[iflytekIndex] || apiKeys[0];
     const iflytekApiSecret = apiSecrets[iflytekIndex] || apiSecrets[0];
 
-    if (elevenlabsKey) {
-        try {
-            const voiceId = elevenlabsVoiceId || options?.voiceId || '21m00Tcm4TlvDq8ikWAM';
-            const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'xi-api-key': elevenlabsKey
-                },
-                body: JSON.stringify({
-                    text: text,
-                    model_id: 'eleven_multilingual_v2',
-                    voice_settings: { stability: 0.5, similarity_boost: 0.5 }
-                })
-            });
+    const elevenlabsKeysList = (elevenlabs || '').split(',').map(k => k.trim()).filter(k => k);
+    elevenlabsKeysList.sort(() => Math.random() - 0.5); // Acak untuk load balancing
 
-            if (!response.ok) throw new Error('ElevenLabs API Error');
+    if (elevenlabsKeysList.length > 0) {
+        const voiceId = elevenlabsVoiceId || options?.voiceId || '21m00Tcm4TlvDq8ikWAM';
 
-            const blob = await response.blob();
-            const audioUrl = URL.createObjectURL(blob);
+        for (const key of elevenlabsKeysList) {
+            try {
+                const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'xi-api-key': key
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        model_id: 'eleven_multilingual_v2',
+                        voice_settings: { stability: 0.5, similarity_boost: 0.5 }
+                    })
+                });
 
-            return new Promise((resolve) => {
-                const audio = new Audio(audioUrl);
-                audio.onended = () => { URL.revokeObjectURL(audioUrl); resolve(); };
-                audio.onerror = () => { URL.revokeObjectURL(audioUrl); fallbackTTS(text, options).then(resolve); };
-                audio.play().catch(() => fallbackTTS(text, options).then(resolve));
-            });
-        } catch (error) {
-            console.error("ElevenLabs implementation failed", error);
+                if (!response.ok) throw new Error('ElevenLabs API Error dengan Key ini');
+
+                const blob = await response.blob();
+                const audioUrl = URL.createObjectURL(blob);
+
+                return new Promise((resolve) => {
+                    const audio = new Audio(audioUrl);
+                    audio.onended = () => { URL.revokeObjectURL(audioUrl); resolve(); };
+                    audio.onerror = () => { URL.revokeObjectURL(audioUrl); fallbackTTS(text, options).then(resolve); };
+                    audio.play().catch(() => fallbackTTS(text, options).then(resolve));
+                });
+            } catch (error) {
+                console.warn(`ElevenLabs key failed, memutar ke kunci berikutnya...`, error);
+                continue; // Lanjutkan percobaan pada kunci berikutnya di array
+            }
         }
+        console.warn("Semua kunci ElevenLabs gagal / limit habis. Jatuh ke browser TTS native.");
     }
 
     if (!iflytekAppId || !iflytekApiKey || !iflytekApiSecret) {
