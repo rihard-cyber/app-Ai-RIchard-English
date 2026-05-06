@@ -7,6 +7,7 @@ import {
   Mic,
   MicOff,
   Volume2,
+  VolumeX,
   Menu,
   X,
   Search,
@@ -171,6 +172,25 @@ export default function App() {
   const [isModulOpen, setIsModulOpen] = useState(true);
   const [isPraktekOpen, setIsPraktekOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // State untuk melacak preferensi Sapaan Suara Otomatis
+  const [isVoiceGreetingEnabled, setIsVoiceGreetingEnabled] = useState(() => {
+    const saved = localStorage.getItem('richard_voice_greeting');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('richard_voice_greeting', isVoiceGreetingEnabled);
+  }, [isVoiceGreetingEnabled]);
+
+  // State untuk melacak preferensi Gender Suara Sapaan
+  const [voiceGreetingGender, setVoiceGreetingGender] = useState(() => {
+    return localStorage.getItem('richard_voice_greeting_gender') || 'female';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('richard_voice_greeting_gender', voiceGreetingGender);
+  }, [voiceGreetingGender]);
 
   // State untuk melacak gesture Swipe (Geser Layar)
   const [touchStart, setTouchStart] = useState(null);
@@ -497,7 +517,7 @@ export default function App() {
     const prompts = getPrompts(userProfile);
     switch (activeTab) {
       case 'home':
-        return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} recommendation={recommendation} onStartGoal={(id) => { setActiveGoalId(id); setActiveTab('goal_session'); }} onUpgrade={() => triggerUpgrade()} />;
+        return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} recommendation={recommendation} onStartGoal={(id) => { setActiveGoalId(id); setActiveTab('goal_session'); }} onUpgrade={() => triggerUpgrade()} isVoiceGreetingEnabled={isVoiceGreetingEnabled} voiceGreetingGender={voiceGreetingGender} />;
       case 'leaderboard': return <Leaderboard userProfile={userProfile} onNavigate={handleTabChange} />;
       case 'progress': return <ProgressDashboard userProfile={userProfile} onNavigate={handleTabChange} />;
       case 'assessment': return <LevelTest onComplete={handleAssessmentComplete} />;
@@ -557,6 +577,41 @@ export default function App() {
                 <div><h4 className="font-bold text-slate-800">Status Akun</h4><p className="text-xs text-slate-500">Paket langganan aktif Anda.</p></div>
                 <span className={`text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest ${userProfile.is_pro ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-600'}`}>{userProfile.is_pro ? '👑 Pro' : 'Free'}</span>
               </div>
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <div><h4 className="font-bold text-slate-800">Sapaan Suara</h4><p className="text-xs text-slate-500">Sapaan otomatis saat membuka aplikasi.</p></div>
+                <button onClick={() => setIsVoiceGreetingEnabled(!isVoiceGreetingEnabled)} className={`p-3 rounded-2xl transition-all active:scale-95 ${isVoiceGreetingEnabled ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                  {isVoiceGreetingEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+                </button>
+              </div>
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <div><h4 className="font-bold text-slate-800">Jenis Suara Sapaan</h4><p className="text-xs text-slate-500">Pilih suara sapaan pria atau wanita.</p></div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const msg = "Halo, ini adalah contoh suara sapaan otomatis.";
+                      const utterance = new SpeechSynthesisUtterance(msg);
+                      utterance.lang = 'id-ID';
+                      utterance.pitch = voiceGreetingGender === 'male' ? 0.8 : 1.2;
+                      const voices = window.speechSynthesis.getVoices();
+                      const idVoices = voices.filter(v => v.lang.includes('id') || v.lang.includes('ID'));
+                      if (idVoices.length > 0) {
+                        let targetVoice = idVoices.find(v => voiceGreetingGender === 'male' ? /male|pria|laki|ardi|andika/i.test(v.name) : /female|perempuan|wanita|gadis|siti/i.test(v.name));
+                        if (targetVoice) utterance.voice = targetVoice;
+                      }
+                      window.speechSynthesis.speak(utterance);
+                    }}
+                    disabled={!isVoiceGreetingEnabled}
+                    className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all active:scale-95 disabled:opacity-50 border border-indigo-100 shadow-sm"
+                    title="Preview Suara"
+                  >
+                    <Volume2 size={18} />
+                  </button>
+                  <select value={voiceGreetingGender} onChange={(e) => setVoiceGreetingGender(e.target.value)} disabled={!isVoiceGreetingEnabled} className="bg-slate-50 border border-slate-200 text-slate-700 text-sm font-bold rounded-xl px-4 py-2.5 focus:outline-none focus:border-blue-500 transition-all shadow-sm disabled:opacity-50">
+                    <option value="female">Wanita</option>
+                    <option value="male">Pria</option>
+                  </select>
+                </div>
+              </div>
 
               {/* Tambahan: Tombol Clear Cache untuk HP Android */}
               <div className="p-6 border-b border-slate-100 flex items-center justify-between">
@@ -580,7 +635,7 @@ export default function App() {
             </div>
           </div>
         );
-      default: return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} recommendation={recommendation} onStartGoal={(id) => { setActiveGoalId(id); setActiveTab('goal_session'); }} onUpgrade={() => triggerUpgrade()} />;
+      default: return <HomeDashboard onNavigate={handleTabChange} userProfile={userProfile} recommendation={recommendation} onStartGoal={(id) => { setActiveGoalId(id); setActiveTab('goal_session'); }} onUpgrade={() => triggerUpgrade()} isVoiceGreetingEnabled={isVoiceGreetingEnabled} voiceGreetingGender={voiceGreetingGender} />;
     }
   };
 
@@ -821,12 +876,71 @@ const CONVERSATION_CHARACTERS = CHARS_RAW.map(c => {
 // ==========================================
 // HOME DASHBOARD
 // ==========================================
-function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, onUpgrade }) {
+const getGreetingTime = () => {
+  const hour = new Date().getHours();
+  if (hour >= 0 && hour <= 10) return 'Pagi';
+  if (hour >= 11 && hour <= 14) return 'Siang';
+  if (hour >= 15 && hour <= 18) return 'Sore';
+  return 'Malam';
+};
+
+function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, onUpgrade, isVoiceGreetingEnabled, voiceGreetingGender }) {
   const safeLevel = userProfile?.level || 'Pemula Dasar (A1)';
   const levelData = CURRICULUM[safeLevel] || CURRICULUM['Pemula Dasar (A1)'];
+  const { globalApiKey } = React.useContext(GlobalContext) || {};
+  const [toastMessage, setToastMessage] = useState('');
+
+  React.useEffect(() => {
+    // Fitur Sapaan Suara Otomatis Berdasarkan Waktu
+    const hasGreeted = sessionStorage.getItem('has_greeted');
+    if (!hasGreeted) {
+      const waktu = getGreetingTime();
+
+      // Ambil nama panggilan saja (kata pertama) dan hilangkan simbol/emoji
+      let namaPanggilan = 'Pengguna';
+      if (userProfile?.name && userProfile.name.trim() !== '' && userProfile.name !== 'User') {
+        namaPanggilan = userProfile.name.split(' ')[0].replace(/[^a-zA-Z0-9]/g, '');
+      }
+
+      const greetingMsg = `Selamat ${waktu}, ${namaPanggilan}, dan selamat datang!`;
+
+      // Menampilkan popup toast selama 5 detik
+      setToastMessage(greetingMsg);
+      setTimeout(() => setToastMessage(''), 5000);
+
+      if (isVoiceGreetingEnabled) {
+        try {
+          const utterance = new SpeechSynthesisUtterance(greetingMsg);
+          utterance.lang = 'id-ID'; // Menggunakan suara bahasa Indonesia
+
+          // Atur profil suara berdasarkan gender (Pitch dan Pilihan Suara OS)
+          utterance.pitch = voiceGreetingGender === 'male' ? 0.8 : 1.2;
+          const voices = window.speechSynthesis.getVoices();
+          const idVoices = voices.filter(v => v.lang.includes('id') || v.lang.includes('ID'));
+          if (idVoices.length > 0) {
+            let targetVoice = idVoices.find(v => voiceGreetingGender === 'male' ? /male|pria|laki|ardi|andika/i.test(v.name) : /female|perempuan|wanita|gadis|siti/i.test(v.name));
+            if (targetVoice) utterance.voice = targetVoice;
+          }
+
+          window.speechSynthesis.speak(utterance);
+        } catch (err) {
+          console.error("Greeting TTS Error:", err);
+        }
+      }
+
+      // Tandai bahwa user sudah disapa di sesi ini
+      sessionStorage.setItem('has_greeted', 'true');
+    }
+  }, [userProfile, isVoiceGreetingEnabled, voiceGreetingGender]);
 
   return (
     <div className="p-4 md:p-8 w-full max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 overflow-x-hidden">
+      {toastMessage && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-xl border bg-emerald-50 border-emerald-200 text-emerald-700 flex items-center gap-3 animate-in slide-in-from-top-4 duration-300">
+          <Sparkles size={20} />
+          <span className="font-bold text-sm">{toastMessage}</span>
+        </div>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
         <div className="lg:col-span-2 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-[2.5rem] p-6 md:p-12 text-white shadow-2xl relative overflow-hidden group w-full max-w-full">
           <div className="absolute -bottom-10 -right-10 opacity-10 group-hover:scale-110 transition-transform duration-700">
@@ -1011,6 +1125,177 @@ function NavItem({ icon, label, isActive, onClick, badge }) {
 }
 
 
+// ==========================================
+// RENDER FORMATTED TEXT (Dipindah keluar agar Pure & Efisien)
+// ==========================================
+const renderFormattedText = (text) => {
+  if (!text) return null;
+  const lines = text.split('\n');
+  let inTable = false;
+  let tableRows = [];
+  const elements = [];
+  const flushTable = (keyIndex) => {
+    if (tableRows.length > 0) {
+      elements.push(
+        <div key={`table-${keyIndex}`} className="overflow-x-auto my-4 rounded-xl border border-slate-200 shadow-sm w-full transform-gpu overscroll-x-contain scroll-smooth pb-2">
+          <table className="min-w-full text-sm text-left whitespace-nowrap md:whitespace-normal">
+            <tbody>
+              {tableRows.map((row, idx) => {
+                const cols = row.split('|').map(c => c.trim()).filter(c => c);
+                if (row.includes('---')) return null;
+                return (
+                  <tr key={idx} className={`${idx === 0 ? 'bg-indigo-50 font-bold text-indigo-900 border-b-2 border-indigo-100' : 'border-t border-slate-100 bg-white'}`}>
+                    {cols.map((col, cidx) => (
+                      <td key={cidx} className="px-4 py-3 border-r last:border-r-0 border-slate-100 align-top" dangerouslySetInnerHTML={{ __html: parseInline(col) }} />
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      );
+      tableRows = [];
+      inTable = false;
+    }
+  };
+
+  const parseInline = (str) => {
+    return str
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/✅/g, '<span class="text-emerald-600 font-bold">✅</span>')
+      .replace(/❌/g, '<span class="text-rose-600 font-bold">❌</span>');
+  };
+
+  lines.forEach((line, i) => {
+    if (line.trim().startsWith('|')) {
+      inTable = true;
+      tableRows.push(line);
+    } else {
+      if (inTable) flushTable(i);
+      if (line.trim()) {
+        elements.push(<p key={i} className="mb-2 last:mb-0 leading-relaxed break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: parseInline(line) }} />);
+      } else {
+        elements.push(<div key={i} className="h-2" />);
+      }
+    }
+  });
+  if (inTable) flushTable('end');
+  return elements;
+};
+
+// ==========================================
+// KOMPONEN MEMOIZED: MESSAGE BUBBLE
+// ==========================================
+const MessageBubble = React.memo(({
+  msg,
+  idx,
+  isLast,
+  translation,
+  suggestions,
+  lastScore,
+  onTTS,
+  onTranslate,
+  onSuggest,
+  onSuggestionClick
+}) => {
+  return (
+    <div className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} gap-2 w-full`}>
+      <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} items-end gap-2 w-full animate-in slide-in-from-bottom-2 duration-300`}>
+        {msg.role !== 'user' && (
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+            <Bot size={16} />
+          </div>
+        )}
+        <div className={`relative max-w-[85%] px-4 py-3 rounded-2xl shadow-sm text-sm md:text-base break-words ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none'}`}>
+          {renderFormattedText(msg.content)}
+
+          {msg.role === 'ai' && (
+            <div className="mt-2 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-2 shrink-0 relative z-50">
+              <button onClick={() => onTTS(msg.content)} className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors shrink-0 touch-manipulation shadow-sm border border-transparent hover:border-slate-200" title="Dengarkan (TTS)">
+                <Volume2 size={18} />
+              </button>
+              <button onClick={() => onTranslate(idx, msg.content)} className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors shrink-0 touch-manipulation shadow-sm border border-transparent hover:border-slate-200">
+                <Languages size={18} />
+              </button>
+              <button onClick={() => onSuggest(idx)} className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors shrink-0 touch-manipulation shadow-sm border border-transparent hover:border-slate-200">
+                <Lightbulb size={18} />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {translation && (
+        <div className="ml-10 max-w-[80%] bg-emerald-50 text-emerald-800 px-4 py-2 rounded-xl text-xs md:text-sm border border-emerald-100 animate-in fade-in slide-in-from-top-1 duration-300">
+          <p className="font-medium italic leading-relaxed">{translation}</p>
+        </div>
+      )}
+
+      {isLast && msg.role === 'ai' && suggestions && suggestions.length > 0 && (
+        <div className="flex flex-wrap gap-2 pl-10 mt-2 animate-in fade-in slide-in-from-top-2 duration-500">
+          {suggestions.map((s, si) => (
+            <button key={si} onClick={() => onSuggestionClick(s)} className="px-4 py-2 bg-white border border-blue-200 text-blue-600 rounded-full text-xs md:text-sm hover:bg-blue-50 transition-all active:scale-95 shadow-sm">
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {isLast && msg.role === 'ai' && lastScore && (
+        <div className="pl-10 mt-3 w-full max-w-md animate-in zoom-in duration-500">
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xl shadow-blue-500/5">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">RichardMeha Feedback</h4>
+              <div className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-md uppercase">Result Detected</div>
+            </div>
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              <div className="text-center bg-blue-50 rounded-xl p-2">
+                <div className="text-base font-black text-blue-600">{lastScore.grammar || 0}%</div>
+                <div className="text-[8px] text-slate-500 uppercase font-bold mt-1">Grammar</div>
+              </div>
+              <div className="text-center bg-indigo-50 rounded-xl p-2">
+                <div className="text-base font-black text-indigo-600">{lastScore.vocab || 0}%</div>
+                <div className="text-[8px] text-slate-500 uppercase font-bold mt-1">Vocab</div>
+              </div>
+              <div className="text-center bg-emerald-50 rounded-xl p-2">
+                <div className="text-lg font-black text-emerald-600">{lastScore.fluency}%</div>
+                <div className="text-[8px] text-slate-500 uppercase font-bold mt-1">Fluency</div>
+              </div>
+              <div className="text-center bg-amber-50 rounded-xl p-2">
+                <div className="text-base font-black text-amber-600">{lastScore.comprehension || 0}%</div>
+                <div className="text-[8px] text-slate-500 uppercase font-bold mt-1">Comprehend</div>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 italic border-l-2 border-blue-500 pl-3 py-1 mb-3">
+              "{lastScore.feedback}"
+            </p>
+            {lastScore.phonetic && (
+              <div className="mt-2 text-[10px] bg-slate-50 p-2 rounded-xl flex items-center justify-between border border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Volume2 size={12} className="text-slate-400" />
+                  <span className="text-slate-400 font-bold uppercase tracking-widest">Phonetic:</span>
+                </div>
+                <span className="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{lastScore.phonetic}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // Kustomisasi perbandingan ini menjamin MessageBubble TIDAK AKAN re-render
+  // saat user mengetik di Input (walaupun reference fungsi callback berubah).
+  return prevProps.msg.content === nextProps.msg.content &&
+    prevProps.idx === nextProps.idx &&
+    prevProps.isLast === nextProps.isLast &&
+    prevProps.translation === nextProps.translation &&
+    prevProps.suggestions === nextProps.suggestions &&
+    prevProps.lastScore === nextProps.lastScore;
+});
+
 function ChatModule({
   userProfile,
   setUserProfile,
@@ -1110,7 +1395,7 @@ function ChatModule({
     }, 5000);
   };
 
-  const handleTranslate = async (index) => {
+  const handleTranslate = async (index, textToTranslateOverride) => {
     if (translations[index]) {
       setTranslations(prev => {
         const next = { ...prev };
@@ -1120,7 +1405,7 @@ function ChatModule({
       return;
     }
 
-    const textToTranslate = messages[index].content;
+    const textToTranslate = textToTranslateOverride || messages[index].content;
     setIsLoading(true);
     try {
       const translation = await AiOrchestrator.translate(textToTranslate, globalApiKey);
@@ -1515,63 +1800,6 @@ function ChatModule({
     }
   };
 
-  const renderFormattedText = (text) => {
-    if (!text) return null;
-    const lines = text.split('\n');
-    let inTable = false;
-    let tableRows = [];
-    const elements = [];
-    const flushTable = (keyIndex) => {
-      if (tableRows.length > 0) {
-        elements.push(
-          <div key={`table-${keyIndex}`} className="overflow-x-auto my-4 rounded-xl border border-slate-200 shadow-sm w-full transform-gpu overscroll-x-contain scroll-smooth pb-2">
-            <table className="min-w-full text-sm text-left whitespace-nowrap md:whitespace-normal">
-              <tbody>
-                {tableRows.map((row, idx) => {
-                  const cols = row.split('|').map(c => c.trim()).filter(c => c);
-                  if (row.includes('---')) return null;
-                  return (
-                    <tr key={idx} className={`${idx === 0 ? 'bg-indigo-50 font-bold text-indigo-900 border-b-2 border-indigo-100' : 'border-t border-slate-100 bg-white'}`}>
-                      {cols.map((col, cidx) => (
-                        <td key={cidx} className="px-4 py-3 border-r last:border-r-0 border-slate-100 align-top" dangerouslySetInnerHTML={{ __html: parseInline(col) }} />
-                      ))}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        );
-        tableRows = [];
-        inTable = false;
-      }
-    };
-
-    const parseInline = (str) => {
-      return str
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/✅/g, '<span class="text-emerald-600 font-bold">✅</span>')
-        .replace(/❌/g, '<span class="text-rose-600 font-bold">❌</span>');
-    };
-
-    lines.forEach((line, i) => {
-      if (line.trim().startsWith('|')) {
-        inTable = true;
-        tableRows.push(line);
-      } else {
-        if (inTable) flushTable(i);
-        if (line.trim()) {
-          elements.push(<p key={i} className="mb-2 last:mb-0 leading-relaxed break-words whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: parseInline(line) }} />);
-        } else {
-          elements.push(<div key={i} className="h-2" />);
-        }
-      }
-    });
-    if (inTable) flushTable('end');
-    return elements;
-  };
-
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
@@ -1726,103 +1954,19 @@ function ChatModule({
       <div ref={chatContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 space-y-6 transform-gpu overscroll-none scroll-smooth w-full" style={{ paddingBottom: '120px' }}>
         {messages.map((msg, idx) => (
           !msg.isHidden && (
-            <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} gap-2 w-full`}>
-              <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} items-end gap-2 w-full animate-in slide-in-from-bottom-2 duration-300`}>
-                {msg.role !== 'user' && (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                    <Bot size={16} />
-                  </div>
-                )}
-                <div className={`relative max-w-[85%] px-4 py-3 rounded-2xl shadow-sm text-sm md:text-base break-words ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none'}`}>
-                  {renderFormattedText(msg.content)}
-
-                  {msg.role === 'ai' && (
-                    <div className="mt-2 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-2 shrink-0 relative z-50">
-                      <button
-                        onClick={() => handleTTS(msg.content)}
-                        className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors shrink-0 touch-manipulation shadow-sm border border-transparent hover:border-slate-200"
-                        title="Dengarkan (TTS)"
-                      >
-                        <Volume2 size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleTranslate(idx)}
-                        className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors shrink-0 touch-manipulation shadow-sm border border-transparent hover:border-slate-200"
-                      >
-                        <Languages size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleSuggest(idx)}
-                        className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition-colors shrink-0 touch-manipulation shadow-sm border border-transparent hover:border-slate-200"
-                      >
-                        <Lightbulb size={18} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {translations[idx] && (
-                <div className="ml-10 max-w-[80%] bg-emerald-50 text-emerald-800 px-4 py-2 rounded-xl text-xs md:text-sm border border-emerald-100 animate-in fade-in slide-in-from-top-1 duration-300">
-                  <p className="font-medium italic leading-relaxed">{translations[idx]}</p>
-                </div>
-              )}
-
-              {idx === messages.length - 1 && msg.role === 'ai' && suggestions.length > 0 && (
-                <div className="flex flex-wrap gap-2 pl-10 mt-2 animate-in fade-in slide-in-from-top-2 duration-500">
-                  {suggestions.map((s, si) => (
-                    <button
-                      key={si}
-                      onClick={() => { setInputValue(s); sendMessage(s, false, false); }}
-                      className="px-4 py-2 bg-white border border-blue-200 text-blue-600 rounded-full text-xs md:text-sm hover:bg-blue-50 transition-all active:scale-95 shadow-sm"
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {idx === messages.length - 1 && msg.role === 'ai' && lastScore && (
-                <div className="pl-10 mt-3 w-full max-w-md animate-in zoom-in duration-500">
-                  <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xl shadow-blue-500/5">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">RichardMeha Feedback</h4>
-                      <div className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-md uppercase">Result Detected</div>
-                    </div>
-                    <div className="grid grid-cols-4 gap-2 mb-4">
-                      <div className="text-center bg-blue-50 rounded-xl p-2">
-                        <div className="text-base font-black text-blue-600">{lastScore.grammar || 0}%</div>
-                        <div className="text-[8px] text-slate-500 uppercase font-bold mt-1">Grammar</div>
-                      </div>
-                      <div className="text-center bg-indigo-50 rounded-xl p-2">
-                        <div className="text-base font-black text-indigo-600">{lastScore.vocab || 0}%</div>
-                        <div className="text-[8px] text-slate-500 uppercase font-bold mt-1">Vocab</div>
-                      </div>
-                      <div className="text-center bg-emerald-50 rounded-xl p-2">
-                        <div className="text-lg font-black text-emerald-600">{lastScore.fluency}%</div>
-                        <div className="text-[8px] text-slate-500 uppercase font-bold mt-1">Fluency</div>
-                      </div>
-                      <div className="text-center bg-amber-50 rounded-xl p-2">
-                        <div className="text-base font-black text-amber-600">{lastScore.comprehension || 0}%</div>
-                        <div className="text-[8px] text-slate-500 uppercase font-bold mt-1">Comprehend</div>
-                      </div>
-                    </div>
-                    <p className="text-xs text-slate-600 italic border-l-2 border-blue-500 pl-3 py-1 mb-3">
-                      "{lastScore.feedback}"
-                    </p>
-                    {lastScore.phonetic && (
-                      <div className="mt-2 text-[10px] bg-slate-50 p-2 rounded-xl flex items-center justify-between border border-slate-100">
-                        <div className="flex items-center gap-2">
-                          <Volume2 size={12} className="text-slate-400" />
-                          <span className="text-slate-400 font-bold uppercase tracking-widest">Phonetic:</span>
-                        </div>
-                        <span className="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{lastScore.phonetic}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+            <MessageBubble
+              key={idx}
+              msg={msg}
+              idx={idx}
+              isLast={idx === messages.length - 1}
+              translation={translations[idx]}
+              suggestions={suggestions}
+              lastScore={lastScore}
+              onTTS={handleTTS}
+              onTranslate={handleTranslate}
+              onSuggest={handleSuggest}
+              onSuggestionClick={(s) => { setInputValue(s); sendMessage(s, false, false); }}
+            />
           )
         ))}
         {isLoading && (

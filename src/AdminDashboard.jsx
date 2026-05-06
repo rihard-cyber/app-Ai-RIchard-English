@@ -22,6 +22,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
     // API Key State
     const [apiKeys, setApiKeys] = useState({ openai: '', gemini: '', groq: '', l10n: '', elevenlabs: '', elevenlabsVoiceId: '', iflytekAppId: '', iflytekApiKey: '', iflytekApiSecret: '' });
     const [saveKeySuccess, setSaveKeySuccess] = useState(false);
+    const [isSavingKey, setIsSavingKey] = useState(false);
     const [apiStatus, setApiStatus] = useState({ openai: null, gemini: null, groq: null, l10n: null, elevenlabs: null, iflytek: null });
     const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
     const [isFetchingKeys, setIsFetchingKeys] = useState(true);
@@ -141,6 +142,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
     }, [apiKeys, isFetchingKeys]);
 
     const handleSaveApiKey = async () => {
+        setIsSavingKey(true);
         const payload = {
             openai: apiKeys.openai.trim(),
             gemini: apiKeys.gemini.trim(),
@@ -157,6 +159,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
         } catch (err) {
             console.error(err);
         }
+        setIsSavingKey(false);
         setSaveKeySuccess(true);
         setTimeout(() => setSaveKeySuccess(false), 3000);
     };
@@ -433,6 +436,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
                             handleTestConnections={handleTestConnections}
                             handleSaveApiKey={handleSaveApiKey}
                             saveKeySuccess={saveKeySuccess}
+                            isSavingKey={isSavingKey}
                             isFetchingKeys={isFetchingKeys}
                             showToast={showToast}
                         />
@@ -764,7 +768,7 @@ function StatusBadge({ status }) {
     return null;
 }
 
-function Overview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray, userEmail, apiKeys, setApiKeys, apiStatus, handleTestConnections, handleSaveApiKey, saveKeySuccess, isFetchingKeys, showToast }) {
+function Overview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray, userEmail, apiKeys, setApiKeys, apiStatus, handleTestConnections, handleSaveApiKey, saveKeySuccess, isSavingKey, isFetchingKeys, showToast }) {
     // Perhitungan Distribusi Level Bahasa (A1-C2)
     const levelCounts = useMemo(() => {
         const counts = { A1: 0, A2: 0, B1: 0, B2: 0, C1: 0, C2: 0 };
@@ -995,11 +999,11 @@ function Overview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray
                         </div>
                     </div>
                     <div className="mt-6 flex flex-col sm:flex-row justify-end gap-3 border-t border-slate-100 pt-4">
-                        <button onClick={handleTestConnections} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold active:scale-95 transition-all w-full sm:w-auto flex justify-center items-center gap-2">
+                        <button onClick={handleTestConnections} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold text-sm active:scale-95 transition-all w-full sm:w-auto flex justify-center items-center gap-2">
                             <Activity size={18} /> Test Koneksi API
                         </button>
-                        <button onClick={handleSaveApiKey} className={`${saveKeySuccess ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-blue-600 hover:bg-blue-700'} text-white px-6 py-3 rounded-xl font-bold active:scale-95 transition-all w-full sm:w-auto sm:self-end flex justify-center items-center`}>
-                            {saveKeySuccess ? 'Tersimpan ✅' : 'Simpan Semua Key'}
+                        <button onClick={handleSaveApiKey} disabled={isSavingKey} className={`${saveKeySuccess ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-blue-600 hover:bg-blue-700'} text-white px-6 py-3 rounded-xl font-bold text-sm active:scale-95 transition-all w-full sm:w-auto sm:self-end flex justify-center items-center disabled:opacity-70 gap-2`}>
+                            {isSavingKey ? <><Loader2 size={16} className="animate-spin" /> Menyimpan...</> : saveKeySuccess ? 'Tersimpan ✅' : 'Simpan Semua Key'}
                         </button>
                     </div>
                 </div>
