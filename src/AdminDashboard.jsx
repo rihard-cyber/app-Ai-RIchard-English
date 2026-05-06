@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
     LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw, Menu, X, User, Zap, Crown, Download, Search, ArrowUpDown, Eye, EyeOff, Trash
 } from 'lucide-react';
@@ -258,13 +258,15 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
     const chartData = [...monthlyRevenueArray].reverse().slice(-12);
     const maxRevenue = Math.max(...chartData.map(d => d.revenue), 10000);
 
-    const filteredTransactions = transactions.filter(tx => {
-        const txDate = new Date(tx.created_at);
-        const monthMatch = !selectedMonth || (txDate.getMonth() + 1).toString() === selectedMonth;
-        const yearMatch = !selectedYear || txDate.getFullYear().toString() === selectedYear;
-        const searchMatch = !searchUserName || (tx.user_name || 'User').toLowerCase().includes(searchUserName.toLowerCase());
-        return monthMatch && yearMatch && searchMatch;
-    });
+    const filteredTransactions = useMemo(() => {
+        return transactions.filter(tx => {
+            const txDate = new Date(tx.created_at);
+            const monthMatch = !selectedMonth || (txDate.getMonth() + 1).toString() === selectedMonth;
+            const yearMatch = !selectedYear || txDate.getFullYear().toString() === selectedYear;
+            const searchMatch = !searchUserName || (tx.user_name || 'User').toLowerCase().includes(searchUserName.toLowerCase());
+            return monthMatch && yearMatch && searchMatch;
+        });
+    }, [transactions, selectedMonth, selectedYear, searchUserName]);
 
     const handleExportTransactions = () => {
         if (filteredTransactions.length === 0) {
@@ -764,17 +766,20 @@ function StatusBadge({ status }) {
 
 function Overview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray, userEmail, apiKeys, setApiKeys, apiStatus, handleTestConnections, handleSaveApiKey, saveKeySuccess, isFetchingKeys, showToast }) {
     // Perhitungan Distribusi Level Bahasa (A1-C2)
-    const levelCounts = { A1: 0, A2: 0, B1: 0, B2: 0, C1: 0, C2: 0 };
-    usersData.forEach(u => {
-        const lvl = u.level || '';
-        if (lvl.includes('A1')) levelCounts.A1++;
-        else if (lvl.includes('A2')) levelCounts.A2++;
-        else if (lvl.includes('B1')) levelCounts.B1++;
-        else if (lvl.includes('B2')) levelCounts.B2++;
-        else if (lvl.includes('C1')) levelCounts.C1++;
-        else if (lvl.includes('C2')) levelCounts.C2++;
-        else levelCounts.A1++; // Fallback untuk user baru/tanpa data
-    });
+    const levelCounts = useMemo(() => {
+        const counts = { A1: 0, A2: 0, B1: 0, B2: 0, C1: 0, C2: 0 };
+        usersData.forEach(u => {
+            const lvl = u.level || '';
+            if (lvl.includes('A1')) counts.A1++;
+            else if (lvl.includes('A2')) counts.A2++;
+            else if (lvl.includes('B1')) counts.B1++;
+            else if (lvl.includes('B2')) counts.B2++;
+            else if (lvl.includes('C1')) counts.C1++;
+            else if (lvl.includes('C2')) counts.C2++;
+            else counts.A1++; // Fallback untuk user baru/tanpa data
+        });
+        return counts;
+    }, [usersData]);
     const maxLevelCount = Math.max(...Object.values(levelCounts), 1);
     const levelColors = { A1: 'bg-emerald-400', A2: 'bg-emerald-500', B1: 'bg-blue-400', B2: 'bg-blue-500', C1: 'bg-purple-400', C2: 'bg-purple-500' };
 

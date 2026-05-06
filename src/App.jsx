@@ -1061,8 +1061,10 @@ function ChatModule({
   const handleScroll = () => {
     if (!chatContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
-    // Tampilkan tombol melayang jika user scroll ke atas lebih dari 150px
-    setShowScrollButton(scrollHeight - scrollTop - clientHeight > 150);
+    const shouldShow = scrollHeight - scrollTop - clientHeight > 150;
+    if (showScrollButton !== shouldShow) {
+      setShowScrollButton(shouldShow);
+    }
   };
 
   // Audio API untuk memutar suara 'Ding' murni tanpa file external
