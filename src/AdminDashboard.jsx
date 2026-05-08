@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, Users, RefreshCw, UserCheck } from 'lucide-react';
+import { LogOut, Users, RefreshCw, UserCheck, Crown, Activity, Menu, X } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) {
     const [users, setUsers] = useState([]);
     const [totalMurid, setTotalMurid] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const fetchDataPengguna = async () => {
         setIsLoading(true);
