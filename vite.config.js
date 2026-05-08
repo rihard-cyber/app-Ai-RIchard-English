@@ -19,6 +19,9 @@ function chunkLoadingNotifier() {
 export default defineConfig({
   plugins: [react(), chunkLoadingNotifier()],
   base: './', // Mengubah path menjadi relatif agar support di GitHub Pages & Android APK
+  esbuild: {
+    drop: ['console', 'debugger'], // Optimasi Final: Membuang semua console.log di versi production
+  },
   build: {
     target: 'esnext',
     cssMinify: true,

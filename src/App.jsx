@@ -1200,6 +1200,21 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, o
   const levelData = CURRICULUM[safeLevel] || CURRICULUM['Pemula Dasar (A1)'];
   const { globalApiKey } = React.useContext(GlobalContext) || {};
   const [toastMessage, setToastMessage] = useState('');
+  const [displayedToast, setDisplayedToast] = useState('');
+
+  // Efek Ketikan Animasi (Typewriter)
+  React.useEffect(() => {
+    if (toastMessage) {
+      let i = 0;
+      setDisplayedToast('');
+      const interval = setInterval(() => {
+        setDisplayedToast(toastMessage.substring(0, i + 1));
+        i++;
+        if (i >= toastMessage.length) clearInterval(interval);
+      }, 40); // Kecepatan ketikan 40ms per huruf
+      return () => clearInterval(interval);
+    }
+  }, [toastMessage]);
 
   React.useEffect(() => {
     // Fitur Sapaan Suara Otomatis Berdasarkan Waktu
@@ -1215,34 +1230,50 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, o
 
       const greetingMsg = `Selamat ${waktu}, ${namaPanggilan}, dan selamat datang!`;
 
-      // Menampilkan popup toast selama 5 detik
+      // Menampilkan popup toast dengan durasi lebih panjang untuk membaca efek ketikan
       setToastMessage(greetingMsg);
-      setTimeout(() => setToastMessage(''), 5000);
+      setTimeout(() => setToastMessage(''), 7000);
 
       if (isVoiceGreetingEnabled) {
-        const speakNative = async () => {
+        const speakGreeting = async () => {
           try {
-            await TextToSpeech.speak({
-              text: greetingMsg,
-              lang: 'id-ID',
-              rate: 1.0,
-              pitch: voiceGreetingGender === 'male' ? 0.8 : 1.2,
-            });
-          } catch (err) {
-            console.warn("Greeting TTS Error, fallback to Web API:", err);
-            const utterance = new SpeechSynthesisUtterance(greetingMsg);
-            utterance.lang = 'id-ID';
-            utterance.pitch = voiceGreetingGender === 'male' ? 0.8 : 1.2;
-            const voices = window.speechSynthesis.getVoices();
-            const idVoices = voices.filter(v => v.lang.includes('id') || v.lang.includes('ID'));
-            if (idVoices.length > 0) {
-              let targetVoice = idVoices.find(v => voiceGreetingGender === 'male' ? /male|pria|laki|ardi|andika/i.test(v.name) : /female|perempuan|wanita|gadis|siti/i.test(v.name));
-              if (targetVoice) utterance.voice = targetVoice;
+            // Coba gunakan AI Premium Voice (iFLYTEK / ElevenLabs) terlebih dahulu
+            if (globalApiKey && (globalApiKey.iflytekApiKey || globalApiKey.elevenlabs)) {
+              await AiOrchestrator.speak(greetingMsg, globalApiKey, {
+                lang: 'id-ID',
+                rate: 1.0,
+                pitch: voiceGreetingGender === 'male' ? 0.8 : 1.2,
+                voiceId: voiceGreetingGender === 'male' ? '21m00Tcm4TlvDq8ikWAM' : 'EXAVITQu4vr4xnSDxMaL' // ID default Pria/Wanita
+              });
+              return;
             }
-            window.speechSynthesis.speak(utterance);
+            throw new Error("No premium voice keys available");
+          } catch (apiErr) {
+            try {
+              // Fallback 1: Capacitor Native TTS
+              await TextToSpeech.speak({
+                text: greetingMsg,
+                lang: 'id-ID',
+                rate: 1.0,
+                pitch: voiceGreetingGender === 'male' ? 0.8 : 1.2,
+              });
+            } catch (err) {
+              // Fallback 2: Browser Web Speech API
+              console.warn("Greeting TTS Error, fallback to Web API:", err);
+              const utterance = new SpeechSynthesisUtterance(greetingMsg);
+              utterance.lang = 'id-ID';
+              utterance.pitch = voiceGreetingGender === 'male' ? 0.8 : 1.2;
+              const voices = window.speechSynthesis.getVoices();
+              const idVoices = voices.filter(v => v.lang.includes('id') || v.lang.includes('ID'));
+              if (idVoices.length > 0) {
+                let targetVoice = idVoices.find(v => voiceGreetingGender === 'male' ? /male|pria|laki|ardi|andika/i.test(v.name) : /female|perempuan|wanita|gadis|siti/i.test(v.name));
+                if (targetVoice) utterance.voice = targetVoice;
+              }
+              window.speechSynthesis.speak(utterance);
+            }
           }
         };
-        setTimeout(speakNative, 300);
+        setTimeout(speakGreeting, 300);
       }
 
       // Tandai bahwa user sudah disapa di sesi ini
@@ -1255,7 +1286,7 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, o
       {toastMessage && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-xl border bg-emerald-50 border-emerald-200 text-emerald-700 flex items-center gap-3 animate-in slide-in-from-top-4 duration-300">
           <Sparkles size={20} />
-          <span className="font-bold text-sm">{toastMessage}</span>
+          <span className="font-bold text-sm">{displayedToast}<span className="animate-pulse font-light">|</span></span>
         </div>
       )}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">

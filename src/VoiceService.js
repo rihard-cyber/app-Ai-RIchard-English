@@ -17,6 +17,34 @@ async function getIFlytekAuthUrl(apiKey, apiSecret) {
     return `wss://${host}${path}?authorization=${encodeURIComponent(authorization)}&date=${encodeURIComponent(date)}&host=${host}`;
 }
 
+// Tambahan Fungsi Test iFLYTEK khusus untuk Admin Dashboard
+export const testIFlytekConnection = async (appId, apiKey, apiSecret) => {
+    try {
+        if (!appId || !apiKey || !apiSecret) return { success: false, message: "Kredensial kosong." };
+        const url = await getIFlytekAuthUrl(apiKey, apiSecret);
+        return new Promise((resolve) => {
+            const ws = new WebSocket(url);
+            ws.onopen = () => {
+                const params = {
+                    common: { app_id: appId },
+                    business: { aue: "lame", sfl: 1, vcn: "xiaoyan", speed: 50, pitch: 50, volume: 50, bgs: 0 },
+                    data: { status: 2, text: btoa("test") }
+                };
+                ws.send(JSON.stringify(params));
+            };
+            ws.onmessage = (e) => {
+                const res = JSON.parse(e.data);
+                ws.close();
+                if (res.code === 0) resolve({ success: true });
+                else resolve({ success: false, message: `Error ${res.code}: ${res.message}` });
+            };
+            ws.onerror = () => resolve({ success: false, message: "WebSocket connection error" });
+        });
+    } catch (err) {
+        return { success: false, message: err.message };
+    }
+};
+
 const fallbackTTS = (text, options) => {
     return new Promise((resolve) => {
         const utterance = new SpeechSynthesisUtterance(text);
@@ -27,13 +55,6 @@ const fallbackTTS = (text, options) => {
         utterance.onerror = resolve;
         window.speechSynthesis.speak(utterance);
     });
-};
-
-const getRandomKey = (keyString) => {
-    if (!keyString) return null;
-    const keys = keyString.split(',').map(k => k.trim()).filter(k => k);
-    if (keys.length === 0) return null;
-    return keys[Math.floor(Math.random() * keys.length)];
 };
 
 export const speakText = async (text, globalApiKey, options = {}) => {
@@ -123,11 +144,24 @@ export const speakText = async (text, globalApiKey, options = {}) => {
 
                 if (res.data && res.data.status === 2) {
                     ws.close();
-                    const audioSrc = "data:audio/mp3;base64," + audioChunks.join("");
-                    const audio = new Audio(audioSrc);
-                    audio.onended = resolve;
-                    audio.onerror = () => fallbackTTS(text, options).then(resolve);
-                    audio.play().catch(() => fallbackTTS(text, options).then(resolve));
+                    try {
+                        // OPTIMASI: Konversi ke Blob untuk menghindari bottleneck parsing Data URI Base64 di DOM
+                        const audioString = atob(audioChunks.join(""));
+                        const len = audioString.length;
+                        const bytes = new Uint8Array(len);
+                        for (let i = 0; i < len; i++) {
+                            bytes[i] = audioString.charCodeAt(i);
+                        }
+                        const blob = new Blob([bytes], { type: 'audio/mp3' });
+                        const audioUrl = URL.createObjectURL(blob);
+                        const audio = new Audio(audioUrl);
+                        audio.onended = () => { URL.revokeObjectURL(audioUrl); resolve(); };
+                        audio.onerror = () => { URL.revokeObjectURL(audioUrl); fallbackTTS(text, options).then(resolve); };
+                        audio.play().catch(() => fallbackTTS(text, options).then(resolve));
+                    } catch (err) {
+                        console.error("Blob Audio Error:", err);
+                        fallbackTTS(text, options).then(resolve);
+                    }
                 }
             };
 
