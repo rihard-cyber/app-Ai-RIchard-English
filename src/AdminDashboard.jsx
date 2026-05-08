@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogOut, Users, RefreshCw, UserCheck, LayoutDashboard, CreditCard, Settings, Crown, Activity } from 'lucide-react';
+import { LogOut, Users, RefreshCw, UserCheck, LayoutDashboard, CreditCard, Settings, Crown, Activity, Sparkles, ChevronRight, Search, Filter, BarChart2, GraduationCap, BookOpen, Headphones, MessageCircle, Zap, Mic, PenTool, Trophy } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) {
@@ -43,155 +43,280 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
     }, []);
 
     return (
-        <div className="flex h-screen bg-[#0f172a] text-slate-200 font-sans overflow-hidden">
-            {/* Sidebar Dark Mode */}
-            <aside className="w-64 bg-[#0b1121] border-r border-slate-800 flex flex-col shrink-0">
-                <div className="h-20 flex items-center px-6 border-b border-slate-800">
-                    <h1 className="text-xl font-black text-white flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                            <Crown size={18} className="text-white" />
-                        </div>
-                        Admin<span className="text-blue-500">Panel</span>
+        <div className="flex h-screen bg-[#F8FAFC] text-slate-800 font-sans overflow-hidden">
+            {/* Sidebar Dark Premium (Meniru Gaya Gambar) */}
+            <aside className="w-[280px] bg-[#0A0F1C] flex flex-col shrink-0 overflow-y-auto custom-scrollbar">
+                <div className="p-6">
+                    <h1 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Sparkles className="text-blue-500" size={24} />
+                        RichardMeha <span className="text-blue-600">AI</span>
                     </h1>
                 </div>
 
-                <div className="p-6 border-b border-slate-800">
-                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Logged in as</p>
-                    <p className="text-sm font-bold text-white truncate">{userEmail || 'Administrator'}</p>
-                    <div className="flex items-center gap-2 mt-2 text-xs font-bold text-emerald-400">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Online
+                <div className="px-6 pb-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] shrink-0">
+                            R
+                        </div>
+                        <div className="flex flex-col">
+                            <p className="text-[15px] font-bold text-white leading-tight">Richard Patung<br/>Landu Meha</p>
+                            <p className="text-xs text-blue-500 flex items-center gap-1 font-bold mt-1">
+                                <Trophy size={12} /> Beginner (A1)
+                            </p>
+                        </div>
                     </div>
                 </div>
 
-                <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-                    <button onClick={() => setActiveMenu('overview')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeMenu === 'overview' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
-                        <LayoutDashboard size={20} /> Overview
-                    </button>
-                    <button onClick={() => setActiveMenu('users')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeMenu === 'users' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
-                        <Users size={20} /> Data Pengguna
-                    </button>
-                    <button onClick={() => setActiveMenu('transactions')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeMenu === 'transactions' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
-                        <CreditCard size={20} /> Transaksi Pro
-                    </button>
-                    <button onClick={() => setActiveMenu('settings')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeMenu === 'settings' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
-                        <Settings size={20} /> Pengaturan
-                    </button>
-                </nav>
+                <div className="px-6 py-3">
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">Menu Utama</p>
+                    <nav className="space-y-1">
+                        <button onClick={() => setActiveMenu('overview')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeMenu === 'overview' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}>
+                            <LayoutDashboard size={20} /> Dasbor Belajar
+                        </button>
+                        <button onClick={() => setActiveMenu('statistik')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeMenu === 'statistik' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'}`}>
+                            <BarChart2 size={20} /> Statistik Progres
+                        </button>
+                    </nav>
+                </div>
 
-                <div className="p-4 border-t border-slate-800 space-y-2">
-                    <button onClick={onSwitchToUser} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-slate-300 hover:bg-slate-800 hover:text-white transition-all">
-                        <UserCheck size={20} className="text-emerald-400" /> Beralih ke User
-                    </button>
-                    <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-slate-300 hover:bg-rose-500/10 hover:text-rose-400 transition-all">
-                        <LogOut size={20} className="text-rose-400" /> Log Out
-                    </button>
+                <div className="px-6 py-3">
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">Modul Pembelajaran</p>
+                    <nav className="space-y-1">
+                        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-slate-400 hover:text-white transition-all">
+                            <GraduationCap size={20} /> Test CEFR (Awal)
+                        </button>
+                        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-slate-400 hover:text-white transition-all">
+                            <BookOpen size={20} /> Belajar (Vocab)
+                        </button>
+                        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-slate-400 hover:text-white transition-all">
+                            <Headphones size={20} /> Call Tutor
+                        </button>
+                        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-slate-400 hover:text-white transition-all">
+                            <MessageCircle size={20} /> Chat Tutor
+                        </button>
+                        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-slate-400 hover:text-white transition-all">
+                            <Zap size={20} /> Quiz & Challenge
+                        </button>
+                    </nav>
+                </div>
+
+                <div className="px-6 py-3">
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">Praktek & Analisa</p>
+                    <nav className="space-y-1">
+                        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-slate-400 hover:text-white transition-all">
+                            <Mic size={20} /> Speaking Coach
+                        </button>
+                        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-slate-400 hover:text-white transition-all">
+                            <PenTool size={20} /> Writing Analyzer
+                        </button>
+                        <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-slate-400 hover:text-white transition-all">
+                            <GraduationCap size={20} /> Grammar Speaking
+                        </button>
+                    </nav>
+                </div>
+
+                <div className="mt-auto px-6 py-6 pb-8 space-y-2">
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">Akun</p>
+                    <nav className="space-y-1">
+                        <button onClick={onSwitchToUser} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-slate-400 hover:text-white transition-all">
+                            <UserCheck size={20} /> Mode User
+                        </button>
+                        <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-rose-400 hover:bg-rose-500/10 transition-all">
+                            <LogOut size={20} /> Log Out
+                        </button>
+                    </nav>
                 </div>
             </aside>
 
             {/* Main Layout */}
-            <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-[#0f172a]">
-                <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-blue-900/20 to-transparent pointer-events-none"></div>
-
-                <div className="flex-1 overflow-y-auto p-8 relative z-10 custom-scrollbar">
-                    {/* Header */}
-                    <div className="flex items-end justify-between mb-8">
+            <main className="flex-1 flex flex-col h-full overflow-hidden relative">
+                <div className="flex-1 overflow-y-auto p-8 lg:p-10 custom-scrollbar">
+                    
+                    {/* Header Top */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                         <div>
-                            <h2 className="text-3xl font-black text-white tracking-tight">Dashboard Overview</h2>
-                            <p className="text-slate-400 mt-2 font-medium">Pantau statistik pengguna secara real-time.</p>
+                            <h2 className="text-3xl font-black text-slate-900 tracking-tight">Admin Control Panel</h2>
+                            <p className="text-slate-500 mt-1 font-medium">Kelola data murid, transaksi, dan performa aplikasi.</p>
                         </div>
-                        <button
-                            onClick={fetchDataPengguna}
-                            disabled={isLoading}
-                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-blue-600/20 disabled:opacity-50"
-                        >
-                            <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} /> REFRESH DATA
-                        </button>
-                    </div>
-
-                    {/* Statistik Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div className="bg-[#1e293b] p-6 rounded-2xl border border-slate-700 shadow-xl flex items-center gap-4">
-                            <div className="w-14 h-14 bg-blue-500/20 text-blue-400 rounded-xl flex items-center justify-center">
-                                <Users size={28} />
-                            </div>
-                            <div>
-                                <p className="text-sm font-bold text-slate-400">Total Murid</p>
-                                <h3 className="text-3xl font-black text-white">{totalMurid}</h3>
-                            </div>
-                        </div>
-                        <div className="bg-[#1e293b] p-6 rounded-2xl border border-slate-700 shadow-xl flex items-center gap-4">
-                            <div className="w-14 h-14 bg-amber-500/20 text-amber-400 rounded-xl flex items-center justify-center">
-                                <Crown size={28} />
-                            </div>
-                            <div>
-                                <p className="text-sm font-bold text-slate-400">Pengguna PRO</p>
-                                <h3 className="text-3xl font-black text-white">{users.filter(u => u.is_pro).length}</h3>
-                            </div>
-                        </div>
-                        <div className="bg-[#1e293b] p-6 rounded-2xl border border-slate-700 shadow-xl flex items-center gap-4">
-                            <div className="w-14 h-14 bg-emerald-500/20 text-emerald-400 rounded-xl flex items-center justify-center">
-                                <Activity size={28} />
-                            </div>
-                            <div>
-                                <p className="text-sm font-bold text-slate-400">Status Server</p>
-                                <h3 className="text-2xl font-black text-emerald-400">Online</h3>
-                            </div>
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={fetchDataPengguna}
+                                disabled={isLoading}
+                                className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-5 py-2.5 rounded-xl font-bold transition-all active:scale-95 shadow-sm disabled:opacity-50"
+                            >
+                                <RefreshCw size={18} className={isLoading ? "animate-spin text-blue-600" : "text-blue-600"} /> Refresh Data
+                            </button>
                         </div>
                     </div>
 
-                    {/* Tabel Data Pengguna */}
-                    <div className="bg-[#1e293b] rounded-2xl border border-slate-700 shadow-xl overflow-hidden">
-                        <div className="p-6 border-b border-slate-700">
-                            <h3 className="font-bold text-white text-lg">Direktori Pengguna Aktif</h3>
+                    {/* Main Content Grid */}
+                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
+                        {/* Big Card - Total Murid (Meniru gaya "Lanjut Belajar" di Gambar) */}
+                        <div className="xl:col-span-2 relative overflow-hidden bg-gradient-to-br from-[#4F46E5] via-[#3B82F6] to-[#2563EB] rounded-[32px] p-8 md:p-10 shadow-xl shadow-blue-500/20 text-white flex flex-col justify-between min-h-[320px]">
+                            {/* Decorative background elements */}
+                            <div className="absolute top-0 right-0 w-80 h-80 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
+                            <div className="absolute bottom-0 right-10 w-48 h-48 bg-blue-300/20 rounded-full blur-2xl mb-10"></div>
+                            <Users className="absolute bottom-[-30px] right-[-20px] text-white/10" size={280} strokeWidth={1} />
+
+                            <div className="relative z-10">
+                                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/20 backdrop-blur-sm border border-white/20 text-xs font-bold tracking-wide uppercase mb-6">
+                                    <Activity size={14} /> Status Aktif
+                                </div>
+                                <h2 className="text-4xl md:text-5xl font-black leading-tight mb-3">
+                                    Total Murid Terdaftar
+                                </h2>
+                                <p className="text-blue-100 font-medium max-w-md text-lg">
+                                    Ringkasan pengguna yang aktif belajar di RichardMeha AI hari ini.
+                                </p>
+                            </div>
+
+                            <div className="relative z-10 mt-10 flex items-center gap-4 flex-wrap">
+                                <div className="bg-white text-blue-600 px-8 py-5 rounded-2xl flex items-center gap-5 shadow-xl shadow-black/5">
+                                    <div className="p-3 bg-blue-50 rounded-xl">
+                                        <Users size={32} className="text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-1">Total Users</p>
+                                        <p className="text-4xl font-black leading-none">{totalMurid}</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-8 py-5 rounded-2xl flex items-center gap-5">
+                                    <div className="p-3 bg-white/20 rounded-xl">
+                                        <Crown size={32} className="text-amber-300" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-extrabold text-blue-200 uppercase tracking-wider mb-1">Pro Users</p>
+                                        <p className="text-4xl font-black leading-none">{users.filter(u => u.is_pro).length}</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead className="bg-[#0f172a] text-slate-400 text-xs uppercase font-bold tracking-wider">
-                                    <tr>
-                                        <th className="p-4 border-b border-slate-700">Nama Lengkap</th>
-                                        <th className="p-4 border-b border-slate-700">Email</th>
-                                        <th className="p-4 border-b border-slate-700">Level</th>
-                                        <th className="p-4 border-b border-slate-700">Status</th>
+
+                        {/* Side Cards (Meniru sidebar kanan putih di Gambar) */}
+                        <div className="xl:col-span-1 flex flex-col gap-6">
+                            <div className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100 flex-1 flex flex-col justify-center relative overflow-hidden">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h3 className="font-bold text-slate-800 text-lg">Server Status</h3>
+                                    <span className="flex h-3 w-3 relative">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-5 mb-2">
+                                    <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center">
+                                        <Activity size={32} />
+                                    </div>
+                                    <div>
+                                        <p className="text-3xl font-black text-slate-900">Online</p>
+                                        <p className="text-sm font-medium text-slate-500 mt-1">Semua sistem normal</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-[#0F172A] rounded-[32px] p-8 shadow-xl shadow-slate-900/10 text-white flex-1 flex flex-col justify-center relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full blur-2xl"></div>
+                                <h3 className="font-bold text-slate-300 text-lg mb-6 relative z-10">Rasio Pengguna</h3>
+                                <div className="relative z-10">
+                                    <div className="flex justify-between text-sm mb-3 font-bold">
+                                        <span className="text-amber-400 flex items-center gap-1.5"><Crown size={14}/> PRO ({users.filter(u => u.is_pro).length})</span>
+                                        <span className="text-slate-400">FREE ({totalMurid - users.filter(u => u.is_pro).length})</span>
+                                    </div>
+                                    <div className="w-full bg-slate-800 rounded-full h-4 p-0.5">
+                                        <div 
+                                            className="bg-gradient-to-r from-amber-400 to-amber-500 h-full rounded-full transition-all duration-1000" 
+                                            style={{ width: `${totalMurid > 0 ? (users.filter(u => u.is_pro).length / totalMurid) * 100 : 0}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Tabel Data Pengguna - Modern Style */}
+                    <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+                        <div className="p-8 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+                            <div>
+                                <h3 className="font-black text-slate-900 text-xl">Direktori Pengguna Aktif</h3>
+                                <p className="text-slate-500 text-sm font-medium mt-1">Daftar semua pengguna yang terdaftar di database.</p>
+                            </div>
+                            <div className="flex gap-3">
+                                <div className="relative">
+                                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                    <input type="text" placeholder="Cari murid..." className="pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-72 transition-all" />
+                                </div>
+                                <button className="p-3 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-100 transition-colors">
+                                    <Filter size={18} />
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div className="overflow-x-auto p-4">
+                            <table className="w-full text-left border-separate border-spacing-y-2">
+                                <thead>
+                                    <tr className="text-slate-400 text-xs uppercase font-extrabold tracking-wider">
+                                        <th className="px-6 py-4">Nama Lengkap</th>
+                                        <th className="px-6 py-4">Email</th>
+                                        <th className="px-6 py-4">Level</th>
+                                        <th className="px-6 py-4 text-center">Status</th>
+                                        <th className="px-6 py-4 text-center">Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-700 text-sm">
+                                <tbody className="text-sm font-medium text-slate-700">
                                     {isLoading ? (
                                         <tr>
-                                            <td colSpan="4" className="p-12 text-center text-slate-400">
-                                                <RefreshCw className="animate-spin mx-auto mb-3 text-blue-500" size={28} />
-                                                <p className="font-medium">Memuat data dari database...</p>
+                                            <td colSpan="5" className="py-16 text-center text-slate-500">
+                                                <RefreshCw className="animate-spin mx-auto mb-4 text-blue-500" size={32} />
+                                                <p className="font-bold text-lg">Memuat data pengguna...</p>
                                             </td>
                                         </tr>
                                     ) : users.length > 0 ? (
                                         users.map((user) => (
-                                            <tr key={user.id} className="hover:bg-slate-800/50 transition-colors">
-                                                <td className="p-4 font-bold text-slate-200">{user.full_name || user.name || 'User'}</td>
-                                                <td className="p-4 text-slate-400">{user.email || '-'}</td>
-                                                <td className="p-4">
-                                                    <span className="px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-xs font-bold">
+                                            <tr key={user.id} className="bg-slate-50/50 hover:bg-blue-50/80 transition-all rounded-2xl group cursor-pointer">
+                                                <td className="px-6 py-4 rounded-l-2xl">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-black text-base shadow-sm">
+                                                            {(user.full_name || user.name || 'U').charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <span className="font-bold text-slate-900 text-base">{user.full_name || user.name || 'User'}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-slate-500 font-medium">{user.email || '-'}</td>
+                                                <td className="px-6 py-4">
+                                                    <span className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold inline-block border border-slate-200">
                                                         {user.level || 'Beginner'}
                                                     </span>
                                                 </td>
-                                                <td className="p-4">
+                                                <td className="px-6 py-4 text-center">
                                                     {user.is_pro ? (
-                                                        <span className="px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-lg text-xs font-bold flex items-center gap-1 w-max">
-                                                            <Crown size={12} /> PRO
+                                                        <span className="px-3 py-1.5 bg-amber-50 text-amber-600 rounded-lg text-xs font-extrabold inline-flex items-center justify-center gap-1.5 border border-amber-200 w-24 shadow-sm">
+                                                            <Crown size={14} /> PRO
                                                         </span>
                                                     ) : (
-                                                        <span className="px-3 py-1 bg-slate-700 text-slate-300 rounded-lg text-xs font-bold inline-block">Free</span>
+                                                        <span className="px-3 py-1.5 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold inline-flex items-center justify-center border border-slate-200 w-24">
+                                                            Free
+                                                        </span>
                                                     )}
+                                                </td>
+                                                <td className="px-6 py-4 rounded-r-2xl text-center">
+                                                    <button className="p-2 text-slate-400 hover:text-blue-600 bg-white rounded-lg border border-slate-200 shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:scale-105 active:scale-95">
+                                                        <ChevronRight size={18} />
+                                                    </button>
                                                 </td>
                                             </tr>
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan="4" className="p-12 text-center text-slate-400">Belum ada data pengguna.</td>
+                                            <td colSpan="5" className="py-16 text-center text-slate-500">
+                                                <p className="font-bold text-lg">Belum ada data pengguna terdaftar.</p>
+                                            </td>
                                         </tr>
                                     )}
                                 </tbody>
                             </table>
                         </div>
                     </div>
+
                 </div>
             </main>
         </div>
