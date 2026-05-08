@@ -4,12 +4,18 @@ async function getIFlytekAuthUrl(apiKey, apiSecret) {
     const date = new Date().toUTCString();
     const signatureOrigin = `host: ${host}\ndate: ${date}\nGET ${path} HTTP/1.1`;
 
+    // Pengecekan Keamanan Kriptografi (Wajib berjalan di HTTPS atau Localhost)
+    if (!window.crypto || !window.crypto.subtle) {
+        throw new Error("Web Crypto API tidak tersedia. Pastikan aplikasi berjalan di HTTPS atau localhost.");
+    }
+
     const encoder = new TextEncoder();
     const cryptoKey = await crypto.subtle.importKey(
         "raw", encoder.encode(apiSecret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
     );
     const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(signatureOrigin));
-    const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
+    const signatureArray = Array.from(new Uint8Array(signature));
+    const signatureBase64 = btoa(String.fromCharCode.apply(null, signatureArray));
 
     const authorizationOrigin = `api_key="${apiKey}", algorithm="hmac-sha256", headers="host date request-line", signature="${signatureBase64}"`;
     const authorization = btoa(authorizationOrigin);
@@ -23,8 +29,11 @@ export const testIFlytekConnection = async (appId, apiKey, apiSecret) => {
         if (!appId || !apiKey || !apiSecret) return { success: false, message: "Kredensial kosong." };
         const url = await getIFlytekAuthUrl(apiKey, apiSecret);
         return new Promise((resolve) => {
+            let isResolved = false;
             const ws = new WebSocket(url);
+
             ws.onopen = () => {
+                console.log("[iFLYTEK] WebSocket Terhubung. Mengirim payload uji coba...");
                 const params = {
                     common: { app_id: appId },
                     business: { aue: "lame", sfl: 1, vcn: "xiaoyan", speed: 50, pitch: 50, volume: 50, bgs: 0 },
@@ -32,15 +41,36 @@ export const testIFlytekConnection = async (appId, apiKey, apiSecret) => {
                 };
                 ws.send(JSON.stringify(params));
             };
+
             ws.onmessage = (e) => {
+                if (isResolved) return;
                 const res = JSON.parse(e.data);
+                isResolved = true;
                 ws.close();
+
                 if (res.code === 0) resolve({ success: true });
-                else resolve({ success: false, message: `Error ${res.code}: ${res.message}` });
+                else {
+                    console.error("[iFLYTEK] API Error Response:", res);
+                    resolve({ success: false, message: `Gagal (Code ${res.code}): ${res.message}` });
+                }
             };
-            ws.onerror = () => resolve({ success: false, message: "WebSocket connection error" });
+
+            ws.onerror = (error) => {
+                console.error("[iFLYTEK] WebSocket Error Event:", error);
+            };
+
+            ws.onclose = (e) => {
+                if (!isResolved) {
+                    isResolved = true;
+                    console.error(`[iFLYTEK] WebSocket Tertutup (Code: ${e.code}, Reason: ${e.reason})`);
+                    let errorMsg = `Koneksi tertutup (Code: ${e.code}). Periksa API Key, Secret, atau Waktu Sistem.`;
+                    if (e.code === 1006) errorMsg = "Koneksi ditolak (1006). Pastikan kredensial benar dan internet stabil.";
+                    resolve({ success: false, message: errorMsg });
+                }
+            };
         });
     } catch (err) {
+        console.error("[iFLYTEK] Setup Error:", err);
         return { success: false, message: err.message };
     }
 };
