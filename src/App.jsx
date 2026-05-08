@@ -51,6 +51,7 @@ import { supabase } from './supabaseClient';
 import { CURRICULUM } from './data/curriculum';
 import { AiOrchestrator } from './AiOrchestrator';
 import ChatModule from './ChatModule';
+import Sidebar from './Sidebar';
 import { VOCABULARY_TOPICS as VOCAB_RAW, GRAMMAR_TOPICS as GRAMMAR_RAW, LISTENING_TOPICS as LISTENING_RAW, CONVERSATION_CHARACTERS as CHARS_RAW } from './data/topics';
 
 // --- LAZY LOADED COMPONENTS ---
@@ -1021,91 +1022,9 @@ export default function App() {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {isSidebarOpen && <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300" onClick={() => setIsSidebarOpen(false)} />}
-        <aside className={`fixed md:relative inset-y-0 left-0 z-50 w-72 md:w-64 h-screen h-[100dvh] bg-[#0f172a] text-slate-300 shadow-2xl md:shadow-none transform transition-transform duration-300 ease-in-out flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-          <div className="h-16 flex items-center justify-between px-6 bg-[#0b1121] pt-[env(safe-area-inset-top)]"><h1 onClick={handleLogoClick} title={userProfile.is_admin ? 'Klik 2x untuk ke Admin' : ''} className="text-xl font-bold tracking-wider flex items-center gap-2 text-white cursor-pointer select-none active:scale-95 transition-transform touch-manipulation"><Sparkles className="text-blue-500" /> RichardMeha<span className="text-blue-500"> AI</span></h1><button className="md:hidden text-slate-400 hover:text-white transition-colors" onClick={() => setIsSidebarOpen(false)}><X size={24} /></button></div>
-          <div className="p-6 border-b border-slate-800 flex items-center gap-4"><div className="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-blue-500/20">{userProfile.name.charAt(0)}</div><div className="flex flex-col"><span className="text-base font-semibold text-white">{userProfile.name}</span><span className="text-xs text-blue-400 flex items-center gap-1"><Trophy size={12} /> {userProfile.level}</span></div></div>
 
-          {/* SEARCH BAR */}
-          <div className="px-4 pt-5 pb-2 shrink-0">
-            <div className="relative group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" size={16} />
-              <input
-                type="text"
-                placeholder="Cari modul..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#1e293b] border border-slate-700/50 text-sm text-slate-200 rounded-xl pl-9 pr-8 py-2.5 focus:outline-none focus:border-blue-500/50 focus:bg-slate-800 transition-all placeholder:text-slate-500 shadow-inner"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors animate-in fade-in zoom-in duration-200">
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-          </div>
+        <Sidebar currentRoute={activeTab} onNavigate={handleTabChange} />
 
-          <nav className="flex-1 py-2 px-4 space-y-1 overflow-y-auto custom-scrollbar transform-gpu overscroll-contain">
-            {showMain && (
-              <div className="animate-in fade-in duration-300">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-2">Menu Utama</p>
-                {(!searchQuery || isMatch('Dasbor Belajar')) && <NavItem icon={<LayoutDashboard />} label="Dasbor Belajar" isActive={activeTab === 'home'} onClick={() => handleTabChange('home')} />}
-                {(!searchQuery || isMatch('Statistik Progres')) && <NavItem icon={<BarChart2 />} label="Statistik Progres" isActive={activeTab === 'progress'} onClick={() => handleTabChange('progress')} />}
-                {(!searchQuery || isMatch('Papan Peringkat')) && <NavItem icon={<Trophy />} label="Papan Peringkat" isActive={activeTab === 'leaderboard'} onClick={() => handleTabChange('leaderboard')} />}
-              </div>
-            )}
-
-            {showLearning && (
-              <div className="animate-in fade-in duration-300">
-                <button onClick={() => setIsModulOpen(!isModulOpen)} className="w-full flex items-center justify-between px-3 mt-6 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider hover:text-slate-300 transition-colors">
-                  <span>Modul Pembelajaran</span>
-                  <ChevronRight size={14} className={`transition-transform duration-200 ${effectiveModulOpen ? 'rotate-90' : ''}`} />
-                </button>
-                <div className={`space-y-1 overflow-hidden transition-all duration-300 ease-in-out ${effectiveModulOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                  {(!searchQuery || isMatch('Test CEFR (Awal)')) && <NavItem icon={<GraduationCap />} label="Test CEFR (Awal)" isActive={activeTab === 'assessment'} onClick={() => handleTabChange('assessment')} />}
-                  {(!searchQuery || isMatch('Belajar (Vocab)')) && <NavItem icon={<BookA />} label="📚 Belajar (Vocab)" isActive={activeTab === 'vocabulary'} onClick={() => handleTabChange('vocabulary')} />}
-                  {(!searchQuery || isMatch('Call Tutor')) && <NavItem icon={<Headphones />} label="🎧 Call Tutor" isActive={activeTab === 'call_tutor'} onClick={() => handleTabChange('call_tutor')} badge="New" />}
-                  {(!searchQuery || isMatch('Chat Tutor')) && <NavItem icon={<MessageSquare />} label="💬 Chat Tutor" isActive={activeTab === 'conversation'} onClick={() => handleTabChange('conversation')} />}
-                  {(!searchQuery || isMatch('Quiz & Challenge')) && <NavItem icon={<Zap />} label="🧠 Quiz & Challenge" isActive={activeTab === 'quiz'} onClick={() => handleTabChange('quiz')} />}
-                </div>
-              </div>
-            )}
-
-            {showPractice && (
-              <div className="animate-in fade-in duration-300">
-                <button onClick={() => setIsPraktekOpen(!isPraktekOpen)} className="w-full flex items-center justify-between px-3 mt-4 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider hover:text-slate-300 transition-colors">
-                  <span>Praktek & Analisa</span>
-                  <ChevronRight size={14} className={`transition-transform duration-200 ${effectivePraktekOpen ? 'rotate-90' : ''}`} />
-                </button>
-                <div className={`space-y-1 overflow-hidden transition-all duration-300 ease-in-out ${effectivePraktekOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                  {(!searchQuery || isMatch('Speaking Coach')) && <NavItem icon={<Mic />} label="Speaking Coach" isActive={activeTab === 'speaking'} onClick={() => handleTabChange('speaking')} />}
-                  {(!searchQuery || isMatch('Writing Analyzer')) && <NavItem icon={<PenTool />} label="Writing Analyzer" isActive={activeTab === 'writing_analyzer'} onClick={() => handleTabChange('writing_analyzer')} />}
-                  {(!searchQuery || isMatch('Grammar Speaking')) && <NavItem icon={<GraduationCap />} label="Grammar Speaking" isActive={activeTab === 'grammar'} onClick={() => handleTabChange('grammar')} />}
-                </div>
-              </div>
-            )}
-
-            {showAccount && (
-              <div className="animate-in fade-in duration-300">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3 mb-3 mt-4">Akun</p>
-                {(!searchQuery || isMatch('Pengaturan')) && <NavItem icon={<Settings />} label="Pengaturan" isActive={activeTab === 'settings'} onClick={() => handleTabChange('settings')} />}
-                {userProfile.email === 'richardpl.meha@gmail.com' && (!searchQuery || isMatch('Beralih ke Admin')) && (
-                  <button onClick={() => { localStorage.setItem('owner_mode', 'admin'); setAuthState('admin'); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-emerald-400 hover:bg-emerald-900/20 hover:text-emerald-300 transition-all duration-200 hover:translate-x-1 font-medium"><Shield size={18} /> <span className="text-sm">Beralih ke Admin</span></button>
-                )}
-                {(!searchQuery || isMatch('Log Out')) && <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-rose-400 hover:bg-rose-900/20 hover:text-rose-300 transition-all duration-200 hover:translate-x-1"><LogOut size={18} /> <span className="text-sm">Log Out</span></button>}
-              </div>
-            )}
-
-            {searchQuery && !showMain && !showLearning && !showPractice && !showAccount && (
-              <div className="px-4 py-8 text-center animate-in fade-in zoom-in duration-300">
-                <div className="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
-                  <Search className="text-slate-500" size={20} />
-                </div>
-                <p className="text-sm text-slate-400 font-medium">Modul tidak ditemukan</p>
-              </div>
-            )}
-          </nav>
-        </aside>
         <main className="flex-1 flex flex-col h-full w-full relative overflow-hidden">
           <header className="h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 z-30 shrink-0 md:hidden shadow-sm">
             <div className="flex items-center gap-3"><button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors"><Menu size={24} /></button><h2 onClick={handleLogoClick} title={userProfile.is_admin ? 'Klik 2x untuk ke Admin' : ''} className="text-lg font-semibold text-slate-800 flex items-center gap-2 cursor-pointer select-none active:scale-95 transition-transform touch-manipulation">RichardMeha<span className="text-blue-600"> AI</span></h2></div>
