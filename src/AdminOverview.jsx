@@ -51,7 +51,6 @@ export default function AdminOverview({ usersData, stats, chartData, maxRevenue,
     const maxLevelCount = Math.max(...Object.values(levelCounts), 1);
     const levelColors = { A1: 'bg-emerald-400', A2: 'bg-emerald-500', B1: 'bg-blue-400', B2: 'bg-blue-500', C1: 'bg-purple-400', C2: 'bg-purple-500' };
     const [showKey, setShowKey] = useState({});
-    const [isClearingLogs, setIsClearingLogs] = useState(false);
     const [iflytekTestStatus, setIflytekTestStatus] = useState('idle');
     const [iflytekTestMsg, setIflytekTestMsg] = useState('');
     const [elevenlabsVoiceStatus, setElevenlabsVoiceStatus] = useState('idle');
@@ -147,23 +146,6 @@ export default function AdminOverview({ usersData, stats, chartData, maxRevenue,
         downloadAnchorNode.click();
         downloadAnchorNode.remove();
         showToast("Database Pengguna berhasil diekspor!", "success");
-    };
-
-    const handleClearLogs = async () => {
-        if (!window.confirm('Apakah Anda yakin ingin menghapus semua log aktivitas pengguna yang lebih lama dari 30 hari? Tindakan ini akan mengosongkan ruang database.')) return;
-        setIsClearingLogs(true);
-        try {
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            const { error } = await supabase.from('user_progress').delete().lt('created_at', thirtyDaysAgo.toISOString());
-            if (error) throw error;
-            showToast("Log aktivitas usang berhasil dibersihkan.", "success");
-        } catch (error) {
-            console.error("Clear logs error:", error);
-            showToast("Gagal membersihkan log.", "error");
-        } finally {
-            setIsClearingLogs(false);
-        }
     };
 
     return (

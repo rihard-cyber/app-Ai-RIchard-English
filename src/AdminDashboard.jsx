@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
-    LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowDownRight, LogOut, Loader2, Plus, Trash2, Shield, RefreshCw, Menu, X, User, Zap, Crown, Download, Search, ArrowUpDown, Eye, EyeOff, Trash
+    LayoutDashboard, Users, CreditCard, Activity, CheckCircle, XCircle, ArrowDownRight, LogOut, Loader2, Shield, RefreshCw, Menu, X, User
 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import AdminOverview from './AdminOverview';

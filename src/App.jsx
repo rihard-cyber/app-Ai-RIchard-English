@@ -998,14 +998,6 @@ export default function App() {
     );
   }
 
-  const isMatch = (text) => text.toLowerCase().includes(searchQuery.toLowerCase());
-  const showMain = !searchQuery || isMatch('Dasbor Belajar') || isMatch('Statistik Progres') || isMatch('Papan Peringkat') || isMatch('Menu Utama');
-  const showLearning = !searchQuery || isMatch('Test CEFR') || isMatch('Belajar (Vocab)') || isMatch('Call Tutor') || isMatch('Chat Tutor') || isMatch('Quiz') || isMatch('Modul Pembelajaran');
-  const showPractice = !searchQuery || isMatch('Speaking Coach') || isMatch('Writing Analyzer') || isMatch('Grammar Speaking') || isMatch('Praktek & Analisa');
-  const showAccount = !searchQuery || isMatch('Pengaturan') || isMatch('Admin') || isMatch('Log Out') || isMatch('Akun');
-  const effectiveModulOpen = searchQuery ? true : isModulOpen;
-  const effectivePraktekOpen = searchQuery ? true : isPraktekOpen;
-
   return (
     <GlobalContext.Provider value={{ globalApiKey, userProfile }}>
       <style>
