@@ -18,6 +18,19 @@ function chunkLoadingNotifier() {
 
 export default defineConfig({
   plugins: [react(), chunkLoadingNotifier()],
+  plugins: [
+    react(),
+    chunkLoadingNotifier(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'], // Cache semua file statis ini
+        maximumFileSizeToCacheInBytes: 5000000, // Izinkan file hingga 5MB untuk di-cache
+      },
+      // Jika manifest disisipkan manual di index.html, kita bisa mematikan auto-inject manifest dari plugin
+      manifest: false
+    })
+  ],
   base: './', // Mengubah path menjadi relatif agar support di GitHub Pages & Android APK
   esbuild: {
     drop: ['console', 'debugger'], // Optimasi Final: Membuang semua console.log di versi production
