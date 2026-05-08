@@ -19,7 +19,7 @@ export function StatCard({ title, value, color, textColor = "text-white" }) {
     );
 }
 
-export default function AdminOverview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray, userEmail, apiKeys, setApiKeys, apiStatus, handleTestConnections, handleSaveApiKey, saveKeySuccess, isSavingKey, isFetchingKeys, showToast, onRefresh }) {
+export default function AdminOverview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray, userEmail, apiKeys, setApiKeys, apiStatus, apiMessages, handleTestConnections, handleSaveApiKey, saveKeySuccess, isSavingKey, isFetchingKeys, showToast, onRefresh }) {
     const levelCounts = useMemo(() => {
         const counts = { A1: 0, A2: 0, B1: 0, B2: 0, C1: 0, C2: 0 };
         usersData.forEach(u => {
@@ -226,6 +226,11 @@ export default function AdminOverview({ usersData, stats, chartData, maxRevenue,
                                         <input type={showKey[key] ? "text" : "password"} value={apiKeys[key]} onChange={(e) => setApiKeys(prev => ({ ...prev, [key]: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
                                         <button type="button" onClick={() => toggleKeyVisibility(key)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">{showKey[key] ? <EyeOff size={16} /> : <Eye size={16} />}</button>
                                     </div>
+                                    {apiMessages?.[key] && (
+                                        <div className={`text-[10px] font-bold px-2 py-1.5 rounded-lg leading-tight ${apiStatus[key] === 'ok' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                            {apiMessages[key]}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -238,6 +243,11 @@ export default function AdminOverview({ usersData, stats, chartData, maxRevenue,
                                 <input type={showKey.l10n ? "text" : "password"} value={apiKeys.l10n} onChange={(e) => setApiKeys(prev => ({ ...prev, l10n: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
                                 <button type="button" onClick={() => toggleKeyVisibility('l10n')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">{showKey.l10n ? <EyeOff size={16} /> : <Eye size={16} />}</button>
                             </div>
+                            {apiMessages?.l10n && (
+                                <div className={`text-[10px] font-bold px-2 py-1.5 rounded-lg leading-tight mt-1 ${apiStatus.l10n === 'ok' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                    {apiMessages.l10n}
+                                </div>
+                            )}
                         </div>
                     </div>
                     <div>
@@ -283,6 +293,11 @@ export default function AdminOverview({ usersData, stats, chartData, maxRevenue,
                                     <input type={showKey.elevenlabs ? "text" : "password"} value={apiKeys.elevenlabs || ''} onChange={(e) => setApiKeys(prev => ({ ...prev, elevenlabs: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
                                     <button type="button" onClick={() => toggleKeyVisibility('elevenlabs')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">{showKey.elevenlabs ? <EyeOff size={16} /> : <Eye size={16} />}</button>
                                 </div>
+                                {apiMessages?.elevenlabs && (
+                                    <div className={`text-[10px] font-bold px-2 py-1.5 rounded-lg leading-tight mt-1 ${apiStatus.elevenlabs === 'ok' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                        {apiMessages.elevenlabs}
+                                    </div>
+                                )}
                             </div>
                             <div className="flex flex-col gap-2">
                                 <div className="flex items-center justify-between">

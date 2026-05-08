@@ -23,6 +23,9 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
     const [apiStatus, setApiStatus] = useState({
         openai: 'idle', gemini: 'idle', groq: 'idle', l10n: 'idle', elevenlabs: 'idle', elevenlabsVoiceId: 'idle', iflytek: 'idle'
     });
+    const [apiMessages, setApiMessages] = useState({
+        openai: '', gemini: '', groq: '', l10n: '', elevenlabs: ''
+    });
     const [isFetchingKeys, setIsFetchingKeys] = useState(false);
     const [isSavingKey, setIsSavingKey] = useState(false);
     const [saveKeySuccess, setSaveKeySuccess] = useState(false);
@@ -115,53 +118,68 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
     };
 
     const handleTestConnections = async () => {
-        const updateStatus = (key, status) => setApiStatus(prev => ({ ...prev, [key]: status }));
+        const updateStatus = (key, status, msg = '') => {
+            setApiStatus(prev => ({ ...prev, [key]: status }));
+            setApiMessages(prev => ({ ...prev, [key]: msg }));
+        };
         
         // Reset statuses
-        setApiStatus(prev => ({
-            ...prev, openai: 'testing', gemini: 'testing', groq: 'testing', l10n: 'testing', elevenlabs: 'testing'
-        }));
+        setApiStatus(prev => ({ ...prev, openai: 'testing', gemini: 'testing', groq: 'testing', l10n: 'testing', elevenlabs: 'testing' }));
+        setApiMessages({ openai: '', gemini: '', groq: '', l10n: '', elevenlabs: '' });
 
         const testOpenAI = async () => {
-            if (!apiKeys.openai) return updateStatus('openai', 'idle');
+            if (!apiKeys.openai) return updateStatus('openai', 'idle', 'API Key kosong');
             try {
                 const res = await fetch('https://api.openai.com/v1/models', { headers: { 'Authorization': `Bearer ${apiKeys.openai}` } });
-                updateStatus('openai', res.ok ? 'ok' : 'error');
-            } catch (e) { updateStatus('openai', 'error'); }
+                if (res.ok) updateStatus('openai', 'ok', 'Koneksi berhasil. API Key valid.');
+                else {
+                    const data = await res.json().catch(()=>({}));
+                    updateStatus('openai', 'error', `Ditolak (${res.status}): ${data.error?.message || 'Invalid Key'}`);
+                }
+            } catch (e) { updateStatus('openai', 'error', 'Koneksi terputus. Cek internet.'); }
         };
 
         const testGemini = async () => {
-            if (!apiKeys.gemini) return updateStatus('gemini', 'idle');
+            if (!apiKeys.gemini) return updateStatus('gemini', 'idle', 'API Key kosong');
             try {
                 const key = apiKeys.gemini.split(',')[0].trim();
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
-                updateStatus('gemini', res.ok ? 'ok' : 'error');
-            } catch (e) { updateStatus('gemini', 'error'); }
+                if (res.ok) updateStatus('gemini', 'ok', 'Koneksi berhasil. API Key valid.');
+                else {
+                    const data = await res.json().catch(()=>({}));
+                    updateStatus('gemini', 'error', `Ditolak (${res.status}): ${data.error?.message || 'Invalid Key'}`);
+                }
+            } catch (e) { updateStatus('gemini', 'error', 'Koneksi terputus. Cek internet.'); }
         };
 
         const testGroq = async () => {
-            if (!apiKeys.groq) return updateStatus('groq', 'idle');
+            if (!apiKeys.groq) return updateStatus('groq', 'idle', 'API Key kosong');
             try {
                 const res = await fetch('https://api.groq.com/openai/v1/models', { headers: { 'Authorization': `Bearer ${apiKeys.groq}` } });
-                updateStatus('groq', res.ok ? 'ok' : 'error');
-            } catch (e) { updateStatus('groq', 'error'); }
+                if (res.ok) updateStatus('groq', 'ok', 'Koneksi berhasil. API Key valid.');
+                else {
+                    const data = await res.json().catch(()=>({}));
+                    updateStatus('groq', 'error', `Ditolak (${res.status}): ${data.error?.message || 'Invalid Key'}`);
+                }
+            } catch (e) { updateStatus('groq', 'error', 'Koneksi terputus. Cek internet.'); }
         };
 
         const testL10n = async () => {
-            if (!apiKeys.l10n) return updateStatus('l10n', 'idle');
+            if (!apiKeys.l10n) return updateStatus('l10n', 'idle', 'API Key kosong');
             try {
-                // Gunakan endpoint chat completions dummy untuk tes autentikasi jika models tidak ada
                 const res = await fetch('https://api.l10n.dev/v1/models', { headers: { 'Authorization': `Bearer ${apiKeys.l10n}` } });
-                updateStatus('l10n', (res.status !== 401 && res.status !== 403) ? 'ok' : 'error');
-            } catch (e) { updateStatus('l10n', 'error'); }
+                if (res.status !== 401 && res.status !== 403) updateStatus('l10n', 'ok', 'Koneksi berhasil.');
+                else updateStatus('l10n', 'error', `Ditolak (${res.status}): Unauthorized`);
+            } catch (e) { updateStatus('l10n', 'error', 'Koneksi terputus. Cek internet.'); }
         };
 
         const testElevenLabs = async () => {
-            if (!apiKeys.elevenlabs) return updateStatus('elevenlabs', 'idle');
+            if (!apiKeys.elevenlabs) return updateStatus('elevenlabs', 'idle', 'API Key kosong');
             try {
                 const res = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': apiKeys.elevenlabs.split(',')[0].trim() } });
-                updateStatus('elevenlabs', res.ok ? 'ok' : 'error');
-            } catch (e) { updateStatus('elevenlabs', 'error'); }
+                if (res.ok) updateStatus('elevenlabs', 'ok', 'Koneksi berhasil. API Key valid.');
+                else updateStatus('elevenlabs', 'error', `Ditolak (${res.status}): Invalid Key`);
+            } catch (e) { updateStatus('elevenlabs', 'error', 'Koneksi terputus. Cek internet.'); }
         };
 
         await Promise.all([testOpenAI(), testGemini(), testGroq(), testL10n(), testElevenLabs()]);
@@ -232,7 +250,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
                         </button>
                     </div>
 
-                    {activeMenu === 'overview' && <AdminOverview usersData={users} stats={stats} chartData={chartData} maxRevenue={maxRevenue} monthlyRevenueArray={[]} userEmail={userEmail} apiKeys={apiKeys} setApiKeys={setApiKeys} apiStatus={apiStatus} handleTestConnections={handleTestConnections} handleSaveApiKey={handleSaveApiKey} saveKeySuccess={saveKeySuccess} isSavingKey={isSavingKey} isFetchingKeys={isFetchingKeys} showToast={showToast} />}
+                    {activeMenu === 'overview' && <AdminOverview usersData={users} stats={stats} chartData={chartData} maxRevenue={maxRevenue} monthlyRevenueArray={[]} userEmail={userEmail} apiKeys={apiKeys} setApiKeys={setApiKeys} apiStatus={apiStatus} apiMessages={apiMessages} handleTestConnections={handleTestConnections} handleSaveApiKey={handleSaveApiKey} saveKeySuccess={saveKeySuccess} isSavingKey={isSavingKey} isFetchingKeys={isFetchingKeys} showToast={showToast} />}
                     {activeMenu === 'transactions' && <AdminTransactions transactions={transactions} fetchData={fetchAllData} showToast={showToast} />}
                     {activeMenu === 'rekening' && <AdminBanks banks={banks} fetchData={fetchAllData} showToast={showToast} />}
                     {activeMenu === 'users' && <AdminUsers users={users} isLoading={isLoading} showToast={showToast} />}
