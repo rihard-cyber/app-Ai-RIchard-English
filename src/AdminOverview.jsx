@@ -146,8 +146,9 @@ export default function AdminOverview({ usersData, stats, chartData, maxRevenue,
             </div>
 
             {/* Chart Area - Matches Old UI style */}
-            <div className="bg-white p-8 md:p-10 rounded-[32px] border border-slate-200 shadow-sm mt-8">
-                <h3 className="font-bold text-slate-800 mb-10 text-lg">Grafik Pertumbuhan (Simulasi)</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+                <div className="bg-white p-8 md:p-10 rounded-[32px] border border-slate-200 shadow-sm">
+                    <h3 className="font-bold text-slate-800 mb-10 text-lg">Grafik Pertumbuhan (Simulasi)</h3>
                 
                 <div className="h-64 flex items-end justify-around gap-4 w-full">
                     {chartData.length > 0 ? chartData.map((item, i) => {
