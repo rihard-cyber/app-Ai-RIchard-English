@@ -7,5 +7,6 @@
     "tokoh",
     "topik"
   ],
-  "geminicodeassist.project": "plasma-carving-j213z"
+  "geminicodeassist.project": "plasma-carving-j213z",
+  "java.configuration.updateBuildConfiguration": "interactive"
 }

@@ -54,6 +54,7 @@ export default function AdminOverview({ usersData, stats, chartData, maxRevenue,
     const [isClearingLogs, setIsClearingLogs] = useState(false);
     const [iflytekTestStatus, setIflytekTestStatus] = useState('idle');
     const [iflytekTestMsg, setIflytekTestMsg] = useState('');
+    const [elevenlabsVoiceStatus, setElevenlabsVoiceStatus] = useState('idle');
     const fileInputRef = useRef(null);
 
     const toggleKeyVisibility = (key) => setShowKey(p => ({ ...p, [key]: !p[key] }));
@@ -69,7 +70,30 @@ export default function AdminOverview({ usersData, stats, chartData, maxRevenue,
             setIflytekTestStatus('error');
             setIflytekTestMsg(res.message);
         }
-        setTimeout(() => setIflytekTestStatus('idle'), 5000);
+    };
+
+    const verifyElevenLabsVoice = async (apiKey, voiceId) => {
+        if (!apiKey || !voiceId) {
+            showToast("API Key dan Voice ID ElevenLabs harus diisi.", "error");
+            return;
+        }
+        setElevenlabsVoiceStatus('testing');
+        try {
+            const res = await fetch(`https://api.elevenlabs.io/v1/voices/${voiceId}`, {
+                method: 'GET',
+                headers: { 'xi-api-key': apiKey }
+            });
+            if (res.ok) {
+                setElevenlabsVoiceStatus('ok');
+                showToast("ElevenLabs Voice ID Valid ✅", "success");
+            } else {
+                setElevenlabsVoiceStatus('error');
+                showToast("Voice ID tidak ditemukan atau API Key salah.", "error");
+            }
+        } catch (err) {
+            setElevenlabsVoiceStatus('error');
+            showToast(`Gagal memvalidasi Voice ID: ${err.message}`, "error");
+        }
     };
 
     const handleDownloadKeys = () => {
@@ -89,7 +113,16 @@ export default function AdminOverview({ usersData, stats, chartData, maxRevenue,
         reader.onload = (event) => {
             try {
                 const parsed = JSON.parse(event.target.result);
-                setApiKeys(prev => ({ ...prev, ...parsed }));
+                const sanitizedKeys = {};
+                for (const [k, v] of Object.entries(parsed)) {
+                    if (typeof v === 'string') {
+                        // Pisahkan dengan koma, hilangkan spasi berlebih (trim), buang item kosong, urutkan (sort), lalu gabungkan
+                        sanitizedKeys[k] = v.split(',').map(item => item.trim()).filter(item => item).sort().join(',');
+                    } else {
+                        sanitizedKeys[k] = v;
+                    }
+                }
+                setApiKeys(prev => ({ ...prev, ...sanitizedKeys }));
                 showToast("Berhasil memuat API Keys! Klik 'Simpan Semua Key' untuk menerapkan.", "success");
             } catch (err) {
                 showToast("Format file JSON tidak valid.", "error");
@@ -242,7 +275,7 @@ export default function AdminOverview({ usersData, stats, chartData, maxRevenue,
                             )}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                 <div className="flex flex-col gap-2">
-                                    <label className="text-xs font-bold text-slate-600 flex items-center">iFLYTEK App ID</label>
+                                    <label className="text-xs font-bold text-slate-600 flex items-center">iFLYTEK App ID <StatusBadge status={iflytekTestStatus !== 'idle' ? (iflytekTestStatus === 'success' ? 'ok' : iflytekTestStatus) : apiStatus.iflytek} /></label>
                                     <div className="relative">
                                         <input type={showKey.iflytekAppId ? "text" : "password"} value={apiKeys.iflytekAppId || ''} onChange={(e) => setApiKeys(prev => ({ ...prev, iflytekAppId: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
                                         <button type="button" onClick={() => toggleKeyVisibility('iflytekAppId')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">{showKey.iflytekAppId ? <EyeOff size={16} /> : <Eye size={16} />}</button>
@@ -272,7 +305,10 @@ export default function AdminOverview({ usersData, stats, chartData, maxRevenue,
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-2">
-                                    <label className="text-xs font-bold text-slate-600 flex items-center">ElevenLabs Voice ID</label>
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-bold text-slate-600 flex items-center">ElevenLabs Voice ID <StatusBadge status={elevenlabsVoiceStatus !== 'idle' ? elevenlabsVoiceStatus : apiStatus.elevenlabsVoiceId} /></label>
+                                        <button type="button" onClick={() => verifyElevenLabsVoice(apiKeys.elevenlabs?.split(',')[0].trim(), apiKeys.elevenlabsVoiceId?.trim())} className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-md hover:bg-indigo-100 font-bold transition-colors">Test ID</button>
+                                    </div>
                                     <input type="text" value={apiKeys.elevenlabsVoiceId || ''} onChange={(e) => setApiKeys(prev => ({ ...prev, elevenlabsVoiceId: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" placeholder="21m00Tcm4TlvDq8ikWAM" />
                                 </div>
                             </div>

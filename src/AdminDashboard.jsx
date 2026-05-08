@@ -21,7 +21,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
     const [apiKeys, setApiKeys] = useState({ openai: '', gemini: '', groq: '', l10n: '', elevenlabs: '', elevenlabsVoiceId: '', iflytekAppId: '', iflytekApiKey: '', iflytekApiSecret: '' });
     const [saveKeySuccess, setSaveKeySuccess] = useState(false);
     const [isSavingKey, setIsSavingKey] = useState(false);
-    const [apiStatus, setApiStatus] = useState({ openai: null, gemini: null, groq: null, l10n: null, elevenlabs: null, iflytek: null });
+    const [apiStatus, setApiStatus] = useState({ openai: null, gemini: null, groq: null, l10n: null, elevenlabs: null, iflytek: null, elevenlabsVoiceId: null });
     const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
     const [isFetchingKeys, setIsFetchingKeys] = useState(true);
     const [autoSaveStatus, setAutoSaveStatus] = useState('');
@@ -70,6 +70,12 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
             fetch('https://api.elevenlabs.io/v1/models', { headers: { 'xi-api-key': getFirstKey(apiKeys.elevenlabs) } })
                 .then(res => setApiStatus(p => ({ ...p, elevenlabs: res.ok ? 'ok' : 'error' })))
                 .catch(() => setApiStatus(p => ({ ...p, elevenlabs: 'error' })));
+        }
+        if (apiKeys.elevenlabsVoiceId && apiKeys.elevenlabs) {
+            setApiStatus(p => ({ ...p, elevenlabsVoiceId: 'testing' }));
+            fetch(`https://api.elevenlabs.io/v1/voices/${getFirstKey(apiKeys.elevenlabsVoiceId)}`, { headers: { 'xi-api-key': getFirstKey(apiKeys.elevenlabs) } })
+                .then(res => setApiStatus(p => ({ ...p, elevenlabsVoiceId: res.ok ? 'ok' : 'error' })))
+                .catch(() => setApiStatus(p => ({ ...p, elevenlabsVoiceId: 'error' })));
         }
         if (apiKeys.iflytekAppId || apiKeys.iflytekApiKey || apiKeys.iflytekApiSecret) {
             setApiStatus(p => ({ ...p, iflytek: 'testing' }));
@@ -133,7 +139,11 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
 
     useEffect(() => {
         if (isFetchingKeys) return;
-        if (!initialKeysLoaded.current) { initialKeysLoaded.current = true; return; }
+        if (!initialKeysLoaded.current) {
+            initialKeysLoaded.current = true;
+            handleTestConnections(); // Menjalankan tes koneksi secara otomatis di latar belakang
+            return;
+        }
 
         const timer = setTimeout(() => { handleAutoSaveApiKey(); }, 2000);
         return () => clearTimeout(timer);

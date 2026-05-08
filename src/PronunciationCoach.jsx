@@ -138,7 +138,7 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
         if (perm.speechRecognition !== 'granted') {
           const req = await SpeechRecognition.requestPermissions();
           if (req.speechRecognition !== 'granted') {
-            alert("Izin mikrofon diperlukan.");
+            alert("Izin mikrofon ditolak. Jika dialog tidak muncul, silakan aktifkan izin mikrofon secara manual di Pengaturan Aplikasi Android Anda (Settings > Apps > Englishku > Permissions).");
             setIsRecording(false);
             return;
           }

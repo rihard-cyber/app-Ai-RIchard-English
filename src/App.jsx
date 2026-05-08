@@ -251,6 +251,7 @@ export default function App() {
 
   // --- SETUP LOCAL NOTIFICATIONS ---
   useEffect(() => {
+    let actionListener;
     const manageNotifications = async () => {
       try {
         if (isNotificationEnabled) {
@@ -286,11 +287,28 @@ export default function App() {
             await LocalNotifications.cancel(pending);
           }
         }
+
+        // Listener untuk mendeteksi saat notifikasi diklik dan aplikasi terbuka
+        actionListener = await LocalNotifications.addListener('localNotificationActionPerformed', (notificationAction) => {
+          const notifId = notificationAction.notification.id;
+          if (notifId === 1) { // ID 1 adalah pengingat belajar kita
+            // Beri jeda sejenak agar WebView dan UI React selesai di-render
+            setTimeout(async () => {
+              const msg = "Selamat datang kembali! RichardMeha AI sudah siap menemanimu belajar hari ini.";
+              try {
+                await TextToSpeech.speak({ text: msg, lang: 'id-ID', rate: 1.0 });
+              } catch (e) { console.warn("TTS Error saat buka notifikasi:", e); }
+            }, 1500);
+          }
+        });
       } catch (error) { console.warn("Local Notifications Error:", error); }
     };
 
     const timerId = setTimeout(() => manageNotifications(), 5000);
-    return () => clearTimeout(timerId);
+    return () => {
+      clearTimeout(timerId);
+      if (actionListener) actionListener.remove();
+    };
   }, [isNotificationEnabled]);
 
   useEffect(() => {
@@ -516,14 +534,17 @@ export default function App() {
 
       setUserProfile(prev => {
         if (prev.level && prev.level !== newLevel && prev.name !== "User" && prev.level !== "Pemula (A1-A2)") {
-          supabase.from('user_profiles').update({ level: newLevel }).eq('id', user.id).then();
-          playSound('levelup');
-          setShowLevelUpConfetti(true);
-          setLevelUpMessage(newLevel);
-          if (navigator.vibrate) {
-            try { navigator.vibrate([100, 50, 100, 50, 100]); } catch (e) { } // Getaran panjang saat level up
-          }
-          setTimeout(() => { setShowLevelUpConfetti(false); setLevelUpMessage(''); }, 6000);
+          // Eksekusi side-effect di luar siklus render murni (menghindari error StrictMode React 18)
+          Promise.resolve().then(() => {
+            supabase.from('user_profiles').update({ level: newLevel }).eq('id', user.id).then();
+            playSound('levelup');
+            setShowLevelUpConfetti(true);
+            setLevelUpMessage(newLevel);
+            if (navigator.vibrate) {
+              try { navigator.vibrate([100, 50, 100, 50, 100]); } catch (e) { } // Getaran panjang saat level up
+            }
+            setTimeout(() => { setShowLevelUpConfetti(false); setLevelUpMessage(''); }, 6000);
+          });
           return { ...prev, level: newLevel };
         }
         return prev;

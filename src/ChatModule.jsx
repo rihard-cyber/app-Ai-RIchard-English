@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Volume2, Languages, Lightbulb, Mic, MicOff, X, Zap, Headphones, ArrowDown, Send, Share2 } from 'lucide-react';
+import { Bot, Volume2, VolumeX, Languages, Lightbulb, Mic, MicOff, X, Zap, Headphones, ArrowDown, Send, Share2 } from 'lucide-react';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
+import { NativeAudio } from '@capacitor-community/native-audio';
 import { AiOrchestrator } from './AiOrchestrator';
 import { supabase } from './supabaseClient';
 import { GlobalContext } from './App';
@@ -206,6 +207,7 @@ export default function ChatModule({
     const [isLoading, setIsLoading] = useState(false);
     const [callMode, setCallMode] = useState(initialCallMode);
     const [subtitle, setSubtitle] = useState('');
+    const [bgmEnabled, setBgmEnabled] = useState(true);
 
     const [translations, setTranslations] = useState({});
     const [suggestions, setSuggestions] = useState([]);
@@ -228,61 +230,73 @@ export default function ChatModule({
     const currentTranscriptRef = useRef('');
     const messagesEndRef = useRef(null);
     const chatContainerRef = useRef(null);
-    const bgmAudioCtxRef = useRef(null);
+    const bgmLoadedRef = useRef(false);
+    const sfxLoadedRef = useRef(false);
 
     const { globalApiKey } = React.useContext(GlobalContext) || {};
 
-    // --- BGM LO-FI AMBIENT SYNTH ---
+    // --- NATIVE AUDIO BGM ---
     useEffect(() => {
-        if (callMode) {
-            try {
-                if (bgmAudioCtxRef.current) return;
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return;
-                const ctx = new AudioContext();
-                bgmAudioCtxRef.current = ctx;
-
-                const createOscillator = (freq, type, detune = 0) => {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    const filter = ctx.createBiquadFilter();
-                    osc.type = type; osc.frequency.value = freq; osc.detune.value = detune;
-                    // Lowpass filter untuk efek Lo-Fi / Muffled
-                    filter.type = 'lowpass'; filter.frequency.value = 300;
-                    // Volume super pelan & Fade In lambat
-                    gain.gain.setValueAtTime(0, ctx.currentTime);
-                    gain.gain.linearRampToValueAtTime(0.04, ctx.currentTime + 3);
-                    osc.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
-                    osc.start();
-                    return { osc, gain };
-                };
-
-                // Chord C Major 9 (Pad yang menenangkan)
-                ctx.nodes = [
-                    createOscillator(130.81, 'sine'),         // C3
-                    createOscillator(164.81, 'sine', 4),      // E3 (sedikit detuned)
-                    createOscillator(196.00, 'triangle', -4), // G3
-                    createOscillator(246.94, 'sine')          // B3
-                ];
-            } catch (e) { console.warn("BGM Error:", e); }
-        } else {
-            if (bgmAudioCtxRef.current) {
-                const ctx = bgmAudioCtxRef.current;
-                if (ctx.nodes) {
-                    ctx.nodes.forEach(({ osc, gain }) => {
-                        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.5); // Fade out
-                        setTimeout(() => { try { osc.stop(); } catch (e) { } }, 1600);
-                    });
+        const handleBGM = async () => {
+            if (callMode && bgmEnabled) {
+                try {
+                    // Preload BGM hanya satu kali untuk efisiensi RAM
+                    if (!bgmLoadedRef.current) {
+                        await NativeAudio.preload({
+                            assetId: "lofi-bgm",
+                            assetPath: "assets/lofi-bgm.mp3",
+                            audioChannelNum: 1,
+                            isUrl: false,
+                            volume: 0.05 // Mengatur volume dasar saat preload
+                        });
+                        bgmLoadedRef.current = true;
+                        // Ekstra penegasan volume ke 5% dari volume sistem
+                        await NativeAudio.setVolume({ assetId: "lofi-bgm", volume: 0.05 });
+                    }
+                    // Mengulang BGM (Loop) tanpa henti selama CallMode
+                    await NativeAudio.loop({ assetId: "lofi-bgm" });
+                } catch (e) { console.warn("NativeAudio BGM Error:", e); }
+            } else {
+                if (bgmLoadedRef.current) {
+                    try { await NativeAudio.stop({ assetId: "lofi-bgm" }); } catch (e) { }
                 }
-                setTimeout(() => { if (ctx.state !== 'closed') ctx.close(); bgmAudioCtxRef.current = null; }, 1700);
-            }
-        }
-        return () => {
-            if (bgmAudioCtxRef.current && bgmAudioCtxRef.current.state !== 'closed') {
-                bgmAudioCtxRef.current.close(); bgmAudioCtxRef.current = null;
             }
         };
-    }, [callMode]);
+
+        handleBGM();
+
+        return () => {
+            // Bersihkan / Hentikan audio saat berpindah dari ChatModule atau jika BGM dimatikan
+            if (bgmLoadedRef.current) {
+                NativeAudio.stop({ assetId: "lofi-bgm" }).catch(() => { });
+            }
+        };
+    }, [callMode, bgmEnabled]);
+
+    // --- NATIVE AUDIO SFX (DING) ---
+    useEffect(() => {
+        const initSFX = async () => {
+            try {
+                await NativeAudio.preload({
+                    assetId: "ding-sfx",
+                    assetPath: "assets/ding.mp3",
+                    audioChannelNum: 1,
+                    isUrl: false,
+                    volume: 0.6 // Volume yang pas untuk notifikasi
+                });
+                sfxLoadedRef.current = true;
+            } catch (e) {
+                console.warn("Gagal memuat SFX:", e);
+            }
+        };
+        initSFX();
+
+        return () => {
+            if (sfxLoadedRef.current) {
+                NativeAudio.unload({ assetId: "ding-sfx" }).catch(() => { });
+            }
+        };
+    }, []);
 
     const handleScroll = () => {
         if (!chatContainerRef.current) return;
@@ -293,7 +307,16 @@ export default function ChatModule({
         }
     };
 
-    const playDing = () => {
+    const playDing = async () => {
+        // 1. Coba putar menggunakan Native Audio terlebih dahulu
+        if (sfxLoadedRef.current) {
+            try {
+                await NativeAudio.play({ assetId: "ding-sfx" });
+                return; // Berhenti di sini jika Native Audio berhasil
+            } catch (e) { console.warn("Gagal memutar SFX Native", e); }
+        }
+
+        // 2. Fallback (Cadangan) ke Web Audio API Synthesizer jika Native Audio error
         try {
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const oscillator = audioCtx.createOscillator();
@@ -515,7 +538,7 @@ export default function ChatModule({
                 if (perm.speechRecognition !== 'granted') {
                     const req = await SpeechRecognition.requestPermissions();
                     if (req.speechRecognition !== 'granted') {
-                        alert("Izin mikrofon diperlukan.");
+                        alert("Izin mikrofon ditolak. Jika Anda pernah memblokirnya secara permanen, silakan aktifkan manual di Pengaturan Aplikasi (Settings > Apps).");
                         setIsRecording(false);
                         setMicStatus('idle');
                         return;
@@ -855,9 +878,14 @@ export default function ChatModule({
                             ))}
                         </div>
                     </div>
-                    <button onClick={() => setCallMode(false)} className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all z-50">
-                        <X size={24} />
-                    </button>
+                    <div className="absolute top-6 right-6 flex items-center gap-3 z-50">
+                        <button onClick={() => setBgmEnabled(!bgmEnabled)} className="p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all shadow-md backdrop-blur-sm" title={bgmEnabled ? "Matikan BGM" : "Nyalakan BGM"}>
+                            {bgmEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
+                        </button>
+                        <button onClick={() => setCallMode(false)} className="p-3 bg-rose-500/20 hover:bg-rose-500/40 text-rose-200 hover:text-rose-100 rounded-full transition-all shadow-md backdrop-blur-sm" title="Tutup Call">
+                            <X size={20} />
+                        </button>
+                    </div>
 
                     {/* Content Area - Scrollable */}
                     <div className="flex-1 overflow-y-auto w-full flex flex-col items-center pt-24 pb-24 px-6 text-center custom-scrollbar">
