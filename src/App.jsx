@@ -1241,101 +1241,123 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, o
   }, [userProfile, isVoiceGreetingEnabled, voiceGreetingGender]);
 
   return (
-    <div className="p-4 md:p-8 w-full max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 transform-gpu pb-20 overflow-x-hidden">
+    <div className="p-4 md:p-8 w-full max-w-[1280px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300 transform-gpu pb-20 overflow-x-hidden">
       {toastMessage && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-xl border bg-emerald-50 border-emerald-200 text-emerald-700 flex items-center gap-3 animate-in slide-in-from-top-4 duration-300">
           <Sparkles size={20} />
           <span className="font-bold text-sm">{displayedToast}<span className="animate-pulse font-light">|</span></span>
         </div>
       )}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
-        <div className="lg:col-span-2 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-[2.5rem] p-6 md:p-12 text-white shadow-2xl relative overflow-hidden group w-full max-w-full">
-          <div className="absolute -bottom-10 -right-10 opacity-10 group-hover:scale-110 transition-transform duration-500 transform-gpu">
-            <GraduationCap size={240} />
+      
+      <div className="flex flex-col lg:flex-row gap-6 w-full">
+        {/* Main Blue Card */}
+        <div className="flex-1 bg-gradient-to-br from-[#3B82F6] to-[#2563EB] rounded-[36px] p-8 md:p-10 text-white shadow-[0_10px_40px_rgba(37,99,235,0.2)] relative overflow-hidden group">
+          <div className="absolute -bottom-10 -right-10 opacity-10 group-hover:scale-110 transition-transform duration-500 transform-gpu pointer-events-none">
+            <GraduationCap size={280} />
           </div>
           <div className="relative z-10 w-full">
-            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-4 py-2 rounded-full mb-6 border border-white/30">
-              <Sparkles size={16} className="text-yellow-300" />
-              <span className="text-xs font-black uppercase tracking-widest">Level: {userProfile.level}</span>
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-1.5 rounded-full mb-6 border border-white/20">
+              <Sparkles size={14} className="text-yellow-300" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/90">LEVEL: {userProfile.level.toUpperCase()}</span>
             </div>
-            <h2 className="text-3xl md:text-5xl font-black mb-4 leading-tight break-words">Lanjut Belajar,<br />{userProfile.name}!</h2>
-            <p className="text-blue-100 mb-8 md:text-lg max-w-md opacity-90 leading-relaxed break-words">
-              Target kamu hari ini: **{levelData?.goals?.[0]?.name || levelData?.goals?.[0] || 'Mulai belajar'}**. RichardMeha AI sudah siapkan materinya!
+            
+            <h2 className="text-4xl md:text-[44px] font-black mb-4 leading-[1.1] tracking-tight">
+              Lanjut Belajar,<br />{userProfile.name}!
+            </h2>
+            
+            <p className="text-blue-50 mb-10 md:text-[15px] max-w-md opacity-90 leading-relaxed font-medium">
+              Target kamu hari ini: **{levelData?.goals?.[0]?.name || levelData?.goals?.[0] || 'Perkenalan Diri'}**.<br/>
+              RichardMeha AI sudah siapkan materinya!
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 w-full">
+            
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full">
               <button
                 onClick={() => onNavigate(recommendation)}
-                className="w-full sm:w-auto bg-white text-blue-700 font-black px-8 py-4 rounded-2xl shadow-xl transition-all duration-200 hover:scale-105 hover:shadow-[0_0_20px_rgba(79,70,229,0.5)] active:scale-95 flex items-center justify-center gap-2 group"
+                className="bg-white text-[#2563EB] font-black px-6 py-3.5 rounded-[16px] shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 flex items-center justify-center gap-2 text-[13px] uppercase tracking-widest shrink-0"
               >
-                <Zap size={20} className="fill-blue-700 group-hover:scale-125 transition-transform" />
-                Mulai {recommendation.toUpperCase()}
+                <Zap size={18} className="fill-[#2563EB]" />
+                Mulai SPEAKING
               </button>
-              <div className="flex flex-wrap gap-4 items-center w-full">
-                <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-3 flex items-center gap-3">
-                  <div className="bg-orange-500 p-2 rounded-xl shadow-lg shadow-orange-500/20"><Flame size={18} className="text-white fill-white" /></div>
-                  <div><p className="text-[10px] text-blue-200 font-bold uppercase tracking-tighter">Streak</p><p className="text-lg font-black leading-none">{userProfile.streak} Hari</p></div>
+              
+              <div className="flex gap-3 items-center">
+                <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-[16px] px-4 py-2 flex items-center gap-3">
+                  <div className="bg-[#FF7A00] p-1.5 rounded-full shadow-sm">
+                    <Flame size={16} className="text-white fill-white" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-white/80 font-black uppercase tracking-widest leading-none mb-0.5">Streak</span>
+                    <span className="text-sm font-black text-white leading-none">{userProfile.streak} Hari</span>
+                  </div>
                 </div>
-                <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-3 flex items-center gap-3">
-                  <div className="bg-yellow-400 p-2 rounded-xl shadow-lg shadow-yellow-400/20"><Trophy size={18} className="text-yellow-900 fill-yellow-900" /></div>
-                  <div><p className="text-[10px] text-blue-200 font-bold uppercase tracking-tighter">Total XP</p><p className="text-lg font-black leading-none">{userProfile.xp}</p></div>
+                
+                <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-[16px] px-4 py-2 flex items-center gap-3">
+                  <div className="bg-[#FBBF24] p-1.5 rounded-full shadow-sm">
+                    <Trophy size={16} className="text-yellow-900 fill-yellow-900" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-white/80 font-black uppercase tracking-widest leading-none mb-0.5">Total XP</span>
+                    <span className="text-sm font-black text-white leading-none">{userProfile.xp}</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-[2.5rem] p-6 md:p-8 border border-slate-200 shadow-xl flex flex-col w-full max-w-full">
-          <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2"><Trophy size={24} className="text-yellow-500" /> Goals Level {userProfile.level.split(' ')[0]}</h3>
-          <div className="space-y-4 flex-1 w-full overflow-hidden">
+        {/* Goals Right Sidebar */}
+        <div className="w-full lg:w-[360px] bg-white rounded-[36px] p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col shrink-0">
+          <h3 className="text-[17px] font-black text-slate-800 mb-6 flex items-center gap-2">
+            <Trophy size={20} className="text-yellow-500 stroke-[2.5]" /> Goals Level {userProfile.level.split(' ')[0]}
+          </h3>
+          <div className="space-y-3 flex-1 w-full overflow-hidden">
             {(() => {
-              const goals = levelData?.lessons || levelData?.goals || [];
+              const goals = levelData?.lessons || levelData?.goals || [
+                { title: 'Greetings & Introductions', topic: 'HELLO, NICE TO MEET YOU. I AM FROM INDONESIA.' },
+                { title: 'Numbers, Colors & Time', topic: 'TELLING TIME, COUNTING, AND BASIC COLORS.' },
+                { title: 'Family & Daily Life', topic: 'PRO FEATURE' },
+                { title: 'Basic Questions', topic: 'PRO FEATURE' }
+              ];
               const freeCount = Math.ceil(goals.length * 0.4);
-              return goals.map((goal, i) => {
+              return goals.slice(0,4).map((goal, i) => {
                 const isLocked = i >= freeCount && !userProfile.is_pro;
                 return (
                   <div
                     key={i}
                     onClick={() => {
-                      if (isLocked) {
-                        onUpgrade();
-                      } else if (goal.id) {
-                        onStartGoal(goal.id);
-                      }
+                      if (isLocked) onUpgrade();
+                      else if (goal.id) onStartGoal(goal.id);
                     }}
-                    className={`flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden ${isLocked ? 'bg-slate-50 border-slate-100 opacity-70 grayscale-[0.5]' : 'bg-slate-50 border-slate-100 hover:border-blue-500 hover:bg-blue-50/30 hover:shadow-lg hover:-translate-y-1 group'}`}
+                    className={`flex items-center gap-4 p-4 rounded-[20px] transition-all cursor-pointer relative overflow-hidden bg-white border ${isLocked ? 'border-slate-50 opacity-60 grayscale-[0.5]' : 'border-slate-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)] hover:border-blue-200 hover:-translate-y-0.5'}`}
                   >
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 mt-0.5 shadow-sm transition-colors ${isLocked ? 'bg-slate-200 text-slate-400' : 'bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0 transition-colors ${isLocked ? 'bg-slate-100 text-slate-400' : 'bg-blue-50 text-blue-600'}`}>
                       {isLocked ? <Lock size={12} /> : i + 1}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-black truncate transition-colors ${isLocked ? 'text-slate-500' : 'text-slate-700 group-hover:text-blue-700'}`}>{goal.title || goal.name || goal}</p>
-                      {goal.id && <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">{isLocked ? 'PRO FEATURE' : (goal.topic || 'Klik untuk mulai latihan')}</p>}
+                    <div className="flex-1 min-w-0 pr-4">
+                      <p className={`text-xs font-black truncate leading-tight ${isLocked ? 'text-slate-500' : 'text-slate-700'}`}>{goal.title || goal.name || goal}</p>
+                      <p className={`text-[8px] font-black uppercase tracking-widest mt-1 truncate ${isLocked ? 'text-slate-400' : 'text-slate-400'}`}>{isLocked ? 'PRO FEATURE' : (goal.topic || 'HELLO, NICE TO MEET YOU.')}</p>
                     </div>
                     {isLocked ? (
-                      <Crown size={16} className="text-amber-500 fill-amber-500" />
+                      <Crown size={14} className="text-yellow-500 fill-yellow-500 absolute right-4 top-1/2 -translate-y-1/2" />
                     ) : (
-                      goal.id && <ArrowUpRight size={18} className="text-slate-300 group-hover:text-blue-500 transition-colors" />
+                      <ArrowUpRight size={14} className="text-slate-300 absolute right-4 top-1/2 -translate-y-1/2" />
                     )}
                   </div>
                 );
               });
             })()}
           </div>
-          <button onClick={() => onNavigate('assessment')} className="mt-8 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 mx-auto">Cek level lagi? Ulangi Tes <ArrowUpRight size={14} /></button>
+          <button onClick={() => onNavigate('assessment')} className="mt-6 text-[10px] font-black text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1 mx-auto">Cek level lagi? Ulangi Tes <ArrowUpRight size={12} /></button>
         </div>
       </div>
 
-      <h3 className="text-2xl font-black text-slate-800 mt-12 mb-6 px-2">Modul Belajar Pintar</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 w-full">
-        <DashboardCard title="Vocabulary" desc="Perkaya kosa kata dengan Box of Words." icon={<BookA size={24} />} color="bg-indigo-50 text-indigo-600" onClick={() => onNavigate('vocabulary')} />
-        <DashboardCard title="Speaking" desc="Latih pelafalan dan keberanian bicara." icon={<Mic size={24} />} color="bg-rose-50 text-rose-600" onClick={() => onNavigate('speaking')} />
-        <DashboardCard title="Grammar" desc="Pahami struktur kalimat untuk speaking." icon={<LayoutDashboard size={24} />} color="bg-emerald-50 text-emerald-600" onClick={() => onNavigate('grammar')} />
-        <DashboardCard title="Listening" desc="Latih telinga mendengar monolog Inggris." icon={<Headphones size={24} />} color="bg-amber-50 text-amber-600" onClick={() => onNavigate('listening')} />
-        <DashboardCard title="Writing Analyzer" desc="Koreksi tulisanmu secara detail." icon={<PenTool size={24} />} color="bg-blue-50 text-blue-600" onClick={() => onNavigate('writing_analyzer')} />
-        <DashboardCard title="Conversation" desc="Simulasi ngobrol bareng tokoh idola." icon={<MessageSquare size={24} />} color="bg-purple-50 text-purple-600" onClick={() => onNavigate('conversation')} />
+      <h3 className="text-[22px] font-black text-slate-800 mt-12 mb-6 px-2">Modul Belajar Pintar</h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 w-full">
+        <DashboardCard title="Vocabulary" icon={<BookA size={20} />} color="bg-[#F0F5FF] text-[#3B82F6]" onClick={() => onNavigate('vocabulary')} />
+        <DashboardCard title="Speaking" icon={<Mic size={20} />} color="bg-[#FFF0F0] text-[#EF4444]" onClick={() => onNavigate('speaking')} />
+        <DashboardCard title="Grammar" icon={<LayoutDashboard size={20} />} color="bg-[#F0FFF4] text-[#10B981]" onClick={() => onNavigate('grammar')} />
       </div>
       <div className="mt-12">
-        <Suspense fallback={<div className="h-32 flex items-center justify-center bg-slate-50 rounded-3xl border border-slate-100"><Loader2 className="animate-spin text-blue-400" /></div>}>
+        <Suspense fallback={<div className="h-32 flex items-center justify-center bg-slate-50 rounded-[32px]"><Loader2 className="animate-spin text-blue-400" /></div>}>
           <AchievementSystem userProfile={userProfile} onNavigate={onNavigate} onUpgrade={onUpgrade} />
         </Suspense>
       </div>
@@ -1343,13 +1365,13 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, o
   );
 }
 
-function DashboardCard({ title, desc, icon, color, onClick }) {
+function DashboardCard({ title, icon, color, onClick }) {
   return (
-    <div onClick={onClick} className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm cursor-pointer transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-indigo-500/20 hover:border-indigo-400 dark:hover:border-indigo-500 group w-full max-w-full overflow-hidden">
-      <div className={`w-14 h-14 rounded-2xl ${color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm`}>{icon}</div>
-      <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">{title}</h4>
-      <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{desc}</p>
-      <div className="flex items-center text-sm font-semibold text-blue-600 dark:text-blue-400 gap-1 opacity-0 group-hover:opacity-100 transition-all transform translate-x-[-10px] group-hover:translate-x-0">Mulai Belajar <ChevronRight size={16} /></div>
+    <div onClick={onClick} className="bg-white p-6 md:p-8 rounded-[36px] shadow-[0_8px_30px_rgb(0,0,0,0.03)] cursor-pointer transition-all hover:-translate-y-1 group w-full flex flex-col justify-between min-h-[180px] md:min-h-[200px]">
+      <div className={`w-14 h-14 rounded-[20px] ${color} flex items-center justify-center transition-transform group-hover:scale-110 group-hover:shadow-md`}>
+        {icon}
+      </div>
+      <h4 className="text-[20px] font-black text-slate-800 mt-auto">{title}</h4>
     </div>
   );
 }
