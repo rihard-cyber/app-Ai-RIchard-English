@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
 
 // Konfigurasi standar untuk memastikan CI/CD GitHub Actions berjalan lancar
 
@@ -17,18 +18,62 @@ function chunkLoadingNotifier() {
 }
 
 export default defineConfig({
-  plugins: [react(), chunkLoadingNotifier()],
   plugins: [
     react(),
     chunkLoadingNotifier(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'], // Cache semua file statis ini
         maximumFileSizeToCacheInBytes: 5000000, // Izinkan file hingga 5MB untuk di-cache
+        cleanupOutdatedCaches: true, // Hapus cache versi lama secara otomatis
+        navigateFallback: '/index.html', // Penting untuk SPA (React) agar routing offline berjalan lancar
+        runtimeCaching: [
+          {
+            // Contoh: Cache Google Fonts atau asset eksternal yang aman di-cache (GET requests)
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // Cache selama 1 tahun
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          }
+        ]
       },
-      // Jika manifest disisipkan manual di index.html, kita bisa mematikan auto-inject manifest dari plugin
-      manifest: false
+      manifest: {
+        name: 'Englishku App',
+        short_name: 'Englishku',
+        description: 'Aplikasi Belajar Bahasa Inggris Berbasis AI',
+        theme_color: '#ffffff',
+        background_color: '#ffffff',
+        display: 'standalone',
+        icons: [
+          {
+            src: '/pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/pwa-512x512-maskable.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
+          }
+        ]
+      }
     })
   ],
   base: './', // Mengubah path menjadi relatif agar support di GitHub Pages & Android APK
