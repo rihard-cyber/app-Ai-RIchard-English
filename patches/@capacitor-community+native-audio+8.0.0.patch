@@ -1,0 +1,13 @@
+diff --git a/node_modules/@capacitor-community/native-audio/android/build.gradle b/node_modules/@capacitor-community/native-audio/android/build.gradle
+index 635bd9e..ab0a394 100644
+--- a/node_modules/@capacitor-community/native-audio/android/build.gradle
++++ b/node_modules/@capacitor-community/native-audio/android/build.gradle
+@@ -30,7 +30,7 @@ android {
+     buildTypes {
+         release {
+             minifyEnabled false
+-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
++            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+         }
+     }
+     lintOptions {

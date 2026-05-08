@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { APP_CATEGORIES } from '../aiPrompt.js'; // Sesuaikan path ini dengan lokasi file aiPrompt.js Anda
 import {
     LayoutDashboard,

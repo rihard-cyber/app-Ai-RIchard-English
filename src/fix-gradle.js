@@ -19,10 +19,9 @@ function fixProguard(dir) {
             fixProguard(fullPath);
         } else if (entry.name === 'build.gradle') {
             let content = fs.readFileSync(fullPath, 'utf8');
-            // Regex mendeteksi kutip satu maupun ganda pada proguard-android.txt
-            const regex = /getDefaultProguardFile\(['"]proguard-android\.txt['"]\)/g;
-            if (regex.test(content)) {
-                const newContent = content.replace(regex, "getDefaultProguardFile('proguard-android-optimize.txt')");
+            // Perbaikan Bug Regex lastIndex: hindari pemakaian .test() pada regex global
+            if (content.includes('proguard-android.txt')) {
+                const newContent = content.replace(/getDefaultProguardFile\(['"]proguard-android\.txt['"]\)/g, "getDefaultProguardFile('proguard-android-optimize.txt')");
                 fs.writeFileSync(fullPath, newContent, 'utf8');
                 console.log(`✅ [Auto-Fix] Diperbarui: ${fullPath.split('node_modules')[1]}`);
             }
