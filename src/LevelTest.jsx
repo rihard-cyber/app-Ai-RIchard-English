@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trophy, CheckCircle2, ArrowRight, GraduationCap, Sparkles, Loader2, Volume2 } from 'lucide-react';
+import { Trophy, CheckCircle2, ArrowRight, GraduationCap, Sparkles, Loader2, Volume2, Share2 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { VOCABULARY_QUESTIONS } from './data/vocabularyTest';
 
@@ -54,19 +54,23 @@ export default function LevelTest({ onComplete }) {
   };
 
   const saveResult = async (level) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from('user_profiles').update({
-        level: level,
-        has_completed_initial_test: true
-      }).eq('id', user.id);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('user_profiles').update({
+          level: level,
+          has_completed_initial_test: true
+        }).eq('id', user.id);
+      }
+    } catch (error) {
+      console.error("Error saving assessment result:", error);
+    } finally {
+      setTimeout(() => {
+        setIsLoading(false);
+        setStep('result');
+        handleTTS(`Awesome! Your English level is ${level}. Welcome to the family!`);
+      }, 2000);
     }
-
-    setTimeout(() => {
-      setIsLoading(false);
-      setStep('result');
-      handleTTS(`Awesome! Your English level is ${level}. Welcome to the family!`);
-    }, 2000);
   };
 
   if (step === 'welcome') {
@@ -126,12 +130,25 @@ export default function LevelTest({ onComplete }) {
           <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">{finalLevel}</h3>
         </div>
 
-        <button
-          onClick={() => onComplete(finalLevel)}
-          className="relative z-10 bg-white text-slate-900 font-black py-4 px-12 rounded-2xl shadow-xl transition-all active:scale-95 flex items-center gap-2 text-lg hover:bg-slate-100"
-        >
-          Enter Dashboard <ArrowRight size={20} />
-        </button>
+        <div className="flex flex-col gap-4 relative z-10 w-full max-w-sm">
+          <button
+            onClick={() => onComplete(finalLevel)}
+            className="bg-white text-slate-900 font-black py-4 px-12 rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 text-lg hover:bg-slate-100 w-full"
+          >
+            Enter Dashboard <ArrowRight size={20} />
+          </button>
+          <button
+            onClick={() => {
+              const textMsg = `I just took the English Level Assessment at RichardMeha AI and got ${finalLevel}! Try it out and see your level! 🚀`;
+              const url = `https://play.google.com/store/apps/details?id=com.richardmeha.englishku`;
+              const waUrl = `https://wa.me/?text=${encodeURIComponent(textMsg + '\n\n' + url)}`;
+              window.open(waUrl, '_system');
+            }}
+            className="bg-emerald-500 hover:bg-emerald-600 text-white font-black py-4 px-12 rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 text-lg w-full"
+          >
+            <Share2 size={20} /> Share to WhatsApp
+          </button>
+        </div>
       </div>
     );
   }

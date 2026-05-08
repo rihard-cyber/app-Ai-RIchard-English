@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Volume2, Languages, Lightbulb, Mic, MicOff, X, Zap, Headphones, ArrowDown, Send } from 'lucide-react';
+import { Bot, Volume2, Languages, Lightbulb, Mic, MicOff, X, Zap, Headphones, ArrowDown, Send, Share2 } from 'lucide-react';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
 import { AiOrchestrator } from './AiOrchestrator';
@@ -161,6 +161,17 @@ const MessageBubble = React.memo(({
                                 <span className="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">{lastScore.phonetic}</span>
                             </div>
                         )}
+                        <button
+                            onClick={() => {
+                                const text = `Saya baru saja menyelesaikan sesi belajar di RichardMeha AI dengan skor ${lastScore.score}%! (Grammar: ${lastScore.grammar}%, Vocab: ${lastScore.vocab}%, Fluency: ${lastScore.fluency}%). Yuk ikut belajar bareng!`;
+                                const url = `https://play.google.com/store/apps/details?id=com.richardmeha.englishku`;
+                                const waUrl = `https://wa.me/?text=${encodeURIComponent(text + '\n\n' + url)}`;
+                                window.open(waUrl, '_system');
+                            }}
+                            className="mt-4 w-full py-2 bg-emerald-50 text-emerald-600 font-bold rounded-xl hover:bg-emerald-100 flex items-center justify-center gap-2 transition-colors text-xs"
+                        >
+                            <Share2 size={14} /> Bagikan Skor ke WhatsApp
+                        </button>
                     </div>
                 </div>
             )}
@@ -217,8 +228,61 @@ export default function ChatModule({
     const currentTranscriptRef = useRef('');
     const messagesEndRef = useRef(null);
     const chatContainerRef = useRef(null);
+    const bgmAudioCtxRef = useRef(null);
 
     const { globalApiKey } = React.useContext(GlobalContext) || {};
+
+    // --- BGM LO-FI AMBIENT SYNTH ---
+    useEffect(() => {
+        if (callMode) {
+            try {
+                if (bgmAudioCtxRef.current) return;
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                bgmAudioCtxRef.current = ctx;
+
+                const createOscillator = (freq, type, detune = 0) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    const filter = ctx.createBiquadFilter();
+                    osc.type = type; osc.frequency.value = freq; osc.detune.value = detune;
+                    // Lowpass filter untuk efek Lo-Fi / Muffled
+                    filter.type = 'lowpass'; filter.frequency.value = 300;
+                    // Volume super pelan & Fade In lambat
+                    gain.gain.setValueAtTime(0, ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.04, ctx.currentTime + 3);
+                    osc.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+                    osc.start();
+                    return { osc, gain };
+                };
+
+                // Chord C Major 9 (Pad yang menenangkan)
+                ctx.nodes = [
+                    createOscillator(130.81, 'sine'),         // C3
+                    createOscillator(164.81, 'sine', 4),      // E3 (sedikit detuned)
+                    createOscillator(196.00, 'triangle', -4), // G3
+                    createOscillator(246.94, 'sine')          // B3
+                ];
+            } catch (e) { console.warn("BGM Error:", e); }
+        } else {
+            if (bgmAudioCtxRef.current) {
+                const ctx = bgmAudioCtxRef.current;
+                if (ctx.nodes) {
+                    ctx.nodes.forEach(({ osc, gain }) => {
+                        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.5); // Fade out
+                        setTimeout(() => { try { osc.stop(); } catch (e) { } }, 1600);
+                    });
+                }
+                setTimeout(() => { if (ctx.state !== 'closed') ctx.close(); bgmAudioCtxRef.current = null; }, 1700);
+            }
+        }
+        return () => {
+            if (bgmAudioCtxRef.current && bgmAudioCtxRef.current.state !== 'closed') {
+                bgmAudioCtxRef.current.close(); bgmAudioCtxRef.current = null;
+            }
+        };
+    }, [callMode]);
 
     const handleScroll = () => {
         if (!chatContainerRef.current) return;
@@ -236,12 +300,19 @@ export default function ChatModule({
             const gainNode = audioCtx.createGain();
             oscillator.connect(gainNode);
             gainNode.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
             oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(1046.50, audioCtx.currentTime);
-            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-            oscillator.start();
-            oscillator.stop(audioCtx.currentTime + 0.5);
+            // Suara UI bubble message modern (nada naik sangat cepat)
+            oscillator.frequency.setValueAtTime(800, now);
+            oscillator.frequency.exponentialRampToValueAtTime(1200, now + 0.05);
+
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(0.3, now + 0.02);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+            oscillator.start(now);
+            oscillator.stop(now + 0.15);
         } catch (e) { console.warn("Web Audio API tidak didukung", e); }
     };
 
@@ -395,11 +466,13 @@ export default function ChatModule({
             const firstBrace = cleanText.indexOf('{');
             const lastBrace = cleanText.lastIndexOf('}');
             if (firstBrace !== -1 && lastBrace !== -1 && lastBrace >= firstBrace) {
-                const jsonString = cleanText.substring(firstBrace, lastBrace + 1);
+                let jsonString = cleanText.substring(firstBrace, lastBrace + 1);
+                jsonString = jsonString.replace(/[\u0000-\u001F]+/g, "");
                 return JSON.parse(jsonString);
             }
             return null;
         } catch (e) {
+            console.error("Deep Sanitizer Parse Error:", e);
             return null;
         }
     };
@@ -520,7 +593,7 @@ export default function ChatModule({
 
             recognitionRef.current.onerror = (event) => {
                 if (event.error === 'not-allowed') {
-                    alert("Akses mikrofon ditolak. Izinkan akses mikrofon di pengaturan browser/perangkat Anda.");
+                    alert("Izinkan akses mikrofon di pengaturan browser Anda");
                 } else {
                     console.warn("Web Speech API Error:", event.error);
                 }
@@ -744,6 +817,27 @@ export default function ChatModule({
         return () => { if (idleTimerRef.current) clearTimeout(idleTimerRef.current); };
     }, [messages]);
 
+    // OPTIMASI: Cegah re-render array messages yang berat saat state UI lain berubah (seperti inputValue atau subtitle mengetik)
+    const renderedMessages = React.useMemo(() => {
+        return messages.map((msg, idx) => (
+            !msg.isHidden && (
+                <MessageBubble
+                    key={idx}
+                    msg={msg}
+                    idx={idx}
+                    isLast={idx === messages.length - 1}
+                    translation={translations[idx]}
+                    suggestions={suggestions}
+                    lastScore={lastScore}
+                    onTTS={handleTTS}
+                    onTranslate={handleTranslate}
+                    onSuggest={handleSuggest}
+                    onSuggestionClick={(s) => { setInputValue(s); sendMessage(s, false, false); }}
+                />
+            )
+        ));
+    }, [messages, translations, suggestions, lastScore]);
+
     return (
         <div className="absolute inset-0 flex flex-col bg-slate-50/50 z-20">
             {callMode && (
@@ -766,14 +860,23 @@ export default function ChatModule({
                     </button>
 
                     {/* Content Area - Scrollable */}
-                    <div className="flex-1 overflow-y-auto w-full flex flex-col items-center pt-24 pb-8 px-6 text-center custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto w-full flex flex-col items-center pt-24 pb-24 px-6 text-center custom-scrollbar">
                         <div className="relative mb-12">
-                            <div className={`w-40 h-40 rounded-full border-4 border-blue-500/30 flex items-center justify-center ${isSpeaking || micStatus === 'listening' ? 'animate-pulse' : ''}`}>
-                                <div className={`w-32 h-32 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-2xl shadow-blue-500/40 ${isSpeaking ? 'scale-110' : ''} transition-all duration-300`}>
+                            {/* Visual Sound Wave (Ripples) */}
+                            {isSpeaking && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                                    <div className="absolute w-32 h-32 rounded-full border-2 border-blue-400 animate-ping" style={{ animationDuration: '1.5s' }}></div>
+                                    <div className="absolute w-32 h-32 rounded-full border-2 border-indigo-400 animate-ping" style={{ animationDuration: '1.5s', animationDelay: '400ms' }}></div>
+                                    <div className="absolute w-32 h-32 rounded-full border-2 border-purple-400 animate-ping" style={{ animationDuration: '1.5s', animationDelay: '800ms' }}></div>
+                                </div>
+                            )}
+
+                            <div className={`w-40 h-40 rounded-full border-4 border-blue-500/30 flex items-center justify-center ${micStatus === 'listening' ? 'animate-pulse' : ''}`}>
+                                <div className={`w-32 h-32 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-2xl shadow-blue-500/40 ${isSpeaking ? 'scale-110' : ''} transition-all duration-300 relative z-10`}>
                                     <Bot size={64} className="text-white" />
                                 </div>
                             </div>
-                            {(isSpeaking || isTypingEffect) && <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest animate-bounce">AI is speaking...</div>}
+                            {(isSpeaking || isTypingEffect) && <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest animate-bounce z-20">AI is speaking...</div>}
                         </div>
 
                         <h2 className="text-2xl font-black text-white mb-2">RichardMeha <span className="text-blue-500">Call</span></h2>
@@ -828,12 +931,12 @@ export default function ChatModule({
                     </div>
 
                     {/* Bottom Bar Area - Shrink-0 */}
-                    <div className="shrink-0 w-full flex justify-center items-center gap-6 p-4 pb-[calc(16px+env(safe-area-inset-bottom))] bg-slate-900/80 backdrop-blur-md border-t border-slate-800">
+                    <div className="shrink-0 w-full flex justify-center items-center gap-6 py-3 px-4 pb-[calc(12px+env(safe-area-inset-bottom))] bg-slate-900/80 backdrop-blur-md border-t border-slate-800">
                         <button
                             onClick={toggleRecording}
-                            className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-xl active:scale-90 ${isRecording ? 'bg-rose-500 animate-pulse shadow-rose-500/50' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/30'}`}
+                            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-xl active:scale-90 ${isRecording ? 'bg-rose-500 animate-pulse shadow-rose-500/50' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/30'}`}
                         >
-                            {isRecording ? <MicOff size={28} /> : <Mic size={28} />}
+                            {isRecording ? <MicOff size={24} /> : <Mic size={24} />}
                         </button>
                     </div>
                 </div>
@@ -880,23 +983,7 @@ export default function ChatModule({
 
             {/* Chat Messages */}
             <div ref={chatContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 space-y-6 transform-gpu overscroll-none scroll-smooth w-full" style={{ paddingBottom: '120px' }}>
-                {messages.map((msg, idx) => (
-                    !msg.isHidden && (
-                        <MessageBubble
-                            key={idx}
-                            msg={msg}
-                            idx={idx}
-                            isLast={idx === messages.length - 1}
-                            translation={translations[idx]}
-                            suggestions={suggestions}
-                            lastScore={lastScore}
-                            onTTS={handleTTS}
-                            onTranslate={handleTranslate}
-                            onSuggest={handleSuggest}
-                            onSuggestionClick={(s) => { setInputValue(s); sendMessage(s, false, false); }}
-                        />
-                    )
-                ))}
+                {renderedMessages}
                 {isLoading && (
                     <div className="flex items-end gap-2 w-full animate-in fade-in duration-300">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white flex items-center justify-center shrink-0 shadow-sm">
@@ -929,18 +1016,18 @@ export default function ChatModule({
             )}
 
             {/* Input Form */}
-            <div className="relative z-[50] bg-white border-t border-slate-200 w-full p-3 md:p-4 shadow-[0_-10px_30px_rgba(0,0,0,0.06)] shrink-0" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }}>
+            <div className="relative z-[50] bg-white border-t border-slate-200 w-full py-2 px-3 md:p-4 shadow-[0_-10px_30px_rgba(0,0,0,0.06)] shrink-0" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }}>
                 <form onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue, false, false); }} className="max-w-4xl mx-auto w-full flex items-center gap-2 md:gap-3">
                     <input
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         placeholder={isRecording ? "Mendengarkan..." : "Ketik pesan atau tanya Richard..."}
-                        className="flex-1 min-w-0 w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:bg-white transition-all text-sm md:text-base shadow-inner"
+                        className="flex-1 min-w-0 w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2 outline-none focus:border-blue-500 focus:bg-white transition-all text-sm md:text-base shadow-inner"
                     />
                     <button
                         type="button"
                         onClick={toggleRecording}
-                        className={`p-3 rounded-xl transition-all active:scale-90 flex items-center justify-center shadow-md shrink-0 ${isRecording ? 'bg-rose-500 text-white animate-pulse shadow-rose-500/30' : 'bg-slate-100 text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200'}`}
+                        className={`p-2.5 rounded-xl transition-all active:scale-90 flex items-center justify-center shadow-md shrink-0 ${isRecording ? 'bg-rose-500 text-white animate-pulse shadow-rose-500/30' : 'bg-slate-100 text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200'}`}
                     >
                         {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
                     </button>
@@ -948,7 +1035,7 @@ export default function ChatModule({
                     <button
                         type="button"
                         onClick={() => setSttLang(prev => prev === 'en-US' ? 'id-ID' : 'en-US')}
-                        className="p-3 rounded-xl font-black text-xs transition-all flex items-center justify-center bg-slate-100 text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200 w-12 md:w-14 shadow-md shrink-0"
+                        className="p-2.5 rounded-xl font-black text-xs transition-all flex items-center justify-center bg-slate-100 text-slate-500 hover:text-blue-600 hover:bg-blue-50 border border-slate-200 w-10 md:w-12 shadow-md shrink-0"
                         title="Ubah Bahasa STT (Mic)"
                     >
                         {sttLang === 'en-US' ? 'EN' : 'ID'}
@@ -957,7 +1044,7 @@ export default function ChatModule({
                     <button
                         type="submit"
                         disabled={!inputValue.trim() || isLoading}
-                        className={`p-3 rounded-xl shadow-xl transition-all active:scale-90 flex items-center justify-center shrink-0 ${!inputValue.trim() || isLoading ? 'bg-slate-100 text-slate-300 shadow-none' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20'}`}
+                        className={`p-2.5 rounded-xl shadow-xl transition-all active:scale-90 flex items-center justify-center shrink-0 ${!inputValue.trim() || isLoading ? 'bg-slate-100 text-slate-300 shadow-none' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20'}`}
                     >
                         <Send size={20} />
                     </button>

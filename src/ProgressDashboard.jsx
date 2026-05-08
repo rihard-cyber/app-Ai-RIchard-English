@@ -163,10 +163,10 @@ export default function ProgressDashboard({ userProfile, onNavigate }) {
   };
 
   return (
-    <div className="p-4 md:p-8 w-full max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-[calc(96px+env(safe-area-inset-bottom))] overflow-x-hidden">
+    <div className="p-4 md:p-8 w-full max-w-6xl mx-auto space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-[calc(24px+env(safe-area-inset-bottom))] overflow-x-hidden">
 
       {/* FILTER BAR */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full bg-white p-5 md:p-6 rounded-3xl border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full bg-white p-4 md:p-6 rounded-3xl border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
         <div>
           <h2 className="text-xl md:text-2xl font-black text-slate-800 flex items-center gap-2"><Filter size={24} className="text-indigo-600" /> Filter Progres</h2>
           <p className="text-slate-500 text-xs md:text-sm font-medium mt-1">Pilih periode dan kategori untuk melihat detail data</p>
@@ -198,12 +198,12 @@ export default function ProgressDashboard({ userProfile, onNavigate }) {
       </div>
 
       {isLoading ? (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500">
           {/* SKELETON HEADER STATS */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-white p-5 rounded-3xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] flex flex-col items-start h-[140px]">
-                <div className="w-10 h-10 bg-slate-100 rounded-xl mb-4 animate-pulse"></div>
+              <div key={i} className="bg-white p-4 md:p-5 rounded-3xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] flex flex-col items-start h-[120px] md:h-[140px]">
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-slate-100 rounded-xl mb-3 md:mb-4 animate-pulse"></div>
                 <div className="w-20 h-3 bg-slate-100 rounded-full mb-3 animate-pulse"></div>
                 <div className="w-16 h-6 bg-slate-200/60 rounded-full animate-pulse"></div>
               </div>
@@ -271,9 +271,9 @@ export default function ProgressDashboard({ userProfile, onNavigate }) {
           </div>
         </div>
       ) : (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500">
           {/* HEADER STATS */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 w-full">
             <StatCard icon={<Zap size={20} />} label="Total XP" value={userProfile.xp} color="text-amber-500" bg="bg-amber-50" />
             <StatCard icon={<TrendingUp size={20} />} label="Current Level" value={userProfile.level.split(' ')[0]} color="text-indigo-500" bg="bg-indigo-50" />
             <StatCard icon={<Calendar size={20} />} label="Day Streak" value={`${userProfile.streak} Days`} color="text-orange-500" bg="bg-orange-50" />
@@ -284,7 +284,7 @@ export default function ProgressDashboard({ userProfile, onNavigate }) {
 
             {/* SKILL PROGRESS */}
             <div className="lg:col-span-2 space-y-6 w-full">
-              <div className="bg-white w-full max-w-full p-6 md:p-8 rounded-3xl border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+              <div className="bg-white w-full max-w-full p-5 md:p-8 rounded-3xl border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
                 <div className="flex items-center justify-between mb-8">
                   <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                     <BarChart2 className="text-indigo-600" /> Skill Analysis
@@ -338,7 +338,7 @@ export default function ProgressDashboard({ userProfile, onNavigate }) {
 
             {/* RECENT SESSIONS */}
             <div className="space-y-6 w-full">
-              <div className="bg-white w-full max-w-full p-6 rounded-3xl border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+              <div className="bg-white w-full max-w-full p-5 md:p-6 rounded-3xl border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
                 <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
                   <Award className="text-amber-500" /> Recent Success
                 </h3>
@@ -376,7 +376,7 @@ export default function ProgressDashboard({ userProfile, onNavigate }) {
               </div>
 
               {/* AI RECOMMENDATION MINI */}
-              <div className="bg-gradient-to-br from-slate-900 to-slate-800 w-full max-w-full p-6 md:p-8 rounded-3xl text-white shadow-xl shadow-slate-900/20 relative overflow-hidden">
+              <div className="bg-gradient-to-br from-slate-900 to-slate-800 w-full max-w-full p-5 md:p-8 rounded-3xl text-white shadow-xl shadow-slate-900/20 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
                   <Zap size={100} />
                 </div>
@@ -483,12 +483,12 @@ export function SkillRadarChart({ data }) {
 
 function StatCard({ icon, label, value, color, bg }) {
   return (
-    <div className="bg-white p-5 rounded-3xl border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col items-start text-left transition-all hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(99,102,241,0.08)] hover:border-indigo-200">
-      <div className={`w-10 h-10 ${bg} ${color} rounded-xl flex items-center justify-center mb-4`}>
+    <div className="bg-white p-4 md:p-5 rounded-3xl border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col items-start text-left transition-all hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(99,102,241,0.08)] hover:border-indigo-200">
+      <div className={`w-8 h-8 md:w-10 md:h-10 ${bg} ${color} rounded-xl flex items-center justify-center mb-3 md:mb-4`}>
         {icon}
       </div>
       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-      <p className="text-xl md:text-2xl font-black text-slate-800">{value}</p>
+      <p className="text-lg md:text-2xl font-black text-slate-800">{value}</p>
     </div>
   );
 }

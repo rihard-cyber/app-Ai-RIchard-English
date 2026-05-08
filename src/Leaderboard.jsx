@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Crown, Loader2, Users } from 'lucide-react';
+import { Trophy, Crown, Loader2, Users, UserPlus, Share2, Medal } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 export default function Leaderboard({ userProfile, onNavigate }) {
@@ -7,10 +7,20 @@ export default function Leaderboard({ userProfile, onNavigate }) {
     const [isLoading, setIsLoading] = useState(true);
     const [period, setPeriod] = useState('all-time'); // 'all-time' / 'weekly'
     const [selectedUser, setSelectedUser] = useState(null);
+    const [showConfetti, setShowConfetti] = useState(false);
 
     useEffect(() => {
         fetchLeaderboard();
     }, [period]);
+
+    // Deteksi jika user saat ini adalah Rank 1, lalu picu Confetti
+    useEffect(() => {
+        if (leaders.length > 0 && userProfile?.id && leaders[0].id === userProfile.id) {
+            setShowConfetti(true);
+            const timer = setTimeout(() => setShowConfetti(false), 6000);
+            return () => clearTimeout(timer);
+        }
+    }, [leaders, userProfile]);
 
     const fetchLeaderboard = async () => {
         setIsLoading(true);
@@ -36,7 +46,38 @@ export default function Leaderboard({ userProfile, onNavigate }) {
     const rest = leaders.slice(3);
 
     return (
-        <div className="p-4 md:p-8 w-full max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-[calc(96px+env(safe-area-inset-bottom))] overflow-x-hidden">
+        <div className="p-4 md:p-8 w-full max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-[calc(24px+env(safe-area-inset-bottom))] overflow-x-hidden">
+
+            {/* Confetti Animation for Rank 1 */}
+            {showConfetti && (
+                <div className="fixed inset-0 pointer-events-none z-[100] flex items-center justify-center overflow-hidden">
+                    <style>
+                        {`
+                            @keyframes confettiFallLeaderboard {
+                                0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+                                100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+                            }
+                            .animate-confetti-lb { animation: confettiFallLeaderboard linear forwards; }
+                        `}
+                    </style>
+                    {[...Array(80)].map((_, i) => (
+                        <div
+                            key={i}
+                            className="absolute animate-confetti-lb"
+                            style={{
+                                left: `${Math.random() * 100}%`,
+                                top: '-10%',
+                                width: `${Math.random() * 10 + 6}px`,
+                                height: `${Math.random() * 14 + 8}px`,
+                                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#a855f7', '#ec4899', '#ffffff'][Math.floor(Math.random() * 7)],
+                                animationDelay: `${Math.random() * 2}s`,
+                                animationDuration: `${Math.random() * 3 + 2}s`,
+                                borderRadius: Math.random() > 0.5 ? '50%' : '4px',
+                            }}
+                        />
+                    ))}
+                </div>
+            )}
 
             {/* Header & Filter */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 md:p-8 rounded-3xl border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative overflow-hidden">
@@ -50,18 +91,24 @@ export default function Leaderboard({ userProfile, onNavigate }) {
                     <p className="text-slate-500 font-medium mt-2 md:text-lg">Bersaing dengan pelajar lain dan raih posisi teratas!</p>
                 </div>
 
-                <div className="flex bg-slate-100 p-1.5 rounded-2xl relative z-10 w-full md:w-auto shrink-0">
+                <div className="flex bg-slate-100 p-1.5 rounded-2xl relative z-10 w-full md:w-auto shrink-0 overflow-x-auto">
+                    <button
+                        onClick={() => setPeriod('all-time')}
+                        className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${period === 'all-time' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        Global
+                    </button>
                     <button
                         onClick={() => setPeriod('weekly')}
-                        className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${period === 'weekly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${period === 'weekly' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
                         Minggu Ini
                     </button>
                     <button
-                        onClick={() => setPeriod('all-time')}
-                        className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${period === 'all-time' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        onClick={() => setPeriod('friends')}
+                        className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${period === 'friends' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
-                        Global
+                        Teman
                     </button>
                 </div>
             </div>
@@ -70,6 +117,25 @@ export default function Leaderboard({ userProfile, onNavigate }) {
                 <div className="flex flex-col items-center justify-center p-20 min-h-[400px] animate-in fade-in">
                     <Loader2 className="animate-spin text-indigo-500 mb-4" size={48} />
                     <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Menyusun Peringkat...</p>
+                </div>
+            ) : period === 'friends' ? (
+                <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/60 shadow-sm flex flex-col items-center animate-in fade-in">
+                    <div className="w-24 h-24 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mb-6">
+                        <UserPlus size={40} />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-800 mb-2">Kompetisi Antar Teman</h3>
+                    <p className="text-slate-500 mb-8 max-w-md">Sistem pertemanan (Friends Leaderboard) sedang dalam tahap pengembangan! Yuk, undang teman-temanmu sekarang agar siap bersaing skor saat fiturnya rilis.</p>
+                    <button
+                        onClick={() => {
+                            const text = `Hai! Yuk belajar bahasa Inggris bareng RichardMeha AI dan saingan skor XP sama aku. Aplikasinya keren banget lho!`;
+                            const url = `https://play.google.com/store/apps/details?id=com.richardmeha.englishku`;
+                            const waUrl = `https://wa.me/?text=${encodeURIComponent(text + '\n\n' + url)}`;
+                            window.open(waUrl, '_system');
+                        }}
+                        className="px-8 py-3 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold rounded-xl shadow-sm transition-all flex items-center gap-2 active:scale-95"
+                    >
+                        <Share2 size={18} /> Undang via WhatsApp
+                    </button>
                 </div>
             ) : leaders.length === 0 ? (
                 <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/60 shadow-sm flex flex-col items-center">
@@ -181,7 +247,9 @@ function PodiumCard({ user, rank, isMe, onClick }) {
     return (
         <div className={`flex flex-col items-center animate-in slide-in-from-bottom-${8 - rank} duration-700 w-[30%] max-w-[140px]`}>
             <div className="relative mb-3 md:mb-5">
-                {isFirst && <Crown className="absolute -top-7 md:-top-8 left-1/2 -translate-x-1/2 text-yellow-500 drop-shadow-lg" size={40} />}
+                {isFirst && (
+                    <Medal className="absolute -top-8 md:-top-10 left-1/2 -translate-x-1/2 text-yellow-400 fill-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.8)] animate-pulse z-30" size={48} />
+                )}
 
                 <div className={`w-16 h-16 md:w-24 md:h-24 rounded-full border-4 border-white shadow-xl flex items-center justify-center text-2xl md:text-4xl font-black bg-gradient-to-tr ${colors} z-10 relative text-white`}>
                     {user.full_name?.charAt(0).toUpperCase() || 'U'}

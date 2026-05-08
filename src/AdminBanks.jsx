@@ -21,8 +21,14 @@ export default function AdminBanks({ banks, fetchData, showToast }) {
 
     const handleDeleteBank = async (id) => {
         if (window.confirm('Hapus rekening ini?')) {
-            await supabase.from('payment_methods').delete().eq('id', id);
-            fetchData();
+            try {
+                await supabase.from('payment_methods').delete().eq('id', id);
+                fetchData();
+                showToast("Rekening berhasil dihapus.", "success");
+            } catch (error) {
+                console.error(error);
+                showToast("Gagal menghapus rekening.", "error");
+            }
         }
     };
 

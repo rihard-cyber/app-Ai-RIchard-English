@@ -35,11 +35,16 @@ import {
   Shield,
   RefreshCw,
   Trash2,
-  WifiOff
+  WifiOff,
+  Bell,
+  BellOff,
+  Star,
+  Share2
 } from 'lucide-react';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
 import { App as CapacitorApp } from '@capacitor/app';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { LoginPage, SubscriptionPage } from './Auth';
 import PaymentModal from './PaymentModal';
 import { supabase } from './supabaseClient';
@@ -69,6 +74,59 @@ const DEFAULT_PROFILE = {
   subscription_plan: 'Free',
   is_admin: false,
   email: ''
+};
+
+// --- SOUND EFFECTS UTILITY ---
+const playSound = (type) => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const audioCtx = new AudioContext();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    if (type === 'success') {
+      // Modern Console UI Pop/Chime (C6 -> E6 cepat)
+      const now = audioCtx.currentTime;
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(1046.50, now); // C6
+      oscillator.frequency.exponentialRampToValueAtTime(1318.51, now + 0.05); // E6
+
+      gainNode.gain.setValueAtTime(0, now);
+      gainNode.gain.linearRampToValueAtTime(0.3, now + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+
+      oscillator.start(now);
+      oscillator.stop(now + 0.15);
+    } else if (type === 'levelup') {
+      // Modern Console Achievement (Arpeggio Sparkle)
+      const now = audioCtx.currentTime;
+      const notes = [523.25, 659.25, 783.99, 1046.50]; // Chord C Major
+
+      notes.forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        const startTime = now + (i * 0.08);
+        osc.frequency.setValueAtTime(freq, startTime);
+
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(0.2, startTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
+
+        osc.start(startTime);
+        osc.stop(startTime + 0.3);
+      });
+    }
+  } catch (e) {
+    console.warn("AudioContext not supported", e);
+  }
 };
 
 // --- KOMPONEN LOADING ---
@@ -177,6 +235,86 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
+  const [loadingText, setLoadingText] = useState('Memuat Sistem...');
+  const [loadingProgress, setLoadingProgress] = useState(0);
+
+  // State untuk melacak preferensi Notifikasi Pengingat
+  const [isNotificationEnabled, setIsNotificationEnabled] = useState(() => {
+    const saved = localStorage.getItem('richard_notifications');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('richard_notifications', isNotificationEnabled);
+  }, [isNotificationEnabled]);
+
+  // --- SETUP LOCAL NOTIFICATIONS ---
+  useEffect(() => {
+    const manageNotifications = async () => {
+      try {
+        if (isNotificationEnabled) {
+          let permStatus = await LocalNotifications.checkPermissions();
+          if (permStatus.display !== 'granted') {
+            permStatus = await LocalNotifications.requestPermissions();
+          }
+          if (permStatus.display !== 'granted') {
+            setIsNotificationEnabled(false);
+            return; // Batal jika ditolak
+          }
+
+          const pending = await LocalNotifications.getPending();
+          if (pending.notifications.length > 0) {
+            await LocalNotifications.cancel(pending);
+          }
+
+          await LocalNotifications.schedule({
+            notifications: [{
+              title: "Waktunya Belajar! 🚀",
+              body: "RichardMeha AI sudah menunggumu. Yuk lanjut tingkatkan level bahasa Inggrismu malam ini!",
+              id: 1,
+              schedule: {
+                allowWhileIdle: true,
+                on: { hour: 19, minute: 0 },
+                repeats: true
+              }
+            }]
+          });
+        } else {
+          const pending = await LocalNotifications.getPending();
+          if (pending.notifications.length > 0) {
+            await LocalNotifications.cancel(pending);
+          }
+        }
+      } catch (error) { console.warn("Local Notifications Error:", error); }
+    };
+
+    const timerId = setTimeout(() => manageNotifications(), 5000);
+    return () => clearTimeout(timerId);
+  }, [isNotificationEnabled]);
+
+  useEffect(() => {
+    if (showSplash) {
+      const interval = setInterval(() => {
+        setLoadingProgress(prev => {
+          const next = prev + Math.floor(Math.random() * 15) + 5;
+          return next > 99 ? 99 : next;
+        });
+      }, 150);
+
+      const texts = ['Memuat Sistem...', 'Menyiapkan AI...', 'Koneksi ke Server...', 'Hampir Siap...'];
+      let textIndex = 0;
+      const textInterval = setInterval(() => {
+        textIndex = (textIndex + 1) % texts.length;
+        setLoadingText(texts[textIndex]);
+      }, 500);
+
+      return () => {
+        clearInterval(interval);
+        clearInterval(textInterval);
+      };
+    }
+  }, [showSplash]);
+
   // State untuk melacak preferensi Sapaan Suara Otomatis
   const [isVoiceGreetingEnabled, setIsVoiceGreetingEnabled] = useState(() => {
     const saved = localStorage.getItem('richard_voice_greeting');
@@ -214,15 +352,32 @@ export default function App() {
     const distanceX = touchStart.x - touchEnd.x;
     const distanceY = touchStart.y - touchEnd.y;
 
-    // Pastikan swipe lebih dominan ke arah horizontal (mencegah bentrok dengan scroll vertikal)
     if (Math.abs(distanceX) > Math.abs(distanceY)) {
-      // Swipe Right dari ujung kiri layar (x < 40px) untuk membuka sidebar
+      // Logika Sidebar: Swipe Right dari ujung kiri layar (x < 40px)
       if (distanceX < -40 && touchStart.x < 40 && !isSidebarOpen) {
         setIsSidebarOpen(true);
+        return;
       }
-      // Swipe Left untuk menutup sidebar
       if (distanceX > 40 && isSidebarOpen) {
         setIsSidebarOpen(false);
+        return;
+      }
+
+      // Logika Pindah Tab Utama via Swipe (Hanya berjalan jika sidebar tertutup)
+      const swipeableTabs = ['home', 'progress', 'leaderboard', 'settings'];
+      const currentIndex = swipeableTabs.indexOf(activeTab);
+
+      if (currentIndex !== -1 && !isSidebarOpen) {
+        // Swipe Kiri (Ke menu selanjutnya)
+        if (distanceX > 70 && currentIndex < swipeableTabs.length - 1) {
+          setActiveTab(swipeableTabs[currentIndex + 1]);
+          setSearchQuery('');
+        }
+        // Swipe Kanan (Ke menu sebelumnya)
+        if (distanceX < -70 && currentIndex > 0 && touchStart.x >= 40) { // Batasi sentuhan agar tidak memicu sidebar
+          setActiveTab(swipeableTabs[currentIndex - 1]);
+          setSearchQuery('');
+        }
       }
     }
   };
@@ -251,20 +406,27 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Tracker state terkini untuk Global Back Button
+  const backButtonStateRef = useRef({ isSidebarOpen, isPaymentModalOpen, activeTab, authState });
+  useEffect(() => {
+    backButtonStateRef.current = { isSidebarOpen, isPaymentModalOpen, activeTab, authState };
+  }, [isSidebarOpen, isPaymentModalOpen, activeTab, authState]);
+
   useEffect(() => {
     const backListener = CapacitorApp.addListener('backButton', () => {
-      setIsSidebarOpen(prevSidebar => {
-        if (prevSidebar) return false; // Tutup sidebar dulu jika terbuka
-        setActiveTab(currentTab => {
-          if (currentTab !== 'home') {
-            return 'home'; // Kembali ke home jika di page lain
-          } else {
-            CapacitorApp.minimizeApp(); // Minimize jika sudah di home
-            return currentTab;
-          }
-        });
-        return false;
-      });
+      const { isSidebarOpen: sidebar, isPaymentModalOpen: modal, activeTab: tab, authState: auth } = backButtonStateRef.current;
+
+      if (auth !== 'app') {
+        CapacitorApp.minimizeApp();
+      } else if (sidebar) {
+        setIsSidebarOpen(false);
+      } else if (modal) {
+        setIsPaymentModalOpen(false);
+      } else if (tab !== 'home') {
+        setActiveTab('home');
+      } else {
+        CapacitorApp.minimizeApp();
+      }
     });
     return () => { backListener.then(listener => listener.remove()); };
   }, []);
@@ -354,6 +516,7 @@ export default function App() {
       setUserProfile(prev => {
         if (prev.level && prev.level !== newLevel && prev.name !== "User" && prev.level !== "Pemula (A1-A2)") {
           supabase.from('user_profiles').update({ level: newLevel }).eq('id', user.id).then();
+          playSound('levelup');
           setShowLevelUpConfetti(true);
           setLevelUpMessage(newLevel);
           if (navigator.vibrate) {
@@ -532,10 +695,29 @@ export default function App() {
     }
   };
 
+  const handleShareApp = async () => {
+    const shareData = {
+      title: 'RichardMeha AI - Ultimate English Tutor',
+      text: 'Hai! Yuk belajar bahasa Inggris bareng RichardMeha AI. Aplikasinya keren banget dan seru lho!',
+      url: 'https://play.google.com/store/apps/details?id=com.richardmeha.englishku'
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        const waUrl = `https://wa.me/?text=${encodeURIComponent(shareData.text + ' ' + shareData.url)}`;
+        window.open(waUrl, '_system');
+      }
+    } catch (err) {
+      console.error('Error sharing:', err);
+    }
+  };
+
   const saveProgress = async (skill, score, details = {}) => {
     if (navigator.vibrate) {
       try { navigator.vibrate([50, 50, 50]); } catch (e) { } // Getaran success beruntun
     }
+    playSound('success');
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from('user_progress').insert({ user_id: user.id, skill_type: skill, score: score, details: details });
@@ -631,6 +813,12 @@ export default function App() {
                 </button>
               </div>
               <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <div><h4 className="font-bold text-slate-800">Notifikasi Pengingat</h4><p className="text-xs text-slate-500">Pengingat belajar setiap jam 7 malam.</p></div>
+                <button onClick={() => setIsNotificationEnabled(!isNotificationEnabled)} className={`p-3 rounded-2xl transition-all active:scale-95 ${isNotificationEnabled ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                  {isNotificationEnabled ? <Bell size={20} /> : <BellOff size={20} />}
+                </button>
+              </div>
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
                 <div><h4 className="font-bold text-slate-800">Jenis Suara Sapaan</h4><p className="text-xs text-slate-500">Pilih suara sapaan pria atau wanita.</p></div>
                 <div className="flex items-center gap-2">
                   <button
@@ -665,6 +853,22 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Tombol Rate App */}
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <div><h4 className="font-bold text-slate-800">Beri Nilai Aplikasi</h4><p className="text-xs text-slate-500">Dukung RichardMeha AI dengan ulasan bintang 5!</p></div>
+                <button onClick={() => window.open('https://play.google.com/store/apps/details?id=com.richardmeha.englishku', '_system')} className="px-5 py-2.5 bg-yellow-50 text-yellow-600 font-black rounded-xl hover:bg-yellow-100 transition-all active:scale-95 text-xs shadow-sm flex items-center gap-1">
+                  <Star size={14} className="fill-yellow-600" /> RATE APP
+                </button>
+              </div>
+
+              {/* Tombol Bagikan Aplikasi */}
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <div><h4 className="font-bold text-slate-800">Bagikan Aplikasi</h4><p className="text-xs text-slate-500">Ajak temanmu belajar bahasa Inggris bersama.</p></div>
+                <button onClick={handleShareApp} className="px-5 py-2.5 bg-emerald-50 text-emerald-600 font-black rounded-xl hover:bg-emerald-100 transition-all active:scale-95 text-xs shadow-sm flex items-center gap-1">
+                  <Share2 size={14} className="stroke-[3]" /> SHARE
+                </button>
+              </div>
+
               {/* Tambahan: Tombol Clear Cache untuk HP Android */}
               <div className="p-6 border-b border-slate-100 flex items-center justify-between">
                 <div><h4 className="font-bold text-slate-800">Refresh Sistem</h4><p className="text-xs text-slate-500">Hapus cache API & muat ulang aplikasi.</p></div>
@@ -696,7 +900,7 @@ export default function App() {
       <div className="min-h-screen min-h-[100dvh] bg-[#0f172a] flex flex-col items-center justify-center p-6 text-white overflow-hidden relative overscroll-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] h-[30rem] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
 
-        <div className="relative z-10 flex flex-col items-center animate-in zoom-in duration-500 fade-in transform-gpu">
+        <div className="relative z-10 flex flex-col items-center animate-in zoom-in duration-500 fade-in transform-gpu w-full max-w-xs">
           <div className="w-24 h-24 rounded-[2rem] bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-2xl shadow-blue-500/50 mb-6 relative">
             <div className="absolute inset-0 rounded-[2rem] border-4 border-white/20 animate-ping"></div>
             <Sparkles className="text-white w-12 h-12 animate-pulse" />
@@ -705,11 +909,16 @@ export default function App() {
           <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white mb-1">
             RichardMeha<span className="text-blue-500"> AI</span>
           </h1>
-          <p className="text-slate-400 text-sm font-medium tracking-wide mb-8">Ultimate English Tutor</p>
+          <p className="text-slate-400 text-sm font-medium tracking-wide mb-12">Ultimate English Tutor</p>
 
-          <div className="flex flex-col items-center gap-3 mt-4">
-            <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
-            <span className="text-[10px] text-slate-500 font-black tracking-widest uppercase">Memuat Sistem...</span>
+          <div className="w-full flex flex-col gap-3 mt-4">
+            <div className="flex justify-between items-center text-[10px] font-black tracking-widest uppercase text-slate-400">
+              <span>{loadingText}</span>
+              <span className="text-blue-400">{loadingProgress}%</span>
+            </div>
+            <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden shadow-inner">
+              <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-200 ease-out" style={{ width: `${loadingProgress}%` }}></div>
+            </div>
           </div>
         </div>
       </div>
@@ -758,6 +967,49 @@ export default function App() {
 
   return (
     <GlobalContext.Provider value={{ globalApiKey, userProfile }}>
+      <style>
+        {`
+          /* Modern CSS Haptic Feedback */
+          button, .cursor-pointer {
+            -webkit-tap-highlight-color: transparent; /* Hilangkan kotak biru Android saat tap */
+          }
+          .active\\:scale-95:active, .active\\:scale-90:active {
+            transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275) !important; /* Bounce memantul ala iOS */
+            transition-duration: 100ms !important;
+          }
+
+          /* --- ELEGANT DARK MODE GLOBAL OVERRIDES --- */
+          /* Membalikkan warna kartu (bg-white) menjadi gelap elegan secara otomatis */
+          .dark-mode .bg-white {
+            background-color: #1e293b !important; /* slate-800 */
+            border-color: rgba(255, 255, 255, 0.05) !important;
+            color: #f8fafc !important; /* slate-50 */
+          }
+          /* Membalikkan warna panel abu-abu muda menjadi lebih gelap (Deep Navy) */
+          .dark-mode .bg-slate-50, .dark-mode .bg-slate-100 {
+            background-color: #0f172a !important; /* slate-900 */
+            border-color: rgba(255, 255, 255, 0.05) !important;
+            color: #e2e8f0 !important;
+          }
+          /* Memastikan teks yang tadinya gelap (untuk light mode) menjadi putih/terang */
+          .dark-mode .text-slate-800, .dark-mode .text-slate-700 {
+            color: #f1f5f9 !important; /* slate-100 */
+          }
+          .dark-mode .text-slate-600, .dark-mode .text-slate-500 {
+            color: #94a3b8 !important; /* slate-400 */
+          }
+          /* Membuat bayangan (Shadow) lebih pekat agar menyatu dengan latar belakang gelap */
+          .dark-mode .shadow-xl, .dark-mode .shadow-lg, .dark-mode .shadow-sm {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.5) !important;
+          }
+          /* Meredupkan area input agar tidak menyilaukan */
+          .dark-mode input, .dark-mode textarea, .dark-mode select {
+            background-color: #0f172a !important; /* slate-900 */
+            color: #f8fafc !important;
+            border-color: #334155 !important;
+          }
+        `}
+      </style>
       {isOffline && (
         <div className="fixed top-[calc(env(safe-area-inset-top)+1rem)] left-1/2 -translate-x-1/2 z-[9999] bg-slate-900/90 backdrop-blur-md text-white px-5 py-2.5 rounded-full shadow-2xl flex items-center gap-2 text-sm font-bold animate-in slide-in-from-top-4 duration-300 border border-slate-700">
           <WifiOff size={16} className="text-rose-500" /> Koneksi Terputus
@@ -861,7 +1113,9 @@ export default function App() {
           </header>
           <div className="flex-1 overflow-y-auto overflow-x-hidden w-full relative bg-slate-50/50 transform-gpu overscroll-none scroll-smooth pb-[env(safe-area-inset-bottom)]" style={{ WebkitOverflowScrolling: 'touch' }}>
             <Suspense fallback={<LoadingFallback />}>
-              {renderContent()}
+              <div key={activeTab} className="w-full min-h-full animate-in fade-in slide-in-from-right-8 duration-300 ease-out fill-mode-forwards">
+                {renderContent()}
+              </div>
             </Suspense>
           </div>
         </main>

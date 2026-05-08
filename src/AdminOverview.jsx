@@ -155,6 +155,22 @@ export default function AdminOverview({ usersData, stats, chartData, maxRevenue,
                                 </div>
                             </div>
                         </div>
+                        <div>
+                            <h4 className="text-sm font-bold text-slate-700 mb-3 border-b pb-2">Voice & Speech API</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-xs font-bold text-slate-600 flex items-center">ElevenLabs API Key <StatusBadge status={apiStatus.elevenlabs} /></label>
+                                    <div className="relative">
+                                        <input type={showKey.elevenlabs ? "text" : "password"} value={apiKeys.elevenlabs} onChange={(e) => setApiKeys(prev => ({ ...prev, elevenlabs: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" />
+                                        <button type="button" onClick={() => toggleKeyVisibility('elevenlabs')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">{showKey.elevenlabs ? <EyeOff size={16} /> : <Eye size={16} />}</button>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-xs font-bold text-slate-600 flex items-center">ElevenLabs Voice ID</label>
+                                    <input type="text" value={apiKeys.elevenlabsVoiceId || ''} onChange={(e) => setApiKeys(prev => ({ ...prev, elevenlabsVoiceId: e.target.value }))} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 font-mono" placeholder="21m00Tcm4TlvDq8ikWAM" />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div className="mt-6 flex flex-col sm:flex-row justify-end gap-3 border-t border-slate-100 pt-4">
                         <button onClick={handleTestConnections} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold text-sm active:scale-95 transition-all w-full sm:w-auto flex justify-center items-center gap-2"><Activity size={18} /> Test Koneksi</button>

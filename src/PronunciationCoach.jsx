@@ -6,7 +6,8 @@ import {
   RefreshCw,
   Loader2,
   Sparkles,
-  Crown
+  Crown,
+  Share2
 } from 'lucide-react';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
@@ -207,7 +208,14 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
         }
       };
 
-      recognitionRef.current.onerror = () => setIsRecording(false);
+      recognitionRef.current.onerror = (event) => {
+        if (event.error === 'not-allowed') {
+          alert("Izinkan akses mikrofon di pengaturan browser Anda");
+        } else {
+          console.warn("Web Speech API Error:", event.error);
+        }
+        setIsRecording(false);
+      };
       recognitionRef.current.onend = () => {
         setIsRecording(false);
         const textToSend = currentTranscriptRef.current.trim();
@@ -230,16 +238,16 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
       const data = await AiOrchestrator.chat(payload, globalApiKey);
       const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "Error analyzing pronunciation.";
 
-      // Bersihkan text dari format markdown (```json ... ```) jika AI tetap mengirimkannya
+      // Deep Sanitizer: Bersihkan text dari format markdown dan teks pengantar
       const cleanText = aiResponse.replace(/```json/gi, '').replace(/```/g, '').trim();
 
       try {
-        const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          let jsonStr = jsonMatch[0];
-          jsonStr = jsonStr.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"/g, (match) => {
-            return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
-          });
+        const firstBrace = cleanText.indexOf('{');
+        const lastBrace = cleanText.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace >= firstBrace) {
+          let jsonStr = cleanText.substring(firstBrace, lastBrace + 1);
+          // Sanitasi karakter kontrol agar tidak merusak JSON.parse
+          jsonStr = jsonStr.replace(/[\u0000-\u001F]+/g, "");
           const parsed = JSON.parse(jsonStr);
           const confidence = parsed.confidence !== undefined ? parsed.confidence : 0.8;
           const consistencyFactor = 0.9;
@@ -337,6 +345,18 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
                 {analysis.raw?.split('\n').map((line, i) => <p key={i} className="text-sm md:text-base">{line}</p>)}
               </div>
             )}
+
+            <button
+              onClick={() => {
+                const text = `Saya baru saja menyelesaikan latihan Speaking di RichardMeha AI dengan skor akurasi ${analysis.score}%! Yuk latih pronunciation bahasa Inggrismu bareng!`;
+                const url = `https://play.google.com/store/apps/details?id=com.richardmeha.englishku`;
+                const waUrl = `https://wa.me/?text=${encodeURIComponent(text + '\n\n' + url)}`;
+                window.open(waUrl, '_system');
+              }}
+              className="mt-6 w-full py-3 bg-emerald-50 text-emerald-600 font-bold rounded-xl hover:bg-emerald-100 flex items-center justify-center gap-2 transition-colors text-sm"
+            >
+              <Share2 size={16} /> Bagikan Skor ke WhatsApp
+            </button>
 
             <div className="mt-8 flex justify-center">
               <button
