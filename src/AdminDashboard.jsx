@@ -114,8 +114,58 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
         }
     };
 
-    const handleTestConnections = () => {
-        showToast("Fungsi test koneksi belum diimplementasi", "info");
+    const handleTestConnections = async () => {
+        const updateStatus = (key, status) => setApiStatus(prev => ({ ...prev, [key]: status }));
+        
+        // Reset statuses
+        setApiStatus(prev => ({
+            ...prev, openai: 'testing', gemini: 'testing', groq: 'testing', l10n: 'testing', elevenlabs: 'testing'
+        }));
+
+        const testOpenAI = async () => {
+            if (!apiKeys.openai) return updateStatus('openai', 'idle');
+            try {
+                const res = await fetch('https://api.openai.com/v1/models', { headers: { 'Authorization': `Bearer ${apiKeys.openai}` } });
+                updateStatus('openai', res.ok ? 'ok' : 'error');
+            } catch (e) { updateStatus('openai', 'error'); }
+        };
+
+        const testGemini = async () => {
+            if (!apiKeys.gemini) return updateStatus('gemini', 'idle');
+            try {
+                const key = apiKeys.gemini.split(',')[0].trim();
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+                updateStatus('gemini', res.ok ? 'ok' : 'error');
+            } catch (e) { updateStatus('gemini', 'error'); }
+        };
+
+        const testGroq = async () => {
+            if (!apiKeys.groq) return updateStatus('groq', 'idle');
+            try {
+                const res = await fetch('https://api.groq.com/openai/v1/models', { headers: { 'Authorization': `Bearer ${apiKeys.groq}` } });
+                updateStatus('groq', res.ok ? 'ok' : 'error');
+            } catch (e) { updateStatus('groq', 'error'); }
+        };
+
+        const testL10n = async () => {
+            if (!apiKeys.l10n) return updateStatus('l10n', 'idle');
+            try {
+                // Gunakan endpoint chat completions dummy untuk tes autentikasi jika models tidak ada
+                const res = await fetch('https://api.l10n.dev/v1/models', { headers: { 'Authorization': `Bearer ${apiKeys.l10n}` } });
+                updateStatus('l10n', (res.status !== 401 && res.status !== 403) ? 'ok' : 'error');
+            } catch (e) { updateStatus('l10n', 'error'); }
+        };
+
+        const testElevenLabs = async () => {
+            if (!apiKeys.elevenlabs) return updateStatus('elevenlabs', 'idle');
+            try {
+                const res = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': apiKeys.elevenlabs.split(',')[0].trim() } });
+                updateStatus('elevenlabs', res.ok ? 'ok' : 'error');
+            } catch (e) { updateStatus('elevenlabs', 'error'); }
+        };
+
+        await Promise.all([testOpenAI(), testGemini(), testGroq(), testL10n(), testElevenLabs()]);
+        showToast("Proses test koneksi selesai dijalankan.", "info");
     };
 
     return (
