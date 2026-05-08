@@ -199,16 +199,21 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
         try {
             // OPTIMASI: Parallel Data Fetching & Select Explicit Columns
             const [txRes, userRes, bankRes] = await Promise.all([
-                supabase.from('transactions').select('id, amount, status, created_at, user_name, plan_name, user_id').order('created_at', { ascending: false }),
-                supabase.from('user_profiles').select('id, name, email, level, is_pro, created_at, gender').order('created_at', { ascending: false }),
+                supabase.from('transactions').select('*').order('created_at', { ascending: false }),
+                supabase.from('user_profiles').select('*').order('created_at', { ascending: false }),
                 supabase.from('payment_methods').select('*').order('created_at', { ascending: true })
             ]);
+
+            console.log("Data Pengguna (Debug):", userRes.data);
+            if (userRes.error) console.error("Error Fetch Users:", userRes.error);
 
             const txData = txRes.data || [];
             setTransactions(txData);
             const revenue = txData.filter(tx => tx.status === 'approved').reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
 
-            setUsers(userRes.data || []);
+            // Mapping 'full_name' dari database menjadi 'name' untuk tabel frontend
+            const mappedUsers = (userRes.data || []).map(u => ({ ...u, name: u.full_name || u.name || 'User', email: u.email || 'Tanpa Email' }));
+            setUsers(mappedUsers);
             setBanks(bankRes.data || []);
 
             setStats({

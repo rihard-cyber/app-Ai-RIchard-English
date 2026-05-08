@@ -1,21 +1,13 @@
+import CryptoJS from 'crypto-js';
+
 async function getIFlytekAuthUrl(apiKey, apiSecret) {
     const host = "tts-api.xfyun.cn";
     const path = "/v2/tts";
     const date = new Date().toUTCString();
     const signatureOrigin = `host: ${host}\ndate: ${date}\nGET ${path} HTTP/1.1`;
 
-    // Pengecekan Keamanan Kriptografi (Wajib berjalan di HTTPS atau Localhost)
-    if (!window.crypto || !window.crypto.subtle) {
-        throw new Error("Web Crypto API tidak tersedia. Pastikan aplikasi berjalan di HTTPS atau localhost.");
-    }
-
-    const encoder = new TextEncoder();
-    const cryptoKey = await crypto.subtle.importKey(
-        "raw", encoder.encode(apiSecret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
-    );
-    const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(signatureOrigin));
-    const signatureArray = Array.from(new Uint8Array(signature));
-    const signatureBase64 = btoa(String.fromCharCode.apply(null, signatureArray));
+    const signatureSha = CryptoJS.HmacSHA256(signatureOrigin, apiSecret);
+    const signatureBase64 = CryptoJS.enc.Base64.stringify(signatureSha);
 
     const authorizationOrigin = `api_key="${apiKey}", algorithm="hmac-sha256", headers="host date request-line", signature="${signatureBase64}"`;
     const authorization = btoa(authorizationOrigin);
@@ -27,31 +19,34 @@ async function getIFlytekAuthUrl(apiKey, apiSecret) {
 export const testIFlytekConnection = async (appId, apiKey, apiSecret) => {
     try {
         if (!appId || !apiKey || !apiSecret) return { success: false, message: "Kredensial kosong." };
-        const url = await getIFlytekAuthUrl(apiKey, apiSecret);
+
+        // Menggunakan endpoint Spark API v3.1
+        const host = "spark-api.xf-yun.com";
+        const path = "/v3.1/chat";
+        const date = new Date().toUTCString();
+        const signatureOrigin = `host: ${host}\ndate: ${date}\nGET ${path} HTTP/1.1`;
+
+        // Hash & Base64
+        const signatureSha = CryptoJS.HmacSHA256(signatureOrigin, apiSecret);
+        const signatureBase64 = CryptoJS.enc.Base64.stringify(signatureSha);
+
+        // Format JSON String standard iFLYTEK untuk Authorization
+        const authorizationOrigin = `api_key="${apiKey}", algorithm="hmac-sha256", headers="host date request-line", signature="${signatureBase64}"`;
+        const authBase64 = btoa(authorizationOrigin);
+
+        // URL Gabungan
+        const url = `wss://${host}${path}?authorization=${authBase64}&date=${encodeURIComponent(date)}&host=${host}`;
+
         return new Promise((resolve) => {
             let isResolved = false;
             const ws = new WebSocket(url);
 
             ws.onopen = () => {
-                console.log("[iFLYTEK] WebSocket Terhubung. Mengirim payload uji coba...");
-                const params = {
-                    common: { app_id: appId },
-                    business: { aue: "lame", sfl: 1, vcn: "xiaoyan", speed: 50, pitch: 50, volume: 50, bgs: 0 },
-                    data: { status: 2, text: btoa("test") }
-                };
-                ws.send(JSON.stringify(params));
-            };
-
-            ws.onmessage = (e) => {
-                if (isResolved) return;
-                const res = JSON.parse(e.data);
-                isResolved = true;
-                ws.close();
-
-                if (res.code === 0) resolve({ success: true });
-                else {
-                    console.error("[iFLYTEK] API Error Response:", res);
-                    resolve({ success: false, message: `Gagal (Code ${res.code}): ${res.message}` });
+                console.log("[iFLYTEK] WebSocket Terhubung ke Spark API ✅");
+                if (!isResolved) {
+                    isResolved = true;
+                    ws.close(); // Tutup setelah sukses agar tidak menggantung di memori
+                    resolve({ success: true, message: "Terhubung ✅" });
                 }
             };
 

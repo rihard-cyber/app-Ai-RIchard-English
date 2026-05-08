@@ -588,9 +588,28 @@ export default function App() {
       const userId = typeof userObj === 'string' ? userObj : userObj.id;
       const userEmail = typeof userObj === 'object' ? userObj.email : '';
       const metaName = typeof userObj === 'object' ? (userObj.user_metadata?.full_name || '') : '';
-      const { data, error } = await supabase.from('user_profiles').select('*').eq('id', userId).maybeSingle();
+      let { data, error } = await supabase.from('user_profiles').select('*').eq('id', userId).maybeSingle();
 
       if (error) throw error;
+
+      // AUTO-INSERT JIKA PROFIL BELUM ADA (User Baru Mendaftar)
+      if (!data && userObj) {
+        const newProfile = {
+          id: userId,
+          email: userEmail,
+          full_name: metaName || 'User',
+          gender: 'male',
+          level: 'Beginner (A1)',
+          xp: 0,
+          streak: 0,
+          has_completed_initial_test: false,
+          is_pro: false,
+          subscription_plan: 'Free'
+        };
+        const insertRes = await supabase.from('user_profiles').insert(newProfile).select().maybeSingle();
+        if (insertRes.error) console.error("Auto-Insert Profile Error:", insertRes.error);
+        if (insertRes.data) data = insertRes.data;
+      }
 
       const isAdmin = userEmail === 'richardpl.meha@gmail.com';
 
@@ -1044,7 +1063,15 @@ export default function App() {
         onTouchEnd={handleTouchEnd}
       >
 
-        <Sidebar currentRoute={activeTab} onNavigate={handleTabChange} />
+        <Sidebar
+          currentRoute={activeTab}
+          onNavigate={handleTabChange}
+          isOpen={isSidebarOpen}
+          setIsOpen={setIsSidebarOpen}
+          userProfile={userProfile}
+          onLogout={handleLogout}
+          onAdminClick={() => { localStorage.setItem('owner_mode', 'admin'); setAuthState('admin'); }}
+        />
 
         <main className="flex-1 flex flex-col h-full w-full relative overflow-hidden">
           <header className="h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 z-30 shrink-0 md:hidden shadow-sm">
