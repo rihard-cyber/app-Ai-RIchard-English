@@ -23,6 +23,7 @@ export function LoginPage({ onLogin }) {
   // Verification State
   const [otp, setOtp] = useState(['', '', '', '', '', '', '', '']);
   const otpRefs = [useRef(), useRef(), useRef(), useRef(), useRef(), useRef(), useRef(), useRef()];
+  const [resetCountdown, setResetCountdown] = useState(0);
 
   // Listener untuk menangkap event reset password dari link di Email
   useEffect(() => {
@@ -35,6 +36,43 @@ export function LoginPage({ onLogin }) {
       authListener?.subscription?.unsubscribe();
     };
   }, []);
+
+  // Countdown Timer untuk Mencegah Spam Reset Password
+  useEffect(() => {
+    let timer;
+    if (resetCountdown > 0) {
+      timer = setInterval(() => {
+        setResetCountdown(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resetCountdown]);
+
+  // Kalkulator Kekuatan Password
+  const calculatePasswordStrength = (pass) => {
+    let score = 0;
+    if (!pass) return score;
+    if (pass.length >= 6) score += 20;
+    if (pass.length >= 8) score += 20;
+    if (/[A-Z]/.test(pass)) score += 20;
+    if (/[0-9]/.test(pass)) score += 20;
+    if (/[^A-Za-z0-9]/.test(pass)) score += 20;
+    return Math.min(score, 100);
+  };
+
+  const passwordStrength = calculatePasswordStrength(password);
+  const getStrengthColor = (score) => {
+    if (score === 0) return 'bg-transparent';
+    if (score <= 40) return 'bg-rose-500';
+    if (score <= 60) return 'bg-amber-500';
+    return 'bg-emerald-500';
+  };
+  const getStrengthText = (score) => {
+    if (score === 0) return '';
+    if (score <= 40) return 'Lemah';
+    if (score <= 60) return 'Sedang';
+    return 'Kuat';
+  };
 
   const showToast = (message, type = 'info') => {
     setToast({ show: true, message, type });
@@ -158,6 +196,7 @@ export function LoginPage({ onLogin }) {
       showToast('Masukkan email Anda terlebih dahulu.', 'error');
       return;
     }
+    if (resetCountdown > 0) return;
     setIsLoading(true);
 
     try {
@@ -167,7 +206,7 @@ export function LoginPage({ onLogin }) {
       if (error) throw error;
 
       showToast('Link reset password telah dikirim ke email Anda. Silakan cek inbox/spam.', 'success');
-      setMode('signin');
+      setResetCountdown(60); // Mengunci tombol selama 60 detik
     } catch (error) {
       showToast('Gagal mengirim link: ' + error.message, 'error');
     } finally {
@@ -356,6 +395,18 @@ export function LoginPage({ onLogin }) {
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
+                  {/* Password Strength Indicator */}
+                  {password.length > 0 && (
+                    <div className="mt-2 px-1 animate-in fade-in duration-300">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-bold text-slate-400">Kekuatan Password:</span>
+                        <span className={`text-[10px] font-bold ${passwordStrength <= 40 ? 'text-rose-400' : passwordStrength <= 60 ? 'text-amber-400' : 'text-emerald-400'}`}>{getStrengthText(passwordStrength)}</span>
+                      </div>
+                      <div className="w-full h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                        <div className={`h-full ${getStrengthColor(passwordStrength)} transition-all duration-300`} style={{ width: `${passwordStrength}%` }}></div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <div className="relative">
@@ -425,8 +476,8 @@ export function LoginPage({ onLogin }) {
                   </div>
                 </div>
 
-                <button disabled={isLoading} type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 group mt-2">
-                  {isLoading ? <Loader2 className="animate-spin" size={18} /> : <>Kirim Link Reset <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" /></>}
+                <button disabled={isLoading || resetCountdown > 0} type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 group mt-2">
+                  {isLoading ? <Loader2 className="animate-spin" size={18} /> : resetCountdown > 0 ? `Kirim Ulang (${resetCountdown}s)` : <>Kirim Link Reset <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" /></>}
                 </button>
               </form>
               <div className="mt-6 text-center">
