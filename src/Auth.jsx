@@ -277,9 +277,8 @@ export function LoginPage({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen min-h-[100dvh] w-full bg-[#0f172a] flex items-center justify-center p-4 overflow-hidden relative overscroll-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+    <div className="min-h-screen min-h-[100dvh] w-full bg-gradient-to-br from-[#0b1121] via-[#0f172a] to-[#1a1040] flex items-center justify-center p-4 overflow-hidden relative overscroll-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
 
-      {/* CSS Styles untuk Animasi Shake */}
       <style>
         {`
           @keyframes shake {
@@ -291,71 +290,71 @@ export function LoginPage({ onLogin }) {
         `}
       </style>
 
-      {/* Global Toast Notification */}
       {toast.show && (
-        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-2xl shadow-xl border flex items-center gap-3 animate-in slide-in-from-top-4 duration-300 ${toast.type === 'error' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'}`}>
+        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-8 py-4 rounded-2xl shadow-2xl border flex items-center gap-3 animate-in slide-in-from-top-4 duration-500 backdrop-blur-xl ${toast.type === 'error' ? 'glass-dark border-rose-500/30 text-rose-300' : 'glass-dark border-emerald-500/30 text-emerald-300'}`}>
           <span className="font-bold text-sm">{toast.message}</span>
         </div>
       )}
 
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/30 rounded-full blur-[100px] pointer-events-none"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-[100px] pointer-events-none"></div>
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse-slow"></div>
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] h-[30rem] bg-indigo-600/10 rounded-full blur-[150px] pointer-events-none"></div>
 
       <div className="w-full max-w-md running-border rounded-3xl p-[3px] animate-in zoom-in-95 duration-500 mx-2">
-        <div className="running-border-inner rounded-[22px] bg-[#0f172a]/90 backdrop-blur-xl p-6 md:p-8 flex flex-col relative z-10 overflow-y-auto overflow-x-hidden custom-scrollbar min-h-[480px] max-h-[85vh] w-full">
+        <div className="running-border-inner rounded-[22px] bg-[#0f172a]/80 backdrop-blur-xl p-6 md:p-8 flex flex-col relative z-10 overflow-y-auto overflow-x-hidden custom-scrollbar min-h-[480px] max-h-[85vh] w-full border border-white/5 shadow-2xl">
 
-          <div className="flex justify-center mb-6">
-            <div onClick={handleLogoClick} className="cursor-pointer select-none w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20 transition-transform active:scale-95 touch-manipulation">
-              <Sparkles className="text-white w-8 h-8" />
+          <div className="flex justify-center mb-3">
+            <div onClick={handleLogoClick} className="cursor-pointer select-none w-20 h-20 rounded-2xl bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-2xl shadow-blue-500/30 transition-all active:scale-90 hover:scale-105 touch-manipulation relative">
+              <div className="absolute inset-0 rounded-2xl border border-white/20"></div>
+              <Sparkles className="text-white w-10 h-10" />
             </div>
           </div>
 
           <div className="relative flex-1">
-            {/* SIGN IN FORM */}
             <div className={`transition-all duration-500 transform ${mode === 'signin' ? 'translate-x-0 opacity-100 relative' : '-translate-x-full opacity-0 absolute inset-0 pointer-events-none'}`}>
-              <h1 onClick={handleLogoClick} className="text-3xl font-bold text-white text-center mb-2 mt-4 cursor-pointer select-none active:scale-95 transition-transform touch-manipulation">RichardMeha AI</h1>
-              <p className="text-slate-400 text-center mb-8 text-sm">Masuk untuk memulai petualangan belajarmu.</p>
+              <h1 onClick={handleLogoClick} className="text-3xl font-bold text-white text-center mb-1 cursor-pointer select-none active:scale-95 transition-transform touch-manipulation">RichardMeha <span className="text-blue-500">AI</span></h1>
+              <p className="text-slate-500 text-center mb-8 text-sm font-medium">Masuk untuk memulai petualangan belajarmu</p>
 
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1.5 ml-1">Email</label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                  <label className="block text-sm font-bold text-slate-300 mb-2 ml-1">Email</label>
+                  <div className="relative group">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" size={18} />
                     <input
                       type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                       placeholder="richard@example.com"
-                      className="w-full pl-11 pr-5 py-3.5 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 transition-all" required
+                      className="w-full pl-11 pr-5 py-4 rounded-2xl bg-slate-800/50 border border-slate-700/50 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-sm" required
                     />
                   </div>
                 </div>
                 <div>
-                  <div className="flex justify-between items-center mb-1.5 ml-1">
-                    <label className="block text-sm font-medium text-slate-300">Password</label>
-                    <button type="button" disabled={isLoading} onClick={() => switchMode('forgot')} className="text-xs text-blue-400 hover:text-blue-300 focus:outline-none disabled:opacity-50">Lupa Password?</button>
+                  <div className="flex justify-between items-center mb-2 ml-1">
+                    <label className="block text-sm font-bold text-slate-300">Password</label>
+                    <button type="button" disabled={isLoading} onClick={() => switchMode('forgot')} className="text-xs text-blue-400 hover:text-blue-300 font-bold focus:outline-none disabled:opacity-50 transition-colors">Lupa Password?</button>
                   </div>
-                  <div className="relative">
-                    <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                  <div className="relative group">
+                    <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" size={18} />
                     <input
                       type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full pl-11 pr-12 py-3.5 rounded-xl bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 transition-all" required
+                      className="w-full pl-11 pr-12 py-4 rounded-2xl bg-slate-800/50 border border-slate-700/50 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all text-sm" required
                     />
-                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 focus:outline-none">
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300 focus:outline-none transition-colors">
                       {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
                 </div>
-                <button disabled={isLoading} type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:opacity-70 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 group mt-2">
+                <button disabled={isLoading} type="submit" className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-blue-600/30 hover:shadow-blue-500/40 active:scale-[0.98] flex items-center justify-center gap-2 group mt-2 text-sm">
                   {isLoading ? <><Loader2 className="animate-spin" size={18} /> Memproses...</> : <>Sign In <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" /></>}
                 </button>
               </form>
 
-              <div className="relative flex items-center py-4 mt-2">
-                <div className="flex-grow border-t border-slate-700/50"></div>
-                <span className="flex-shrink-0 mx-4 text-slate-500 text-xs uppercase tracking-wider font-bold">ATAU MASUK DENGAN</span>
-                <div className="flex-grow border-t border-slate-700/50"></div>
+              <div className="relative flex items-center py-4 mt-3">
+                <div className="flex-grow border-t border-slate-700/30"></div>
+                <span className="flex-shrink-0 mx-4 text-slate-600 text-[10px] uppercase tracking-widest font-bold">ATAU MASUK DENGAN</span>
+                <div className="flex-grow border-t border-slate-700/30"></div>
               </div>
-              <button type="button" onClick={handleGoogleLogin} disabled={isLoading} className="w-full bg-white hover:bg-slate-50 disabled:bg-slate-300 disabled:cursor-not-allowed text-slate-800 font-bold py-3.5 rounded-xl transition-all shadow-sm flex items-center justify-center gap-3 active:scale-95">
+              <button type="button" onClick={handleGoogleLogin} disabled={isLoading} className="w-full bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl transition-all border border-white/10 hover:border-white/20 shadow-sm flex items-center justify-center gap-3 active:scale-[0.98] backdrop-blur-sm">
                 <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
                   <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
@@ -365,7 +364,7 @@ export function LoginPage({ onLogin }) {
                 Akun Google
               </button>
               <div className="mt-6 text-center">
-                <p className="text-slate-400 text-sm">Belum punya akun? <button disabled={isLoading} onClick={() => switchMode('signup')} className="text-blue-400 font-bold hover:underline focus:outline-none disabled:opacity-50">Daftar sekarang</button></p>
+                <p className="text-slate-500 text-sm font-medium">Belum punya akun? <button disabled={isLoading} onClick={() => switchMode('signup')} className="text-blue-400 font-bold hover:text-blue-300 focus:outline-none disabled:opacity-50 transition-colors">Daftar sekarang</button></p>
               </div>
             </div>
 
@@ -560,17 +559,20 @@ export function LoginPage({ onLogin }) {
 
 export function SubscriptionPage({ onSelectPlan }) {
   return (
-    <div className="min-h-screen min-h-[100dvh] w-full bg-slate-50 flex items-center justify-center p-4 md:p-8 overflow-x-hidden overscroll-none pb-[calc(16px+env(safe-area-inset-bottom))] pt-[calc(16px+env(safe-area-inset-top))]">
+    <div className="min-h-screen min-h-[100dvh] w-full bg-gradient-to-br from-slate-50 via-white to-blue-50 flex items-center justify-center p-4 md:p-8 overflow-x-hidden overscroll-none pb-[calc(16px+env(safe-area-inset-bottom))] pt-[calc(16px+env(safe-area-inset-top))]">
       <div className="max-w-7xl w-full mx-auto">
-        <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <h1 className="text-3xl md:text-5xl font-black text-slate-800 mb-4 tracking-tight">Pilih Paket Belajarmu</h1>
-          <p className="text-slate-500 md:text-lg max-w-2xl mx-auto">Tingkatkan pengalaman belajarmu dengan akses tanpa batas ke fitur RichardMeha AI. Pilih paket yang paling sesuai dengan ambisi masa depanmu.</p>
+        <div className="text-center mb-14 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 px-4 py-1.5 rounded-full mb-6">
+            <Sparkles size={14} className="text-blue-500" />
+            <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Pilih Paket Terbaikmu</span>
+          </div>
+          <h1 className="text-4xl md:text-6xl font-black text-slate-800 mb-4 tracking-tight">Pilih Paket Belajarmu</h1>
+          <p className="text-slate-500 md:text-lg max-w-2xl mx-auto font-medium">Tingkatkan pengalaman belajarmu dengan akses tanpa batas ke fitur RichardMeha AI.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 w-full max-w-6xl mx-auto">
-          {/* Free Plan */}
-          <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm flex flex-col hover:shadow-lg transition-shadow animate-in zoom-in-95 duration-500 delay-100">
-            <div className="w-12 h-12 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center mb-6">
+          <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200/60 shadow-glass flex flex-col hover:shadow-glass-lg transition-all duration-300 animate-in zoom-in-95 duration-500 delay-100 hover:-translate-y-1">
+            <div className="w-14 h-14 bg-slate-100 text-slate-600 rounded-2xl flex items-center justify-center mb-6">
               <Shield size={24} />
             </div>
             <h3 className="text-xl font-bold text-slate-800 mb-2">Paket Gratis</h3>
@@ -582,14 +584,13 @@ export function SubscriptionPage({ onSelectPlan }) {
               <li className="flex gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={20} /> <span>Akses 45% materi Basic</span></li>
               <li className="flex gap-3"><CheckCircle2 className="text-emerald-500 shrink-0" size={20} /> <span>Chat terbatas dengan AI</span></li>
             </ul>
-            <button onClick={() => onSelectPlan('free')} className="w-full py-3.5 rounded-xl border-2 border-slate-200 text-slate-700 font-bold hover:bg-slate-50 hover:border-slate-300 transition-colors">
+            <button onClick={() => onSelectPlan('free')} className="w-full py-4 rounded-2xl border-2 border-slate-200 text-slate-700 font-bold hover:bg-slate-50 hover:border-slate-300 transition-all active:scale-[0.98]">
               Pilih Gratis
             </button>
           </div>
 
-          {/* Monthly Plan */}
-          <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm flex flex-col hover:shadow-lg transition-shadow animate-in zoom-in-95 duration-500 delay-150">
-            <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-6">
+          <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200/60 shadow-glass flex flex-col hover:shadow-glass-lg transition-all duration-300 animate-in zoom-in-95 duration-500 delay-150 hover:-translate-y-1">
+            <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6">
               <Zap size={24} />
             </div>
             <h3 className="text-xl font-bold text-slate-800 mb-2">Pro Bulanan</h3>
@@ -602,17 +603,16 @@ export function SubscriptionPage({ onSelectPlan }) {
               <li className="flex gap-3"><CheckCircle2 className="text-blue-500 shrink-0" size={20} /> <span>Chat tanpa batas dengan AI</span></li>
               <li className="flex gap-3"><CheckCircle2 className="text-blue-500 shrink-0" size={20} /> <span>Fitur Voice & Roleplay bebas</span></li>
             </ul>
-            <button onClick={() => onSelectPlan('monthly')} className="w-full py-3.5 rounded-xl bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 transition-colors">
+            <button onClick={() => onSelectPlan('monthly')} className="w-full py-4 rounded-2xl bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 transition-all active:scale-[0.98]">
               Pilih Bulanan
             </button>
           </div>
 
-          {/* Yearly Plan - Popular */}
-          <div className="bg-gradient-to-b from-blue-600 to-indigo-700 rounded-3xl p-8 shadow-xl shadow-blue-900/20 flex flex-col relative transform md:-translate-y-4 animate-in zoom-in-95 duration-500 delay-200">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-sm">
+          <div className="bg-gradient-to-b from-blue-600 to-indigo-700 rounded-[2.5rem] p-8 shadow-2xl shadow-blue-900/30 flex flex-col relative transform md:-translate-y-4 animate-in zoom-in-95 duration-500 delay-200 hover:-translate-y-5 transition-all duration-300">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-5 py-1.5 rounded-full shadow-lg">
               PALING POPULER
             </div>
-            <div className="w-12 h-12 bg-white/20 text-white rounded-xl flex items-center justify-center mb-6">
+            <div className="w-14 h-14 bg-white/20 text-white rounded-2xl flex items-center justify-center mb-6">
               <Crown size={24} />
             </div>
             <h3 className="text-xl font-bold text-white mb-2">Pro 1 Tahun</h3>
@@ -625,17 +625,16 @@ export function SubscriptionPage({ onSelectPlan }) {
               <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20} /> <span>Akses tes CEFR premium</span></li>
               <li className="flex gap-3"><CheckCircle2 className="text-blue-300 shrink-0" size={20} /> <span>Laporan proges komprehensif</span></li>
             </ul>
-            <button onClick={() => onSelectPlan('yearly')} className="w-full py-3.5 rounded-xl bg-white text-blue-600 font-bold hover:bg-blue-50 transition-colors shadow-sm">
+            <button onClick={() => onSelectPlan('yearly')} className="w-full py-4 rounded-2xl bg-white text-blue-600 font-bold hover:bg-blue-50 transition-all active:scale-[0.98] shadow-md">
               Mulai Langganan
             </button>
           </div>
 
-          {/* Discount Plan */}
-          <div className="bg-white rounded-3xl p-8 border-2 border-purple-200 shadow-sm flex flex-col relative hover:shadow-lg transition-shadow animate-in zoom-in-95 duration-500 delay-300">
-            <div className="absolute -top-3 right-4 bg-rose-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-sm rotate-3">
+          <div className="bg-white rounded-[2.5rem] p-8 border-2 border-purple-200 shadow-glass flex flex-col relative hover:shadow-glass-lg transition-all duration-300 animate-in zoom-in-95 duration-500 delay-300 hover:-translate-y-1">
+            <div className="absolute -top-3 right-4 bg-rose-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-md rotate-3">
               DISKON BESAR!
             </div>
-            <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center mb-6">
+            <div className="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-6">
               <Sparkles size={24} />
             </div>
             <h3 className="text-xl font-bold text-slate-800 mb-2">Pro Diskon</h3>
@@ -651,7 +650,7 @@ export function SubscriptionPage({ onSelectPlan }) {
               <li className="flex gap-3"><CheckCircle2 className="text-purple-500 shrink-0" size={20} /> <span>Akses seumur hidup ke materi</span></li>
               <li className="flex gap-3"><CheckCircle2 className="text-purple-500 shrink-0" size={20} /> <span>Layanan prioritas</span></li>
             </ul>
-            <button onClick={() => onSelectPlan('discount')} className="w-full py-3.5 rounded-xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-colors shadow-md shadow-purple-200">
+            <button onClick={() => onSelectPlan('discount')} className="w-full py-4 rounded-2xl bg-purple-600 text-white font-bold hover:bg-purple-700 transition-all active:scale-[0.98] shadow-lg shadow-purple-200">
               Ambil Diskon
             </button>
           </div>

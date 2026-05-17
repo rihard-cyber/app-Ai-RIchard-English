@@ -6,6 +6,7 @@ import { NativeAudio } from '@capacitor-community/native-audio';
 import { AiOrchestrator } from './AiOrchestrator';
 import { supabase } from './supabaseClient';
 import { GlobalContext } from './App';
+import { formatSafeInline } from './utils/safeHtml';
 
 // ==========================================
 // RENDER FORMATTED TEXT (Dipindah keluar agar Pure & Efisien)
@@ -42,13 +43,7 @@ const renderFormattedText = (text) => {
         }
     };
 
-    const parseInline = (str) => {
-        return str
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/✅/g, '<span class="text-emerald-600 font-bold">✅</span>')
-            .replace(/❌/g, '<span class="text-rose-600 font-bold">❌</span>');
-    };
+    const parseInline = (str) => formatSafeInline(str);
 
     lines.forEach((line, i) => {
         if (line.trim().startsWith('|')) {
@@ -234,6 +229,11 @@ export default function ChatModule({
     const sfxLoadedRef = useRef(false);
 
     const { globalApiKey } = React.useContext(GlobalContext) || {};
+    const sessionKey = React.useMemo(() => {
+        const raw = `${module || 'chat'}:${topic || characterName || 'general'}`;
+        return raw.toLowerCase().replace(/[^a-z0-9:_-]+/g, '-').slice(0, 120);
+    }, [module, topic, characterName]);
+    const localSessionKey = `richard_session_${userProfile?.email || userProfile?.name || 'guest'}_${sessionKey}`;
 
     // --- NATIVE AUDIO BGM ---
     useEffect(() => {
@@ -816,7 +816,7 @@ export default function ChatModule({
         setUserProfile(prev => ({ ...prev, xp: newXP }));
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-            await supabase.from('user_profiles').update({ xp: newXP }).eq('id', user.id);
+            await supabase.rpc('increment_xp', { user_id: user.id, amount });
         }
     };
 
@@ -824,16 +824,82 @@ export default function ChatModule({
         if (hasInitialized.current) return;
         hasInitialized.current = true;
 
-        if (initialSuggestions.length > 0) {
-            setSuggestions(initialSuggestions);
-        }
+        const initializeSession = async () => {
+            if (initialSuggestions.length > 0) {
+                setSuggestions(initialSuggestions);
+            }
 
-        if (messages.length === 0 && hideInputAtStart) {
-            sendMessage(startMessage, true);
-        } else if (messages.length === 0 && topic) {
-            sendMessage(`TODAY'S TOPIC: ${topic}. Let's start our learning session about "${topic}" now!`, true);
-        }
+            try {
+                const localSaved = localStorage.getItem(localSessionKey);
+                if (localSaved) {
+                    const parsed = JSON.parse(localSaved);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        setMessages(parsed);
+                        return;
+                    }
+                }
+            } catch (error) {
+                localStorage.removeItem(localSessionKey);
+            }
+
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    const { data } = await supabase
+                        .from('lesson_sessions')
+                        .select('messages')
+                        .eq('user_id', user.id)
+                        .eq('session_key', sessionKey)
+                        .maybeSingle();
+
+                    if (Array.isArray(data?.messages) && data.messages.length > 0) {
+                        setMessages(data.messages);
+                        localStorage.setItem(localSessionKey, JSON.stringify(data.messages));
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.warn("Gagal memuat sesi belajar tersimpan:", error);
+            }
+
+            if (hideInputAtStart) {
+                sendMessage(startMessage, true);
+            } else if (topic) {
+                sendMessage(`TODAY'S TOPIC: ${topic}. Let's start our learning session about "${topic}" now!`, true);
+            }
+        };
+
+        initializeSession();
     }, []);
+
+    useEffect(() => {
+        if (!hasInitialized.current || messages.length === 0) return;
+
+        const visibleMessages = messages.filter(msg => !msg.isHidden);
+        if (visibleMessages.length === 0) return;
+
+        localStorage.setItem(localSessionKey, JSON.stringify(messages.slice(-40)));
+
+        const saveTimer = setTimeout(async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                await supabase.from('lesson_sessions').upsert({
+                    user_id: user.id,
+                    session_key: sessionKey,
+                    module: module || 'Chat',
+                    topic: topic || characterName || 'General',
+                    messages: messages.slice(-40),
+                    updated_at: new Date().toISOString(),
+                }, { onConflict: 'user_id,session_key' });
+            } catch (error) {
+                console.warn("Gagal menyimpan sesi belajar:", error);
+            }
+        }, 1200);
+
+        return () => clearTimeout(saveTimer);
+    }, [messages, localSessionKey, sessionKey, module, topic, characterName]);
 
     useEffect(() => {
         resetIdleTimer();

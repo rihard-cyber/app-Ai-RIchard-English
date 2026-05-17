@@ -57,10 +57,7 @@ export default function LevelTest({ onComplete }) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        await supabase.from('user_profiles').update({
-          level: level,
-          has_completed_initial_test: true
-        }).eq('id', user.id);
+        await supabase.rpc('complete_assessment', { level_value: level });
       }
     } catch (error) {
       console.error("Error saving assessment result:", error);

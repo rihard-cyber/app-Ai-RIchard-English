@@ -29,15 +29,19 @@ export default function PaymentModal({ isOpen, onClose, onPaymentSuccess, planNa
     setIsSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User belum login.');
+      const orderId = `manual-${user.id}-${Date.now()}`;
 
       // Insert pending transaction to database
-      await supabase.from('transactions').insert([{
+      const { error } = await supabase.from('transactions').insert([{
         user_id: user.id,
         user_name: userName,
         plan_name: planName,
         amount: typeof price === 'string' ? parseInt(price.replace(/[^0-9]/g, '')) : price,
-        status: 'pending'
+        status: 'pending',
+        provider_order_id: orderId
       }]);
+      if (error) throw error;
 
       // Format pesan notifikasi WhatsApp untuk Admin
       const waMessage = `Halo Admin RichardMeha AI 🚀,\n\nSaya telah melakukan pembayaran untuk langganan fitur PRO dan menunggu konfirmasi ACC.\n\n*Detail Pesanan:*\n👤 Nama: ${userName}\n📧 Email: ${user.email}\n🎁 Paket: ${planName}\n💰 Nominal: Rp${price}\n\n_(Silakan lampirkan foto/screenshot bukti transfer Anda di bawah pesan ini)_`;
@@ -46,7 +50,7 @@ export default function PaymentModal({ isOpen, onClose, onPaymentSuccess, planNa
       const waUrl = `https://wa.me/${ADMIN_WA_NUMBER}?text=${encodeURIComponent(waMessage)}`;
       window.open(waUrl, '_blank');
 
-      alert('Pesanan dicatat! Anda akan diarahkan ke WhatsApp Admin untuk mengirimkan bukti transfer.');
+      alert('Pesanan dicatat sebagai menunggu verifikasi. Anda akan diarahkan ke WhatsApp Admin untuk mengirimkan bukti transfer.');
       onPaymentSuccess();
     } catch (error) {
       console.error(error);

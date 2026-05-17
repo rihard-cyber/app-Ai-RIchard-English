@@ -58,28 +58,9 @@ export default function AdminOverview({ usersData, stats, chartData, maxRevenue,
         }
     };
 
-    const verifyElevenLabsVoice = async (apiKey, voiceId) => {
-        if (!apiKey || !voiceId) {
-            showToast("API Key dan Voice ID ElevenLabs harus diisi.", "error");
-            return;
-        }
-        setElevenlabsVoiceStatus('testing');
-        try {
-            const res = await fetch(`https://api.elevenlabs.io/v1/voices/${voiceId}`, {
-                method: 'GET',
-                headers: { 'xi-api-key': apiKey }
-            });
-            if (res.ok) {
-                setElevenlabsVoiceStatus('ok');
-                showToast("ElevenLabs Voice ID Valid ✅", "success");
-            } else {
-                setElevenlabsVoiceStatus('error');
-                showToast("Voice ID tidak ditemukan atau API Key salah.", "error");
-            }
-        } catch (err) {
-            setElevenlabsVoiceStatus('error');
-            showToast(`Gagal memvalidasi Voice ID: ${err.message}`, "error");
-        }
+    const verifyElevenLabsVoice = async () => {
+        setElevenlabsVoiceStatus('idle');
+        showToast("Validasi voice ID langsung dari browser dinonaktifkan. Kredensial voice dikelola di backend.", "info");
     };
 
     const handleDownloadKeys = () => {

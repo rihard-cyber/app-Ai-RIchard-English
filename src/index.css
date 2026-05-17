@@ -2,21 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
 @layer utilities {
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
-
   .custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
-
   .custom-scrollbar::-webkit-scrollbar-thumb {
     background-color: rgba(148, 163, 184, 0.3);
     border-radius: 10px;
   }
-
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background-color: rgba(148, 163, 184, 0.5);
   }
@@ -25,62 +28,46 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-
-  /* Dark Mode Enhancements */
-  .dark-mode {
-    color-scheme: dark;
-  }
-
-  .dark-mode .bg-white {
-    background-color: #1e293b !important;
-    border-color: #334155 !important;
-  }
-
-  .dark-mode .text-slate-800 {
-    color: #f1f5f9 !important;
-  }
-
-  .dark-mode .text-slate-700 {
-    color: #e2e8f0 !important;
-  }
-
-  .dark-mode .text-slate-600 {
-    color: #cbd5e1 !important;
-  }
-
-  .dark-mode .bg-slate-50 {
-    background-color: #0f172a !important;
-  }
-
-  .dark-mode .border-slate-200, 
-  .dark-mode .border-slate-100 {
-    border-color: #334155 !important;
-  }
-
-  .dark-mode .shadow-sm,
-  .dark-mode .shadow-md,
-  .dark-mode .shadow-xl {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2) !important;
-  }
-
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
 
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  .glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  .glass-dark {
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
   }
 
-  .animate-shimmer {
-    animation: shimmer 2s infinite linear;
-    background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%);
-    background-size: 200% 100%;
+  .text-gradient {
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
-
-  @keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
+  .text-gradient-amber {
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .text-gradient-emerald {
+    background: linear-gradient(135deg, #10b981, #3b82f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   }
 }
 
@@ -88,32 +75,25 @@ body {
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Prevent text size adjust on orientation change (Android) */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  /* Smooth scrolling */
   scroll-behavior: smooth;
-  /* Prevent horizontal overflow on mobile */
   overflow-x: hidden;
 }
 
-/* Safe area insets for notched Android/iOS phones */
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Touch targets minimum 44px for Android accessibility */
 button, a, input, textarea {
   touch-action: manipulation;
 }
 
-/* Prevent text selection while tapping buttons on mobile */
 button {
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
 
-/* Better chat bubble text on small screens */
 @media (max-width: 640px) {
   .chat-bubble-text {
     font-size: 0.9rem;
@@ -122,16 +102,13 @@ button {
 }
 
 @keyframes border-spin {
-  100% {
-    transform: rotate(360deg);
-  }
+  100% { transform: rotate(360deg); }
 }
 
 .running-border {
   position: relative;
   overflow: hidden;
 }
-
 .running-border::before {
   content: '';
   position: absolute;
@@ -139,18 +116,12 @@ button {
   left: 50%;
   width: 200%;
   height: 200%;
-  background: conic-gradient(transparent,
-      transparent,
-      transparent,
-      #3b82f6,
-      #8b5cf6,
-      #ec4899);
+  background: conic-gradient(transparent, transparent, transparent, #3b82f6, #8b5cf6, #ec4899);
   transform: translate(-50%, -50%);
   transform-origin: 0 0;
   animation: border-spin 3s linear infinite;
   z-index: 0;
 }
-
 .running-border-inner {
   position: relative;
   border-radius: inherit;

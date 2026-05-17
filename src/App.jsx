@@ -227,7 +227,7 @@ export default function App() {
   const [recommendation, setRecommendation] = useState('vocabulary');
   const [isInitializing, setIsInitializing] = useState(true);
   const [theme, setTheme] = useState(() => localStorage.getItem('richard_theme') || 'light');
-  const [globalApiKey, setGlobalApiKey] = useState('');
+  const [globalApiKey] = useState({});
   const [showSplash, setShowSplash] = useState(true);
   const [showLevelUpConfetti, setShowLevelUpConfetti] = useState(false);
   const [levelUpMessage, setLevelUpMessage] = useState('');
@@ -451,40 +451,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    // Ambil API Key terbaru (Single Source of Truth) dari Supabase
-    const fetchKeys = async () => {
-      if (!supabase) return;
-      try {
-        const { data } = await supabase.from('app_settings').select('value').eq('id', 'api_keys').maybeSingle();
-        if (data && data.value) {
-          let keysObj = data.value;
-          if (typeof keysObj === 'string') {
-            try {
-              keysObj = JSON.parse(keysObj);
-            } catch (e) {
-              keysObj = { openai: '', gemini: data.value, groq: '', l10n: '', elevenlabs: '', elevenlabsVoiceId: '', iflytekAppId: '', iflytekApiKey: '', iflytekApiSecret: '' };
-            }
-          }
-          setGlobalApiKey(keysObj);
-        }
-      } catch (err) { }
-    };
-    fetchKeys();
-
-    // Supabase Realtime Subscription untuk update API Key secara instan
-    const apiKeysChannel = supabase
-      .channel('public:app_settings')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'app_settings', filter: "id=eq.api_keys" }, (payload) => {
-        if (payload.new && payload.new.value) {
-          let keysObj = payload.new.value;
-          if (typeof keysObj === 'string') {
-            try { keysObj = JSON.parse(keysObj); } catch (e) { keysObj = { openai: '', gemini: payload.new.value, groq: '', l10n: '', elevenlabs: '', elevenlabsVoiceId: '', iflytekAppId: '', iflytekApiKey: '', iflytekApiSecret: '' }; }
-          }
-          setGlobalApiKey(keysObj);
-        }
-      })
-      .subscribe();
-
+    if (!supabase) {
+      checkUser();
+      return;
+    }
     // Listener proaktif agar transisi sesi berjalan mulus tanpa looping
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
@@ -499,7 +469,6 @@ export default function App() {
 
     return () => {
       authListener?.subscription?.unsubscribe();
-      supabase.removeChannel(apiKeysChannel);
     };
   }, []);
   useEffect(() => { if (authState === 'app') fetchStats(); }, [authState]);
@@ -536,7 +505,7 @@ export default function App() {
         if (prev.level && prev.level !== newLevel && prev.name !== "User" && prev.level !== "Pemula (A1-A2)") {
           // Eksekusi side-effect di luar siklus render murni (menghindari error StrictMode React 18)
           Promise.resolve().then(() => {
-            supabase.from('user_profiles').update({ level: newLevel }).eq('id', user.id).then();
+            supabase.rpc('update_learning_level', { level_value: newLevel }).then();
             playSound('levelup');
             setShowLevelUpConfetti(true);
             setLevelUpMessage(newLevel);
@@ -717,8 +686,7 @@ export default function App() {
     if (!window.confirm("Yakin ingin menghapus seluruh riwayat belajar (XP, level, dan progres)? Data tidak bisa dikembalikan.")) return;
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from('user_progress').delete().eq('user_id', user.id);
-      await supabase.from('user_profiles').update({ xp: 0, level: 'Beginner (A1)', has_completed_initial_test: false, streak: 0 }).eq('id', user.id);
+      await supabase.rpc('reset_learning_history');
       alert("Riwayat berhasil dihapus. Aplikasi akan dimuat ulang.");
       window.location.reload();
     }
@@ -761,8 +729,7 @@ export default function App() {
     playSound('success');
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      await supabase.from('user_progress').insert({ user_id: user.id, skill_type: skill, score: score, details: details });
-      await supabase.rpc('increment_xp', { user_id: user.id, amount: 10 });
+      await supabase.rpc('save_learning_progress', { skill, score, details });
     }
   };
 
@@ -938,27 +905,30 @@ export default function App() {
 
   if (isInitializing || showSplash) {
     return (
-      <div className="min-h-screen min-h-[100dvh] bg-[#0f172a] flex flex-col items-center justify-center p-6 text-white overflow-hidden relative overscroll-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[30rem] h-[30rem] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
+      <div className="min-h-screen min-h-[100dvh] bg-gradient-to-br from-[#0b1121] via-[#0f172a] to-[#1a1040] flex flex-col items-center justify-center p-6 text-white overflow-hidden relative overscroll-none">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[35rem] h-[35rem] bg-blue-600/15 rounded-full blur-[150px] pointer-events-none animate-pulse-slow"></div>
+        <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-purple-600/10 rounded-full blur-[100px] pointer-events-none animate-float"></div>
+        <div className="absolute bottom-1/4 left-1/4 w-48 h-48 bg-indigo-600/10 rounded-full blur-[80px] pointer-events-none animate-float" style={{ animationDelay: '3s' }}></div>
 
-        <div className="relative z-10 flex flex-col items-center animate-in zoom-in duration-500 fade-in transform-gpu w-full max-w-xs">
-          <div className="w-24 h-24 rounded-[2rem] bg-gradient-to-tr from-blue-600 to-purple-600 flex items-center justify-center shadow-2xl shadow-blue-500/50 mb-6 relative">
-            <div className="absolute inset-0 rounded-[2rem] border-4 border-white/20 animate-ping"></div>
-            <Sparkles className="text-white w-12 h-12 animate-pulse" />
+        <div className="relative z-10 flex flex-col items-center animate-in zoom-in duration-700 fade-in transform-gpu w-full max-w-xs">
+          <div className="w-28 h-28 rounded-[2rem] bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center shadow-2xl shadow-blue-500/40 mb-6 relative">
+            <div className="absolute inset-0 rounded-[2rem] border-2 border-white/10 animate-ping"></div>
+            <div className="absolute inset-0 rounded-[2rem] border border-white/20"></div>
+            <Sparkles className="text-white w-14 h-14 animate-pulse" />
           </div>
 
-          <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white mb-1">
+          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white mb-1">
             RichardMeha<span className="text-blue-500"> AI</span>
           </h1>
-          <p className="text-slate-400 text-sm font-medium tracking-wide mb-12">Ultimate English Tutor</p>
+          <p className="text-slate-500 text-sm font-medium tracking-wide mb-12">Ultimate English Tutor</p>
 
-          <div className="w-full flex flex-col gap-3 mt-4">
-            <div className="flex justify-between items-center text-[10px] font-black tracking-widest uppercase text-slate-400">
+          <div className="w-full flex flex-col gap-3 mt-2">
+            <div className="flex justify-between items-center text-[10px] font-black tracking-widest uppercase text-slate-500">
               <span>{loadingText}</span>
               <span className="text-blue-400">{loadingProgress}%</span>
             </div>
-            <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden shadow-inner">
-              <div className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-200 ease-out" style={{ width: `${loadingProgress}%` }}></div>
+            <div className="h-2 w-full bg-slate-800/50 rounded-full overflow-hidden shadow-inner border border-slate-700/30">
+              <div className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-500 rounded-full transition-all duration-200 ease-out shadow-[0_0_10px_rgba(59,130,246,0.3)]" style={{ width: `${loadingProgress}%` }}></div>
             </div>
           </div>
         </div>
@@ -1002,42 +972,37 @@ export default function App() {
     <GlobalContext.Provider value={{ globalApiKey, userProfile }}>
       <style>
         {`
-          /* Modern CSS Haptic Feedback */
           button, .cursor-pointer {
-            -webkit-tap-highlight-color: transparent; /* Hilangkan kotak biru Android saat tap */
+            -webkit-tap-highlight-color: transparent;
           }
-          .active\\:scale-95:active, .active\\:scale-90:active {
-            transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275) !important; /* Bounce memantul ala iOS */
+          .active\\:scale-95:active, .active\\:scale-90:active, .active\\:scale-\\[0\\.98\\]:active {
+            transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
             transition-duration: 100ms !important;
           }
-
-          /* --- ELEGANT DARK MODE GLOBAL OVERRIDES --- */
-          /* Membalikkan warna kartu (bg-white) menjadi gelap elegan secara otomatis */
-          .dark-mode .bg-white {
-            background-color: #1e293b !important; /* slate-800 */
-            border-color: rgba(255, 255, 255, 0.05) !important;
-            color: #f8fafc !important; /* slate-50 */
+          [class*="hover\\:-translate-y-"]:hover {
+            transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
           }
-          /* Membalikkan warna panel abu-abu muda menjadi lebih gelap (Deep Navy) */
+          .dark-mode .bg-white {
+            background-color: #1e293b !important;
+            border-color: rgba(255, 255, 255, 0.05) !important;
+            color: #f8fafc !important;
+          }
           .dark-mode .bg-slate-50, .dark-mode .bg-slate-100 {
-            background-color: #0f172a !important; /* slate-900 */
+            background-color: #0f172a !important;
             border-color: rgba(255, 255, 255, 0.05) !important;
             color: #e2e8f0 !important;
           }
-          /* Memastikan teks yang tadinya gelap (untuk light mode) menjadi putih/terang */
           .dark-mode .text-slate-800, .dark-mode .text-slate-700 {
-            color: #f1f5f9 !important; /* slate-100 */
+            color: #f1f5f9 !important;
           }
           .dark-mode .text-slate-600, .dark-mode .text-slate-500 {
-            color: #94a3b8 !important; /* slate-400 */
+            color: #94a3b8 !important;
           }
-          /* Membuat bayangan (Shadow) lebih pekat agar menyatu dengan latar belakang gelap */
           .dark-mode .shadow-xl, .dark-mode .shadow-lg, .dark-mode .shadow-sm {
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.5) !important;
           }
-          /* Meredupkan area input agar tidak menyilaukan */
           .dark-mode input, .dark-mode textarea, .dark-mode select {
-            background-color: #0f172a !important; /* slate-900 */
+            background-color: #0f172a !important;
             color: #f8fafc !important;
             border-color: #334155 !important;
           }
@@ -1066,7 +1031,7 @@ export default function App() {
         />
 
         <main className="flex-1 flex flex-col h-full w-full relative overflow-hidden">
-          <header className="h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 z-30 shrink-0 md:hidden shadow-sm">
+          <header className="h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-800/50 flex items-center justify-between px-4 z-30 shrink-0 md:hidden shadow-sm">
             <div className="flex items-center gap-3"><button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors"><Menu size={24} /></button><h2 onClick={handleLogoClick} title={userProfile.is_admin ? 'Klik 2x untuk ke Admin' : ''} className="text-lg font-semibold text-slate-800 flex items-center gap-2 cursor-pointer select-none active:scale-95 transition-transform touch-manipulation">RichardMeha<span className="text-blue-600"> AI</span></h2></div>
             <div className="flex items-center gap-2"><div className="flex items-center gap-1 text-sm font-bold text-orange-500 bg-orange-50 px-3 py-1 rounded-full"><Flame size={16} className="fill-orange-500" /> {userProfile.streak}</div></div>
           </header>

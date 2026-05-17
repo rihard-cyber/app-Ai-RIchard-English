@@ -21,8 +21,10 @@ export default function AdminTransactions({ transactions, fetchData, showToast }
 
     const handleAccPayment = async (txId, userId) => {
         try {
-            await supabase.from('transactions').update({ status: 'approved' }).eq('id', txId);
-            await supabase.from('user_profiles').update({ is_pro: true }).eq('id', userId);
+            const { error: txError } = await supabase.from('transactions').update({ status: 'approved' }).eq('id', txId);
+            if (txError) throw txError;
+            const { error: profileError } = await supabase.from('user_profiles').update({ is_pro: true, subscription_plan: 'Pro' }).eq('id', userId);
+            if (profileError) throw profileError;
             showToast("Pembayaran Berhasil di ACC! User sekarang adalah PRO.", "success");
             fetchData();
         } catch (error) {
@@ -33,7 +35,8 @@ export default function AdminTransactions({ transactions, fetchData, showToast }
 
     const handleRejectPayment = async (txId) => {
         try {
-            await supabase.from('transactions').update({ status: 'rejected' }).eq('id', txId);
+            const { error } = await supabase.from('transactions').update({ status: 'rejected' }).eq('id', txId);
+            if (error) throw error;
             showToast("Pembayaran Ditolak.", "success");
             fetchData();
         } catch (error) {

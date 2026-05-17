@@ -1,7 +1,11 @@
 import urllib.request
 import json
+import os
 
-api_key = "AIzaSyACsuta7KSU2VEgtZnVO9SzfYUlecw_9_s"
+api_key = os.environ.get("GEMINI_API_KEY", "")
+if not api_key:
+    raise SystemExit("Set GEMINI_API_KEY in your environment before running this helper.")
+
 url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
 
 req = urllib.request.Request(url)

@@ -8,7 +8,8 @@ export default function AdminUsers({ users, isLoading, showToast }) {
     const filteredUsers = useMemo(() => {
         return users.filter(u => {
             const query = searchUserQuery.toLowerCase();
-            const matchNameEmail = (u.name || 'User').toLowerCase().includes(query) || (u.email || '').toLowerCase().includes(query);
+            const displayName = u.full_name || u.name || 'User';
+            const matchNameEmail = displayName.toLowerCase().includes(query) || (u.email || '').toLowerCase().includes(query);
             const matchSub = filterSubscription === 'all' ? true : filterSubscription === 'pro' ? u.is_pro : !u.is_pro;
             return matchNameEmail && matchSub;
         });
@@ -17,7 +18,7 @@ export default function AdminUsers({ users, isLoading, showToast }) {
     const handleExportUsers = () => {
         if (filteredUsers.length === 0) return showToast("Tidak ada data pengguna untuk diekspor.", "error");
         const headers = ["Nama", "Email", "Gender", "Level", "Status Pro", "Tanggal Gabung"];
-        const csvRows = filteredUsers.map(u => [u.name || 'User', u.email || '-', u.gender || 'male', u.level || 'Beginner (A1)', u.is_pro ? 'PRO' : 'Free', new Date(u.created_at).toLocaleDateString('id-ID')]);
+        const csvRows = filteredUsers.map(u => [u.full_name || u.name || 'User', u.email || '-', u.gender || 'male', u.level || 'Beginner (A1)', u.is_pro ? 'PRO' : 'Free', new Date(u.created_at).toLocaleDateString('id-ID')]);
         const csvContent = [headers.join(","), ...csvRows.map(row => row.map(item => `"${item}"`).join(","))].join("\n");
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
@@ -69,7 +70,7 @@ export default function AdminUsers({ users, isLoading, showToast }) {
                         <tbody className="divide-y divide-slate-100">
                             {filteredUsers.map(u => (
                                 <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
-                                    <td className="p-6"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500">{u.name?.charAt(0).toUpperCase() || 'U'}</div><div><p className="font-bold text-slate-800">{u.name || 'User'}</p><p className="text-xs text-slate-400">{u.email || u.gender}</p></div></div></td>
+                                    <td className="p-6"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500">{(u.full_name || u.name || 'U').charAt(0).toUpperCase()}</div><div><p className="font-bold text-slate-800">{u.full_name || u.name || 'User'}</p><p className="text-xs text-slate-400">{u.email || u.gender}</p></div></div></td>
                                     <td className="p-6"><span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-black">{u.level}</span></td>
                                     <td className="p-6">{u.is_pro ? <div className="flex items-center gap-1.5 text-amber-600 font-bold"><Crown size={14} /> PRO</div> : <span className="text-slate-400 font-medium">Free Tier</span>}</td>
                                     <td className="p-6 text-slate-500 font-medium">{new Date(u.created_at).toLocaleDateString('id-ID')}</td>

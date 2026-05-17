@@ -5,6 +5,7 @@ import AdminOverview from './AdminOverview';
 import AdminTransactions from './AdminTransactions';
 import AdminBanks from './AdminBanks';
 import AdminUsers from './AdminUsers';
+import { apiFetch } from './apiClient';
 export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) {
     const [users, setUsers] = useState([]);
     const [totalMurid, setTotalMurid] = useState(0);
@@ -73,17 +74,6 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
             const { data: bankData } = await supabase.from('payment_methods').select('*');
             if (bankData) setBanks(bankData);
 
-            // API Keys
-            setIsFetchingKeys(true);
-            const { data: keysData } = await supabase.from('app_settings').select('*').eq('id', 'api_keys').maybeSingle();
-            if (keysData && keysData.value) {
-                try {
-                    const parsed = typeof keysData.value === 'string' ? JSON.parse(keysData.value) : keysData.value;
-                    setApiKeys(prev => ({ ...prev, ...parsed }));
-                } catch (e) {
-                    console.error("Error parsing keys", e);
-                }
-            }
             setIsFetchingKeys(false);
 
         } catch (err) {
@@ -101,17 +91,11 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
     const handleSaveApiKey = async () => {
         setIsSavingKey(true);
         try {
-            const { error } = await supabase.from('app_settings').upsert({
-                id: 'api_keys',
-                value: apiKeys,
-                updated_at: new Date().toISOString()
-            });
-            if (error) throw error;
             setSaveKeySuccess(true);
-            showToast("API Keys berhasil disimpan", "success");
+            showToast("Kredensial sekarang dikelola dari environment backend (.env server).", "info");
             setTimeout(() => setSaveKeySuccess(false), 2000);
         } catch (e) {
-            showToast("Gagal menyimpan API Keys", "error");
+            showToast("Gagal memproses konfigurasi.", "error");
         } finally {
             setIsSavingKey(false);
         }
@@ -123,66 +107,43 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
             setApiMessages(prev => ({ ...prev, [key]: msg }));
         };
         
-        // Reset statuses
         setApiStatus(prev => ({ ...prev, openai: 'testing', gemini: 'testing', groq: 'testing', l10n: 'testing', elevenlabs: 'testing' }));
         setApiMessages({ openai: '', gemini: '', groq: '', l10n: '', elevenlabs: '' });
 
-        const testOpenAI = async () => {
-            if (!apiKeys.openai) return updateStatus('openai', 'idle', 'API Key kosong');
+        const testChat = async () => {
             try {
-                const res = await fetch('https://api.openai.com/v1/models', { headers: { 'Authorization': `Bearer ${apiKeys.openai}` } });
-                if (res.ok) updateStatus('openai', 'ok', 'Koneksi berhasil. API Key valid.');
-                else {
-                    const data = await res.json().catch(()=>({}));
-                    updateStatus('openai', 'error', `Ditolak (${res.status}): ${data.error?.message || 'Invalid Key'}`);
-                }
-            } catch (e) { updateStatus('openai', 'error', 'Koneksi terputus. Cek internet.'); }
-        };
-
-        const testGemini = async () => {
-            if (!apiKeys.gemini) return updateStatus('gemini', 'idle', 'API Key kosong');
-            try {
-                const key = apiKeys.gemini.split(',')[0].trim();
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
-                if (res.ok) updateStatus('gemini', 'ok', 'Koneksi berhasil. API Key valid.');
-                else {
-                    const data = await res.json().catch(()=>({}));
-                    updateStatus('gemini', 'error', `Ditolak (${res.status}): ${data.error?.message || 'Invalid Key'}`);
-                }
-            } catch (e) { updateStatus('gemini', 'error', 'Koneksi terputus. Cek internet.'); }
-        };
-
-        const testGroq = async () => {
-            if (!apiKeys.groq) return updateStatus('groq', 'idle', 'API Key kosong');
-            try {
-                const res = await fetch('https://api.groq.com/openai/v1/models', { headers: { 'Authorization': `Bearer ${apiKeys.groq}` } });
-                if (res.ok) updateStatus('groq', 'ok', 'Koneksi berhasil. API Key valid.');
-                else {
-                    const data = await res.json().catch(()=>({}));
-                    updateStatus('groq', 'error', `Ditolak (${res.status}): ${data.error?.message || 'Invalid Key'}`);
-                }
-            } catch (e) { updateStatus('groq', 'error', 'Koneksi terputus. Cek internet.'); }
+                await apiFetch('/api/chat', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        contents: [{ role: 'user', parts: [{ text: 'Reply with OK.' }] }],
+                        generationConfig: { maxOutputTokens: 16 }
+                    })
+                });
+                updateStatus('gemini', 'ok', 'Backend AI gateway terhubung.');
+                updateStatus('groq', 'ok', 'Fallback provider dikelola server bila tersedia.');
+                updateStatus('openai', 'ok', 'Fallback provider dikelola server bila tersedia.');
+            } catch (e) {
+                updateStatus('gemini', 'error', e.message);
+                updateStatus('groq', 'idle', 'Tidak dites langsung dari browser.');
+                updateStatus('openai', 'idle', 'Tidak dites langsung dari browser.');
+            }
         };
 
         const testL10n = async () => {
-            if (!apiKeys.l10n) return updateStatus('l10n', 'idle', 'API Key kosong');
             try {
-                const res = await fetch('https://api.l10n.dev/v1/models', { headers: { 'Authorization': `Bearer ${apiKeys.l10n}` } });
-                if (res.status !== 401 && res.status !== 403) updateStatus('l10n', 'ok', 'Koneksi berhasil.');
-                else updateStatus('l10n', 'error', `Ditolak (${res.status}): Unauthorized`);
-            } catch (e) { updateStatus('l10n', 'error', 'Koneksi terputus. Cek internet.'); }
+                await apiFetch('/api/translate', { method: 'POST', body: JSON.stringify({ text: 'Hello', targetLanguage: 'id' }) });
+                updateStatus('l10n', 'ok', 'Backend translation gateway terhubung.');
+            } catch (e) { updateStatus('l10n', 'error', e.message); }
         };
 
         const testElevenLabs = async () => {
-            if (!apiKeys.elevenlabs) return updateStatus('elevenlabs', 'idle', 'API Key kosong');
             try {
-                const res = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': apiKeys.elevenlabs.split(',')[0].trim() } });
-                if (res.ok) updateStatus('elevenlabs', 'ok', 'Koneksi berhasil. API Key valid.');
-                else updateStatus('elevenlabs', 'error', `Ditolak (${res.status}): Invalid Key`);
-            } catch (e) { updateStatus('elevenlabs', 'error', 'Koneksi terputus. Cek internet.'); }
+                await apiFetch('/api/tts', { method: 'POST', body: JSON.stringify({ text: 'OK' }) });
+                updateStatus('elevenlabs', 'ok', 'Backend TTS gateway terhubung.');
+            } catch (e) { updateStatus('elevenlabs', 'error', e.message); }
         };
 
-        await Promise.all([testOpenAI(), testGemini(), testGroq(), testL10n(), testElevenLabs()]);
+        await Promise.all([testChat(), testL10n(), testElevenLabs()]);
         showToast("Proses test koneksi selesai dijalankan.", "info");
     };
 

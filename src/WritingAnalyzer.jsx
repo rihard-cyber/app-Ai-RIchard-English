@@ -14,6 +14,7 @@ import {
 import { supabase } from './supabaseClient';
 import { GlobalContext } from './App';
 import { AiOrchestrator } from './AiOrchestrator';
+import { formatSafeInline } from './utils/safeHtml';
 
 const WRITING_SYSTEM_PROMPT = (isPro) => `
 Kamu adalah sistem "Professional Writing Analyzer" yang sangat analitis, objektif, dan akurat (seperti Grammarly).
@@ -135,7 +136,7 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
                   return (
                     <tr key={idx} className={isHeader ? "bg-slate-50 border-b border-slate-200" : "border-b border-slate-100 bg-white hover:bg-slate-50/50 transition-colors last:border-0"}>
                       {cols.map((col, cidx) => (
-                        <td key={cidx} className={`px-6 py-4 align-top ${isHeader ? 'text-xs font-bold text-slate-500 uppercase tracking-wider' : 'text-slate-700 font-medium'}`} dangerouslySetInnerHTML={{ __html: col.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>').replace(/`(.*?)`/g, '<code class="bg-rose-50 text-rose-500 px-1.5 py-0.5 rounded text-sm font-mono">$1</code>') }} />
+                        <td key={cidx} className={`px-6 py-4 align-top ${isHeader ? 'text-xs font-bold text-slate-500 uppercase tracking-wider' : 'text-slate-700 font-medium'}`} dangerouslySetInnerHTML={{ __html: formatSafeInline(col) }} />
                       ))}
                     </tr>
                   );
@@ -157,7 +158,7 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
       } else {
         if (inTable) flushTable(i);
 
-        let formattedLine = trimmed.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>').replace(/\*(.*?)\*/g, '<em class="italic text-slate-700">$1</em>').replace(/`(.*?)`/g, '<code class="bg-rose-50 text-rose-500 px-1.5 py-0.5 rounded text-sm font-mono">$1</code>');
+        let formattedLine = formatSafeInline(trimmed);
 
         if (trimmed.startsWith('###')) {
           elements.push(<h3 key={i} className="text-xl md:text-2xl font-bold text-slate-800 mt-10 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2" dangerouslySetInnerHTML={{ __html: formattedLine.replace(/^###\s*/, '') }} />);
