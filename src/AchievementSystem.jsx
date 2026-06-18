@@ -1,4 +1,3 @@
-import React from 'react';
 import { Award, Star, Zap, Flame, Trophy, Heart, GraduationCap, Lock } from 'lucide-react';
 
 export default function AchievementSystem({ userProfile = {}, onNavigate, onUpgrade }) {

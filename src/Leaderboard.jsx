@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Trophy, Crown, Loader2, Users, UserPlus, Share2, Medal } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Trophy, Loader2, Users, UserPlus, Share2, Medal, X, Zap, Flame, Calendar } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 export default function Leaderboard({ userProfile, onNavigate }) {
@@ -149,11 +149,11 @@ export default function Leaderboard({ userProfile, onNavigate }) {
                     {/* Podium Top 3 */}
                     <div className="flex items-end justify-center gap-2 md:gap-8 mb-12 mt-12 pt-8">
                         {/* Rank 2 */}
-                        {top3[1] && <PodiumCard user={top3[1]} rank={2} isMe={top3[1].id === userProfile?.id} onClick={() => setSelectedUser(top3[1])} />}
+                        {top3[1] && <PodiumCard user={top3[1]} rank={2} isMe={top3[1].id === userProfile?.id} />}
                         {/* Rank 1 */}
-                        {top3[0] && <PodiumCard user={top3[0]} rank={1} isMe={top3[0].id === userProfile?.id} onClick={() => setSelectedUser(top3[0])} />}
+                        {top3[0] && <PodiumCard user={top3[0]} rank={1} isMe={top3[0].id === userProfile?.id} />}
                         {/* Rank 3 */}
-                        {top3[2] && <PodiumCard user={top3[2]} rank={3} isMe={top3[2].id === userProfile?.id} onClick={() => setSelectedUser(top3[2])} />}
+                        {top3[2] && <PodiumCard user={top3[2]} rank={3} isMe={top3[2].id === userProfile?.id} />}
                     </div>
 
                     {/* List Peringkat 4 - 10 */}
@@ -232,7 +232,7 @@ export default function Leaderboard({ userProfile, onNavigate }) {
     );
 }
 
-function PodiumCard({ user, rank, isMe, onClick }) {
+function PodiumCard({ user, rank, isMe }) {
     const isFirst = rank === 1;
     const height = isFirst ? 'h-40 md:h-48' : rank === 2 ? 'h-32 md:h-36' : 'h-28 md:h-32';
 

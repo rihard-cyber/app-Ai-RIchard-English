@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Search, X, Download, CheckCircle, XCircle } from 'lucide-react';
 import { supabase } from './supabaseClient';
 

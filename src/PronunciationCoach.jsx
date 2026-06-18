@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Mic,
   MicOff,
@@ -10,8 +10,6 @@ import {
   Share2
 } from 'lucide-react';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
-import { TextToSpeech } from '@capacitor-community/text-to-speech';
-import { supabase } from './supabaseClient';
 import { AiOrchestrator } from './AiOrchestrator';
 import { GlobalContext } from './App';
 
@@ -53,36 +51,7 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
     localStorage.setItem('speaking_coach_usage', usageCount.toString());
   }, [usageCount]);
 
-  // Lock after 3 attempts (approx 40% of a full session context) if not PRO
-  const isLocked = !isPro && usageCount >= 3;
-
-  if (isLocked) {
-    return (
-      <div className="h-full flex items-center justify-center p-6 bg-slate-50">
-        <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-2xl border border-slate-100 max-w-lg text-center animate-in zoom-in-95 duration-500">
-          <div className="w-24 h-24 bg-gradient-to-tr from-rose-400 to-pink-600 text-white rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-rose-500/20">
-            <Crown size={48} />
-          </div>
-          <h2 className="text-3xl font-black text-slate-800 mb-4">Speaking Coach PRO 👑</h2>
-          <p className="text-slate-500 mb-10 text-lg leading-relaxed">
-            Kamu sudah menggunakan jatah gratis harian (3x latihan). Upgrade ke PRO untuk latihan tanpa batas dengan feedback AI instan!
-          </p>
-          <button
-            onClick={onUpgrade}
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-all text-lg"
-          >
-            Upgrade Sekarang
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  useEffect(() => {
-    generateNewSentence();
-  }, []);
-
-  const generateNewSentence = async () => {
+  const generateNewSentence = useCallback(async () => {
     setIsLoading(true);
     setAnalysis(null);
     setTranscript('');
@@ -102,7 +71,11 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isPro, usageCount]);
+
+  useEffect(() => {
+    generateNewSentence();
+  }, [generateNewSentence]);
 
   const toggleRecording = async () => {
     if (isRecording) {
@@ -114,7 +87,7 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
           await SpeechRecognition.stop();
         }
         recognitionRef.current?.stop();
-      } catch (e) { }
+      } catch (e) { console.warn(e) }
 
       // Kirim untuk dianalisa segera setelah berhenti
       const textToSend = currentTranscriptRef.current.trim();
@@ -223,7 +196,7 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
         currentTranscriptRef.current = '';
       };
 
-      try { recognitionRef.current.start(); } catch (err) { }
+      try { recognitionRef.current.start(); } catch (err) { console.warn(err) }
     }
   };
 
@@ -247,7 +220,7 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
         if (firstBrace !== -1 && lastBrace !== -1 && lastBrace >= firstBrace) {
           let jsonStr = cleanText.substring(firstBrace, lastBrace + 1);
           // Sanitasi karakter kontrol agar tidak merusak JSON.parse
-          jsonStr = jsonStr.replace(/[\u0000-\u001F]+/g, "");
+          jsonStr = jsonStr.split('').filter(c => c.charCodeAt(0) >= 32).join('');
           const parsed = JSON.parse(jsonStr);
           const confidence = parsed.confidence !== undefined ? parsed.confidence : 0.8;
           const consistencyFactor = 0.9;
@@ -275,6 +248,31 @@ export default function PronunciationCoach({ userProfile, onComplete, isPro, onU
   const speakSentence = async () => {
     await AiOrchestrator.speak(targetSentence, globalApiKey, { rate: 0.8 });
   };
+
+  // Lock after 3 attempts (approx 40% of a full session context) if not PRO
+  const isLocked = !isPro && usageCount >= 3;
+
+  if (isLocked) {
+    return (
+      <div className="h-full flex items-center justify-center p-6 bg-slate-50">
+        <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-2xl border border-slate-100 max-w-lg text-center animate-in zoom-in-95 duration-500">
+          <div className="w-24 h-24 bg-gradient-to-tr from-rose-400 to-pink-600 text-white rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-lg shadow-rose-500/20">
+            <Crown size={48} />
+          </div>
+          <h2 className="text-3xl font-black text-slate-800 mb-4">Speaking Coach PRO 👑</h2>
+          <p className="text-slate-500 mb-10 text-lg leading-relaxed">
+            Kamu sudah menggunakan jatah gratis harian (3x latihan). Upgrade ke PRO untuk latihan tanpa batas dengan feedback AI instan!
+          </p>
+          <button
+            onClick={onUpgrade}
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-black py-5 rounded-2xl shadow-xl active:scale-95 transition-all text-lg"
+          >
+            Upgrade Sekarang
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full w-full animate-in fade-in duration-500">

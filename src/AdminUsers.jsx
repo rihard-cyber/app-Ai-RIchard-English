@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Users, Crown, Activity, Search, Download, Loader2 } from 'lucide-react';
 
 export default function AdminUsers({ users, isLoading, showToast }) {

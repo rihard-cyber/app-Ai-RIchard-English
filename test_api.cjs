@@ -4,7 +4,7 @@ const https = require('node:https');
 
 // Parse .env file manually or require 'dotenv' if installed
 const envConfig = dotenv.parse(fs.readFileSync('.env'))
-const apiKey = envConfig.VITE_GEMINI_API_KEY;
+const apiKey = envConfig.GEMINI_API_KEY;
 
 console.log("Testing API Key:", apiKey.substring(0, 10) + "...");
 

@@ -1,36 +1,23 @@
-import React, { useState, useRef, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useRef, useEffect, useCallback, Suspense, lazy } from 'react';
 import {
   LayoutDashboard,
   MessageSquare,
   Headphones,
   BookA,
   Mic,
-  MicOff,
   Volume2,
   VolumeX,
   Menu,
-  X,
-  Search,
-  Send,
   Loader2,
-  ArrowDown,
   GraduationCap,
   Sparkles,
-  Bot,
   Flame,
   Trophy,
-  ChevronRight,
-  Languages,
   Settings,
-  BarChart2,
   Zap,
   ArrowUpRight,
-  PenTool,
   Crown,
-  Moon,
-  Sun,
   LogOut,
-  Lightbulb,
   Lock,
   Shield,
   RefreshCw,
@@ -39,9 +26,10 @@ import {
   Bell,
   BellOff,
   Star,
-  Share2
+  Share2,
+  Moon,
+  Sun
 } from 'lucide-react';
-import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
 import { App as CapacitorApp } from '@capacitor/app';
 import { LocalNotifications } from '@capacitor/local-notifications';
@@ -52,6 +40,7 @@ import { CURRICULUM } from './data/curriculum';
 import { AiOrchestrator } from './AiOrchestrator';
 import ChatModule from './ChatModule';
 import Sidebar from './Sidebar';
+import { ADMIN_EMAIL } from './config';
 import { VOCABULARY_TOPICS as VOCAB_RAW, GRAMMAR_TOPICS as GRAMMAR_RAW, LISTENING_TOPICS as LISTENING_RAW, CONVERSATION_CHARACTERS as CHARS_RAW } from './data/topics';
 
 // --- LAZY LOADED COMPONENTS ---
@@ -231,9 +220,7 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [showLevelUpConfetti, setShowLevelUpConfetti] = useState(false);
   const [levelUpMessage, setLevelUpMessage] = useState('');
-  const [isModulOpen, setIsModulOpen] = useState(true);
-  const [isPraktekOpen, setIsPraktekOpen] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [, setSearchQuery] = useState('');
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   const [loadingText, setLoadingText] = useState('Memuat Sistem...');
@@ -470,7 +457,7 @@ export default function App() {
     return () => {
       authListener?.subscription?.unsubscribe();
     };
-  }, []);
+  }, [checkUser]);
   useEffect(() => { if (authState === 'app') fetchStats(); }, [authState]);
 
   const fetchStats = async () => {
@@ -488,8 +475,9 @@ export default function App() {
       const stats = { speaking: 0, writing: 0, grammar: 0, vocabulary: 0 };
       const counts = { speaking: 0, writing: 0, grammar: 0, vocabulary: 0 };
       data.forEach(p => {
-        totalScore += p.score;
-        if (stats[p.skill_type] !== undefined) { stats[p.skill_type] += p.score; counts[p.skill_type]++; }
+        const score = typeof p.score === 'number' ? p.score : 0;
+        totalScore += score;
+        if (stats[p.skill_type] !== undefined) { stats[p.skill_type] += score; counts[p.skill_type]++; }
       });
 
       const avgScore = Math.round(totalScore / data.length);
@@ -510,7 +498,7 @@ export default function App() {
             setShowLevelUpConfetti(true);
             setLevelUpMessage(newLevel);
             if (navigator.vibrate) {
-              try { navigator.vibrate([100, 50, 100, 50, 100]); } catch (e) { } // Getaran panjang saat level up
+              try { navigator.vibrate([100, 50, 100, 50, 100]); } catch (e) { console.warn(e) }
             }
             setTimeout(() => { setShowLevelUpConfetti(false); setLevelUpMessage(''); }, 6000);
           });
@@ -529,7 +517,7 @@ export default function App() {
     }
   };
 
-  const checkUser = async () => {
+  const checkUser = useCallback(async () => {
     setIsInitializing(true);
     if (!supabase) {
       setAuthState('login');
@@ -549,7 +537,7 @@ export default function App() {
     } finally {
       setIsInitializing(false);
     }
-  };
+  }, []);
 
   const fetchProfile = async (userObj) => {
     if (!supabase) return;
@@ -580,7 +568,7 @@ export default function App() {
         if (insertRes.data) data = insertRes.data;
       }
 
-      const isAdmin = userEmail === 'richardpl.meha@gmail.com';
+      const isAdmin = userEmail === ADMIN_EMAIL;
 
       setUserProfile(prev => ({
         ...prev,
@@ -615,7 +603,7 @@ export default function App() {
       console.error("Profile fetch failed", err);
 
       const fallbackEmail = typeof userObj === 'object' ? userObj.email : '';
-      const isFallbackAdmin = fallbackEmail === 'richardpl.meha@gmail.com';
+      const isFallbackAdmin = fallbackEmail === ADMIN_EMAIL;
 
       setUserProfile(prev => ({
         ...prev,
@@ -666,11 +654,10 @@ export default function App() {
     setUserProfile(prev => ({ ...prev, level, has_completed_initial_test: true }));
     setActiveTab('home'); setAuthState('app');
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) await fetchProfile(user.id);
+    if (user) await fetchProfile(user);
   };
 
   const handleLogout = async () => {
-    localStorage.removeItem('owner_bypass');
     localStorage.removeItem('owner_mode');
     await supabase.auth.signOut();
     setAuthState('login');
@@ -700,7 +687,7 @@ export default function App() {
       await supabase.from('user_profiles').delete().eq('id', user.id);
       await supabase.from('user_progress').delete().eq('user_id', user.id);
       await handleLogout();
-      alert("Data profil berhasil dihapus. Silakan hubungi Admin (richardpl.meha@gmail.com) jika Anda ingin menghapus email Anda secara permanen dari sistem.");
+      alert("Data profil berhasil dihapus. Silakan hubungi Admin (" + ADMIN_EMAIL + ") jika Anda ingin menghapus email Anda secara permanen dari sistem.");
     }
   };
 
@@ -724,7 +711,7 @@ export default function App() {
 
   const saveProgress = async (skill, score, details = {}) => {
     if (navigator.vibrate) {
-      try { navigator.vibrate([50, 50, 50]); } catch (e) { } // Getaran success beruntun
+      try { navigator.vibrate([50, 50, 50]); } catch (e) { console.warn(e) }
     }
     playSound('success');
     const { data: { user } } = await supabase.auth.getUser();
@@ -765,27 +752,39 @@ export default function App() {
       case 'writing_analyzer': return <WritingAnalyzer userProfile={userProfile} onUpgrade={() => triggerUpgrade()} />;
       case 'call_tutor': return <ChatModule userProfile={userProfile} setUserProfile={setUserProfile} module="🎧 Call Tutor" basePrompt={prompts.call_tutor} initialCallMode={true} topic="Daily Practice" onBack={() => handleTabChange('home')} />;
       case 'conversation': return <ConversationModule userProfile={userProfile} setUserProfile={setUserProfile} basePrompt={prompts.conversation} isPro={userProfile.is_pro} charactersList={CONVERSATION_CHARACTERS} onUpgrade={() => triggerUpgrade()} />;
-      case 'goal_session':
-        const safeLevel = userProfile?.level || "Beginner (A1)";
-        const goalData = (safeLevel.includes('A1') || safeLevel.includes('Beginner'))
-          ? {
-            'intro': {
-              topic: 'Basic Introduction',
-              msg: "Hey... nice to meet you 😊\nLet’s start simple, okay?\n\nCan you tell me your name in English?",
-              suggestions: ["My name is...", "I am ... years old", "I am from Indonesia", "I like..."]
-            },
-            'numbers': {
-              topic: 'Numbers & Colors',
-              msg: "Alright! Let’s play with numbers and colors 🎨\n\nCan you count from 1 to 5 in English?",
-              suggestions: ["One, two, three...", "Red, blue, green", "I see a blue car"]
-            },
-            'daily': {
-              topic: 'Daily Routines',
-              msg: "Good morning! 😊\nToday we are going to talk about 'Daily Routines'.\n\nWhat do you usually do first in the morning? Langsung cek HP atau minum kopi dulu? 😄",
-              suggestions: ["I check my phone", "I have coffee", "I take a shower", "I usually wake up at..."]
-            }
-          }
-          : {};
+      case 'goal_session': {
+        const goalData = {
+          'intro': {
+            topic: 'Basic Introduction',
+            msg: "Hey... nice to meet you 😊\nLet's start simple, okay?\n\nCan you tell me your name in English?",
+            suggestions: ["My name is...", "I am ... years old", "I am from Indonesia", "I like..."]
+          },
+          'numbers': {
+            topic: 'Numbers & Colors',
+            msg: "Alright! Let's play with numbers and colors 🎨\n\nCan you count from 1 to 5 in English?",
+            suggestions: ["One, two, three...", "Red, blue, green", "I see a blue car"]
+          },
+          'daily': {
+            topic: 'Daily Routines',
+            msg: "Good morning! 😊\nToday we are going to talk about 'Daily Routines'.\n\nWhat do you usually do first in the morning? Langsung cek HP atau minum kopi dulu? 😄",
+            suggestions: ["I check my phone", "I have coffee", "I take a shower", "I usually wake up at..."]
+          },
+          'a1-1': { topic: 'Greetings & Introductions', msg: "Let's practice greetings! 😊\n\nHow would you introduce yourself in English?", suggestions: ["Hello, my name is...", "Nice to meet you", "I am from Indonesia", "How are you?"] },
+          'a1-2': { topic: 'Numbers, Colors & Time', msg: "Let's learn about numbers and time! 🕐\n\nWhat time do you usually wake up?", suggestions: ["I wake up at 6 AM", "It is 3 o'clock", "My favorite color is blue", "I have 2 brothers"] },
+          'a1-3': { topic: 'Family & Daily Life', msg: "Tell me about your family! 👨‍👩‍👧‍👦\n\nHow many people are in your family?", suggestions: ["There are 4 people", "I have one sister", "My mother is a teacher", "We live in Jakarta"] },
+          'a1-4': { topic: 'Basic Questions', msg: "Let's practice asking questions! ❓\n\nWhat is your favorite food?", suggestions: ["What is your name?", "Where do you live?", "When is your birthday?", "Why do you like English?"] },
+          'a2-1': { topic: 'Daily Routines in Detail', msg: "Describe your typical day! ☀️\n\nWhat do you usually do on weekends?", suggestions: ["I usually wake up at 7", "I have breakfast with my family", "I go to the mall", "I watch movies"] },
+          'a2-2': { topic: 'Shopping & Dining Out', msg: "Let's go shopping! 🛍️\n\nHow much does this cost?", suggestions: ["How much is this?", "I would like to order...", "Can I have the bill?", "Do you have this in blue?"] },
+          'a2-3': { topic: 'Past Experiences', msg: "Tell me about your last holiday! ✈️\n\nWhere did you go?", suggestions: ["I went to Bali", "It was amazing", "I visited the beach", "I stayed for 3 days"] },
+          'b1-1': { topic: 'Travel & Adventures', msg: "Share your travel stories! 🌍\n\nWhat is the best place you have ever visited?", suggestions: ["I have visited Japan", "The food was incredible", "I recommend going to...", "The culture is fascinating"] },
+          'b1-2': { topic: 'Work & Professional Life', msg: "Let's talk about your career! 💼\n\nWhat do you do for work?", suggestions: ["I work as a...", "I am responsible for...", "I have been working here for...", "My dream job is..."] },
+          'b2-1': { topic: 'Global Issues', msg: "Let's discuss global issues! 🌍\n\nWhat is your opinion about climate change?", suggestions: ["Climate change is real", "We need to take action", "Renewable energy is the future", "Every small step matters"] },
+          'b2-2': { topic: 'Business English & Meetings', msg: "Let's practice business meetings! 📊\n\nHow would you lead a team meeting?", suggestions: ["Let's start with the agenda", "I would like to propose...", "What are your thoughts?", "Let's summarize the key points"] },
+          'c1-1': { topic: 'Idioms & Slang', msg: "Let's learn native expressions! 🗣️\n\nDo you know any English idioms?", suggestions: ["It's a piece of cake", "Break the ice", "Hit the nail on the head", "Once in a blue moon"] },
+          'c1-2': { topic: 'Academic & Formal Talk', msg: "Let's practice formal discussion! 📚\n\nHow would you structure a persuasive argument?", suggestions: ["First and foremost...", "Furthermore, it is evident that...", "In conclusion...", "This data suggests that..."] },
+          'c2-1': { topic: 'Mastering Public Speaking', msg: "Time for a speech! 🎤\n\nGive me a 1-minute inspiring speech about success.", suggestions: ["Success is not final...", "The only limit is...", "Dream big and dare to fail", "Every master was once a beginner"] },
+          'c2-2': { topic: 'Strategic Leadership Talk', msg: "Let's practice crisis communication! 🎯\n\nHow would you address your team during a crisis?", suggestions: ["I understand everyone is concerned", "Here is our plan moving forward", "I need your full support", "Together we will get through this"] },
+        };
         const activeGoal = goalData[activeGoalId] || { topic: 'General Practice', msg: 'Hello!', suggestions: [] };
         return (
           <ChatModule
@@ -800,6 +799,7 @@ export default function App() {
             onBack={() => setActiveTab('home')}
           />
         );
+      }
       case 'quiz': return <ChatModule userProfile={userProfile} setUserProfile={setUserProfile} module="🧠 Quiz & Challenge" basePrompt={prompts.quiz} topic="English Quiz" onBack={() => handleTabChange('home')} />;
       case 'settings':
         return (
@@ -949,7 +949,7 @@ export default function App() {
   );
   if (authState === 'admin') {
     // PROTECTED ROUTE GUARD: Kunci halaman Admin
-    if (!isInitializing && !userProfile.is_admin && userProfile.email !== 'richardpl.meha@gmail.com') {
+    if (!isInitializing && !userProfile.is_admin && userProfile.email !== ADMIN_EMAIL) {
       return (
         <div className="min-h-screen min-h-[100dvh] bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center">
           <Shield className="text-rose-500 mb-4" size={64} />
@@ -970,51 +970,13 @@ export default function App() {
 
   return (
     <GlobalContext.Provider value={{ globalApiKey, userProfile }}>
-      <style>
-        {`
-          button, .cursor-pointer {
-            -webkit-tap-highlight-color: transparent;
-          }
-          .active\\:scale-95:active, .active\\:scale-90:active, .active\\:scale-\\[0\\.98\\]:active {
-            transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-            transition-duration: 100ms !important;
-          }
-          [class*="hover\\:-translate-y-"]:hover {
-            transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-          }
-          .dark-mode .bg-white {
-            background-color: #1e293b !important;
-            border-color: rgba(255, 255, 255, 0.05) !important;
-            color: #f8fafc !important;
-          }
-          .dark-mode .bg-slate-50, .dark-mode .bg-slate-100 {
-            background-color: #0f172a !important;
-            border-color: rgba(255, 255, 255, 0.05) !important;
-            color: #e2e8f0 !important;
-          }
-          .dark-mode .text-slate-800, .dark-mode .text-slate-700 {
-            color: #f1f5f9 !important;
-          }
-          .dark-mode .text-slate-600, .dark-mode .text-slate-500 {
-            color: #94a3b8 !important;
-          }
-          .dark-mode .shadow-xl, .dark-mode .shadow-lg, .dark-mode .shadow-sm {
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.5) !important;
-          }
-          .dark-mode input, .dark-mode textarea, .dark-mode select {
-            background-color: #0f172a !important;
-            color: #f8fafc !important;
-            border-color: #334155 !important;
-          }
-        `}
-      </style>
       {isOffline && (
         <div className="fixed top-[calc(env(safe-area-inset-top)+1rem)] left-1/2 -translate-x-1/2 z-[9999] bg-slate-900/90 backdrop-blur-md text-white px-5 py-2.5 rounded-full shadow-2xl flex items-center gap-2 text-sm font-bold animate-in slide-in-from-top-4 duration-300 border border-slate-700">
           <WifiOff size={16} className="text-rose-500" /> Koneksi Terputus
         </div>
       )}
       <div
-        className={`flex h-screen h-[100dvh] w-full font-sans overflow-hidden overscroll-none transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b1121] text-slate-200 dark-mode' : 'bg-slate-50 text-slate-800'}`}
+        className={`flex h-screen h-[100dvh] w-full font-sans overflow-hidden overscroll-none transition-colors duration-300 ${theme === 'dark' ? 'bg-[#0b1121] text-slate-200 dark' : 'bg-slate-50 text-slate-800'}`}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -1043,7 +1005,6 @@ export default function App() {
             </Suspense>
           </div>
         </main>
-        <PaymentModal isOpen={isPaymentModalOpen} userName={userProfile.name} onClose={() => setIsPaymentModalOpen(false)} onPaymentSuccess={handlePaymentSuccess} planName={selectedPlan.name} price={selectedPlan.price} />
       </div>
 
       {/* GLOBAL LEVEL UP CONFETTI POP-UP */}
@@ -1203,6 +1164,7 @@ function HomeDashboard({ onNavigate, userProfile, recommendation, onStartGoal, o
       // Tandai bahwa user sudah disapa di sesi ini
       sessionStorage.setItem('has_greeted', 'true');
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile, isVoiceGreetingEnabled, voiceGreetingGender]);
 
   return (
@@ -1405,15 +1367,3 @@ function ConversationModule({ userProfile, setUserProfile, basePrompt, isPro, ch
   );
 }
 
-
-function NavItem({ icon, label, isActive, onClick, badge }) {
-  return (
-    <button onClick={onClick} className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 hover:translate-x-1 ${isActive ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-medium' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}>
-      <div className="flex items-center gap-3">
-        <span className={`${isActive ? 'text-white' : ''}`}>{icon}</span>
-        <span className="text-sm whitespace-nowrap">{label}</span>
-      </div>
-      {badge && <span className="bg-rose-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest animate-pulse shadow-sm shadow-rose-500/30">{badge}</span>}
-    </button>
-  );
-}

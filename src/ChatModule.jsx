@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Bot, Volume2, VolumeX, Languages, Lightbulb, Mic, MicOff, X, Zap, Headphones, ArrowDown, Send, Share2 } from 'lucide-react';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { TextToSpeech } from '@capacitor-community/text-to-speech';
@@ -181,6 +181,7 @@ const MessageBubble = React.memo(({
         prevProps.suggestions === nextProps.suggestions &&
         prevProps.lastScore === nextProps.lastScore;
 });
+MessageBubble.displayName = 'MessageBubble';
 
 export default function ChatModule({
     userProfile,
@@ -258,7 +259,7 @@ export default function ChatModule({
                 } catch (e) { console.warn("NativeAudio BGM Error:", e); }
             } else {
                 if (bgmLoadedRef.current) {
-                    try { await NativeAudio.stop({ assetId: "lofi-bgm" }); } catch (e) { }
+                    try { await NativeAudio.stop({ assetId: "lofi-bgm" }); } catch (e) { console.warn(e) }
                 }
             }
         };
@@ -354,7 +355,7 @@ export default function ChatModule({
         scrollToBottom();
     }, [messages, isLoading]);
 
-    const resetIdleTimer = () => {
+    const resetIdleTimer = useCallback(() => {
         if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
         setSuggestions([]);
         idleTimerRef.current = setTimeout(() => {
@@ -362,9 +363,9 @@ export default function ChatModule({
                 handleSuggest(messages.length - 1);
             }
         }, 5000);
-    };
+    }, []);
 
-    const handleTranslate = async (index, textToTranslateOverride) => {
+    const handleTranslate = useCallback(async (index, textToTranslateOverride) => {
         if (translations[index]) {
             setTranslations(prev => {
                 const next = { ...prev };
@@ -384,9 +385,9 @@ export default function ChatModule({
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [messages, translations, userProfile, setUserProfile]);
 
-    const handleSuggest = async (index) => {
+    const handleSuggest = useCallback(async (index) => {
         const history = messages.slice(0, index + 1).map(m => `${m.role}: ${m.content}`).join('\n');
         try {
             const payload = {
@@ -400,7 +401,7 @@ export default function ChatModule({
         } catch (err) {
             console.error("Suggestions failed", err);
         }
-    };
+    }, [messages]);
 
     const detectLanguage = (text) => {
         const indoWords = [
@@ -436,7 +437,7 @@ export default function ChatModule({
         return engScore > indoScore ? "en" : "id";
     };
 
-    const handleTTS = async (text) => {
+    const handleTTS = useCallback(async (text) => {
         if (!text) return;
         setIsSpeaking(true);
         const cleanText = text.replace(/❌[\s\S]*?✅/g, '').replace(/[✅❌*#_\\]/g, '').replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').substring(0, 600).trim();
@@ -481,7 +482,7 @@ export default function ChatModule({
                 window.speechSynthesis.speak(utterance);
             }
         }
-    };
+    }, []);
 
     const extractAndParseJSON = (text) => {
         try {
@@ -490,7 +491,7 @@ export default function ChatModule({
             const lastBrace = cleanText.lastIndexOf('}');
             if (firstBrace !== -1 && lastBrace !== -1 && lastBrace >= firstBrace) {
                 let jsonString = cleanText.substring(firstBrace, lastBrace + 1);
-                jsonString = jsonString.replace(/[\u0000-\u001F]+/g, "");
+                jsonString = jsonString.split('').filter(c => c.charCodeAt(0) >= 32).join('');
                 return JSON.parse(jsonString);
             }
             return null;
@@ -635,7 +636,7 @@ export default function ChatModule({
         }
     };
 
-    const sendMessage = async (text, isSystemInitiated = false, isVoiceInput = false) => {
+    const sendMessage = useCallback(async (text, isSystemInitiated = false, isVoiceInput = false) => {
         if (!text.trim()) return;
 
         const now = Date.now();
@@ -660,7 +661,7 @@ export default function ChatModule({
             ? "\n[SYSTEM: User is speaking Indonesian. You MUST reply in Indonesian. Be a professional and friendly English teacher. Explain clearly, correct their English if they made mistakes, and provide natural English equivalents.]"
             : "\n[SYSTEM: User is speaking English. You MUST reply fully in English. Act as a professional native English teacher. If there are mistakes, correct them gently using ❌/✅ format.]";
 
-        const newUserMsg = { role: 'user', content: text, isHidden: isSystemInitiated && hideInputAtStart };
+        const newUserMsg = { _id: Date.now() + '-' + Math.random().toString(36).slice(2, 7), role: 'user', content: text, isHidden: isSystemInitiated && hideInputAtStart };
         const updatedMessages = [...messages, newUserMsg];
 
         setMessages(updatedMessages);
@@ -712,21 +713,17 @@ export default function ChatModule({
                 throw new Error("Invalid response format from Gemini");
             }
 
-            if (aiText.includes('---')) {
-                const parts = aiText.split('---');
-                const potentialJsonStr = parts[parts.length - 1];
+            const processScore = (scoreObj) => {
+                const confidence = scoreObj.confidence !== undefined ? scoreObj.confidence : 0.8;
+                const consistencyFactor = 0.9;
 
-                const processScore = (scoreObj) => {
-                    const confidence = scoreObj.confidence !== undefined ? scoreObj.confidence : 0.8;
-                    const consistencyFactor = 0.9;
+                const baseGrammar = scoreObj.grammar_score ?? scoreObj.grammar ?? 80;
+                const baseVocab = scoreObj.vocab_score ?? scoreObj.vocab ?? 80;
+                const baseFluency = scoreObj.fluency_score ?? scoreObj.fluency ?? 80;
+                const baseComprehension = scoreObj.comprehension_score ?? 80;
 
-                    const baseGrammar = scoreObj.grammar_score ?? scoreObj.grammar ?? 80;
-                    const baseVocab = scoreObj.vocab_score ?? scoreObj.vocab ?? 80;
-                    const baseFluency = scoreObj.fluency_score ?? scoreObj.fluency ?? 80;
-                    const baseComprehension = scoreObj.comprehension_score ?? 80;
-
-                    const finalGrammar = Math.round(baseGrammar * confidence * consistencyFactor);
-                    const finalVocab = Math.round(baseVocab * confidence * consistencyFactor);
+                const finalGrammar = Math.round(baseGrammar * confidence * consistencyFactor);
+                const finalVocab = Math.round(baseVocab * confidence * consistencyFactor);
                     const finalFluency = Math.round(baseFluency * confidence * consistencyFactor);
                     const finalComprehension = Math.round(baseComprehension * confidence * consistencyFactor);
                     const overallScore = Math.round((finalGrammar + finalVocab + finalFluency + finalComprehension) / 4);
@@ -749,6 +746,10 @@ export default function ChatModule({
                     updateXP(earnedXP);
                     if (onComplete) onComplete(overallScore);
                 };
+
+            if (aiText.includes('---')) {
+                const parts = aiText.split('---');
+                const potentialJsonStr = parts[parts.length - 1];
 
                 let scoreObj = extractAndParseJSON(potentialJsonStr);
                 if (scoreObj) {
@@ -775,18 +776,22 @@ export default function ChatModule({
 
             if (callMode) {
                 setIsTypingEffect(true);
-                let currentText = "";
                 const words = aiText.split(" ");
-                for (let i = 0; i < words.length; i++) {
-                    currentText += words[i] + " ";
-                    setSubtitle(currentText);
-                    await new Promise(r => setTimeout(r, 30));
+                if (words.length <= 50) {
+                    let currentText = "";
+                    for (let i = 0; i < words.length; i++) {
+                        currentText += words[i] + " ";
+                        setSubtitle(currentText);
+                        await new Promise(r => setTimeout(r, 30));
+                    }
+                } else {
+                    setSubtitle(aiText);
                 }
                 setIsTypingEffect(false);
             }
 
             setMessages(prev => {
-                const newMsgs = [...prev, { role: 'ai', content: aiText }];
+                const newMsgs = [...prev, { _id: Date.now() + '-' + Math.random().toString(36).slice(2, 7), role: 'ai', content: aiText }];
                 setTimeout(() => handleSuggest(newMsgs.length - 1), 100);
                 return newMsgs;
             });
@@ -799,18 +804,18 @@ export default function ChatModule({
             if (errStr.includes('quota') || errStr.includes('429') || errStr.includes('rate-limit')) {
                 errorMsg = "Yah, AI sedang ramai digunakan atau kuota habis nih beb. Tunggu sebentar ya, atau admin akan segera mengganti jalurnya!";
             }
-            setMessages(prev => [...prev, { role: 'system', content: errorMsg }]);
+            setMessages(prev => [...prev, { _id: Date.now() + '-' + Math.random().toString(36).slice(2, 7), role: 'system', content: errorMsg }]);
         } finally {
             setIsLoading(false);
             setMicStatus('idle');
         }
-    };
+    }, [messages, userProfile, setUserProfile, inputValue, setInputValue, basePrompt, topic, onComplete, callMode, micStatus, isRecording]);
 
     const updateXP = async (amount) => {
         if (amount > 0 && navigator.vibrate) {
             try {
                 navigator.vibrate(50);
-            } catch (e) { }
+            } catch (e) { console.warn(e) }
         }
         const newXP = (userProfile.xp || 0) + amount;
         setUserProfile(prev => ({ ...prev, xp: newXP }));
@@ -872,6 +877,7 @@ export default function ChatModule({
         initializeSession();
     }, []);
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (!hasInitialized.current || messages.length === 0) return;
 
@@ -899,19 +905,20 @@ export default function ChatModule({
         }, 1200);
 
         return () => clearTimeout(saveTimer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [messages, localSessionKey, sessionKey, module, topic, characterName]);
 
     useEffect(() => {
         resetIdleTimer();
         return () => { if (idleTimerRef.current) clearTimeout(idleTimerRef.current); };
-    }, [messages]);
+    }, [messages, resetIdleTimer]);
 
     // OPTIMASI: Cegah re-render array messages yang berat saat state UI lain berubah (seperti inputValue atau subtitle mengetik)
     const renderedMessages = React.useMemo(() => {
         return messages.map((msg, idx) => (
             !msg.isHidden && (
                 <MessageBubble
-                    key={idx}
+                    key={msg._id || idx}
                     msg={msg}
                     idx={idx}
                     isLast={idx === messages.length - 1}
@@ -925,7 +932,7 @@ export default function ChatModule({
                 />
             )
         ));
-    }, [messages, translations, suggestions, lastScore]);
+    }, [messages, translations, suggestions, lastScore, handleSuggest, handleTTS, handleTranslate, sendMessage]);
 
     return (
         <div className="absolute inset-0 flex flex-col bg-slate-50/50 z-20">

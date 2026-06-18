@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Trophy, CheckCircle2, ArrowRight, GraduationCap, Sparkles, Loader2, Volume2, Share2 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { VOCABULARY_QUESTIONS } from './data/vocabularyTest';

@@ -1,6 +1,5 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { Users, CheckCircle, ArrowDownRight, Activity, Zap, Eye, EyeOff, Loader2, Trash, Download, Upload, DatabaseBackup, RefreshCw } from 'lucide-react';
-import { supabase } from './supabaseClient';
+import { useState, useMemo, useRef } from 'react';
+import { Users, Activity, Zap, Eye, EyeOff, Loader2, Download, Upload, DatabaseBackup } from 'lucide-react';
 import { testIFlytekConnection } from './VoiceService';
 
 export function StatusBadge({ status }) {
@@ -19,7 +18,7 @@ export function StatCard({ title, value, color, textColor = "text-white" }) {
     );
 }
 
-export default function AdminOverview({ usersData, stats, chartData, maxRevenue, monthlyRevenueArray, userEmail, apiKeys, setApiKeys, apiStatus, apiMessages, handleTestConnections, handleSaveApiKey, saveKeySuccess, isSavingKey, isFetchingKeys, showToast, onRefresh }) {
+export default function AdminOverview({ usersData, stats, chartData, maxRevenue, apiKeys, setApiKeys, apiStatus, apiMessages, handleTestConnections, handleSaveApiKey, saveKeySuccess, isSavingKey, isFetchingKeys, showToast }) {
     const levelCounts = useMemo(() => {
         const counts = { A1: 0, A2: 0, B1: 0, B2: 0, C1: 0, C2: 0 };
         usersData.forEach(u => {

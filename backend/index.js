@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const dotenv = require('dotenv');
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
@@ -8,6 +9,13 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
+
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'richardpl.meha@gmail.com';
 
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || [
   'http://localhost:5173',

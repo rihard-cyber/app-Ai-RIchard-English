@@ -1,17 +1,14 @@
-import React, { useState } from 'react';
+import { useState, useContext } from 'react';
 import {
   PenTool,
   Sparkles,
   CheckCircle2,
   RotateCcw,
-  ArrowRight,
   Loader2,
   Copy,
   Crown,
-  Lock,
   Share2
 } from 'lucide-react';
-import { supabase } from './supabaseClient';
 import { GlobalContext } from './App';
 import { AiOrchestrator } from './AiOrchestrator';
 import { formatSafeInline } from './utils/safeHtml';
@@ -65,7 +62,7 @@ export default function WritingAnalyzer({ userProfile, onUpgrade }) {
   const [usageCount, setUsageCount] = useState(() => parseInt(localStorage.getItem('writing_analyzer_usage') || '0'));
   const isPro = userProfile?.is_pro;
 
-  const { globalApiKey } = React.useContext(GlobalContext) || {};
+  const { globalApiKey } = useContext(GlobalContext) || {};
 
   const isLocked = !isPro && usageCount >= 3;
 

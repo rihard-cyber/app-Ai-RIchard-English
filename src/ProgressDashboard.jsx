@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   TrendingUp,
   Target,
@@ -44,9 +44,9 @@ export default function ProgressDashboard({ userProfile, onNavigate }) {
 
   useEffect(() => {
     fetchProgress();
-  }, [filterPeriod, filterCategory]);
+  }, [filterPeriod, filterCategory, fetchProgress]);
 
-  const fetchProgress = async () => {
+  const fetchProgress = useCallback(async () => {
     setIsLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -160,7 +160,7 @@ export default function ProgressDashboard({ userProfile, onNavigate }) {
     setHeatmapData(generatedHeatmap);
 
     setIsLoading(false);
-  };
+  }, [filterPeriod, filterCategory]);
 
   return (
     <div className="p-4 md:p-8 w-full max-w-6xl mx-auto space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-[calc(24px+env(safe-area-inset-bottom))] overflow-x-hidden">

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { LogOut, Users, RefreshCw, UserCheck, LayoutDashboard, CreditCard, Settings, Crown, Activity, Sparkles, ChevronRight, Search, Filter, Shield } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { LogOut, Users, RefreshCw, UserCheck, LayoutDashboard, CreditCard, Activity, Shield } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import AdminOverview from './AdminOverview';
 import AdminTransactions from './AdminTransactions';
@@ -8,7 +8,7 @@ import AdminUsers from './AdminUsers';
 import { apiFetch } from './apiClient';
 export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) {
     const [users, setUsers] = useState([]);
-    const [totalMurid, setTotalMurid] = useState(0);
+    const [, setTotalMurid] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [activeMenu, setActiveMenu] = useState('overview');
 
@@ -37,7 +37,7 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
         setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
     };
 
-    const fetchAllData = async () => {
+    const fetchAllData = useCallback(async () => {
         setIsLoading(true);
         try {
             // Users
@@ -82,11 +82,11 @@ export default function AdminDashboard({ onLogout, onSwitchToUser, userEmail }) 
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [showToast]);
 
     useEffect(() => {
         fetchAllData();
-    }, []);
+    }, [fetchAllData]);
 
     const handleSaveApiKey = async () => {
         setIsSavingKey(true);

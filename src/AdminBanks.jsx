@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, CreditCard, Trash2 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 

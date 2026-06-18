@@ -11,7 +11,12 @@ module.exports = {
     es2022: true,
     node: true,
   },
-  extends: [],
+  extends: [
+    'eslint:recommended',
+    'plugin:react/recommended',
+    'plugin:react/jsx-runtime',
+    'plugin:react-hooks/recommended',
+  ],
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
@@ -24,5 +29,9 @@ module.exports = {
       version: 'detect',
     },
   },
-  rules: {},
+  rules: {
+    'react/prop-types': 'off',
+    'react/no-unescaped-entities': 'off',
+    'no-empty': ['warn', { allowEmptyCatch: true }],
+  },
 };
